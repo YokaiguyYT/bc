@@ -3,11 +3,21 @@ import type { Sim } from '../../game/Sim';
 import type { CargoKind } from '../../levels/types';
 import type { Cargo } from './Cargo';
 import { Crate } from './Crate';
+import { GlassPane } from './GlassPane';
+import { CrtTv } from './CrtTv';
+import { Aquarium } from './Aquarium';
+import { GrandfatherClock } from './GrandfatherClock';
+import { WeddingCake } from './WeddingCake';
 
 type Factory = (sim: Sim, opts: { pos: THREE.Vector3; yaw: number }) => Cargo;
 
 const registry: Partial<Record<CargoKind, Factory>> = {
   crate: (sim, o) => new Crate(sim, o),
+  glass: (sim, o) => new GlassPane(sim, o),
+  tv: (sim, o) => new CrtTv(sim, o),
+  aquarium: (sim, o) => new Aquarium(sim, o),
+  clock: (sim, o) => new GrandfatherClock(sim, o),
+  cake: (sim, o) => new WeddingCake(sim, o),
 };
 
 export function registerCargo(kind: CargoKind, f: Factory) {

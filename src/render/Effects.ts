@@ -81,7 +81,7 @@ export class Effects {
     parent.add(this.root);
     const lambert = (c: number, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
     this.pool('dust', new THREE.IcosahedronGeometry(1, 0), lambert(0xf3ece2), 160, true);
-    this.pool('smoke', new THREE.IcosahedronGeometry(1, 1), lambert(0x6f6a72), 80, true);
+    this.pool('smoke', new THREE.IcosahedronGeometry(1, 1), lambert(0x8d8890, { transparent: true, opacity: 0.55, depthWrite: false }), 80, true);
     this.pool(
       'shard',
       new THREE.TetrahedronGeometry(1, 0).scale(1, 0.18, 0.7),
@@ -90,7 +90,7 @@ export class Effects {
       false,
     );
     this.pool('spark', new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), 120, true);
-    this.pool('drop', new THREE.SphereGeometry(1, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, transparent: true, opacity: 0.85 }), 220, true);
+    this.pool('drop', new THREE.SphereGeometry(1, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, transparent: true, opacity: 0.6, depthWrite: false }), 260, true);
     this.pool('blob', new THREE.SphereGeometry(1, 10, 8), lambert(0xffffff), 160, false);
     this.pool('chunk', new THREE.BoxGeometry(1, 1, 1), lambert(0xffffff), 120, false);
     this.pool('confetti', new THREE.PlaneGeometry(1, 0.6), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }), 260, false);
@@ -114,7 +114,7 @@ export class Effects {
         if (e.material === 'metal') this.burst('spark', e.pos, { count: n, speed: 3, up: 1.5, size: 0.025, life: 0.35, gravity: 9, colors: [0xffe28a, 0xffb347] });
         else this.burst('dust', e.pos, { count: n, speed: 1.2, up: 0.4, size: 0.08, life: 0.5, gravity: -0.2, drag: 3 });
       }),
-      events.on('splash', (e) => this.burst('drop', e.pos, { count: Math.min(30, 4 + Math.floor(e.amount * 60)), speed: 2.2, up: 2.2, size: 0.035, sizeVar: 0.5, life: 1.2, gravity: 11, colors: [0x7fd6ff, 0xbfeaff], ground: e.pos.y - 1.5 })),
+      events.on('splash', (e) => this.burst('drop', e.pos, { count: Math.min(30, 4 + Math.floor(e.amount * 60)), speed: 2.2, up: 2.2, size: 0.022, sizeVar: 0.5, life: 1.2, gravity: 11, colors: [0x7fd6ff, 0xbfeaff] })),
     );
     void D;
   }

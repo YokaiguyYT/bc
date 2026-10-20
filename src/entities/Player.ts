@@ -541,7 +541,7 @@ export class Player {
 
     // --- floating spring
     const bob = T.float.bob * Math.abs(Math.sin(this.gaitPhase)) * this.speedNorm;
-    const ride = T.float.rideHeight + bob - 0.2 * this.reachLow;
+    const ride = T.float.rideHeight + bob - 0.36 * this.reachLow;
     if (this.grounded && this.springOff <= 0) {
       const err = ride - this.groundDist;
       const vrel = v.y - gv.y;
@@ -589,7 +589,7 @@ export class Player {
     const right = _c.set(-Math.cos(this.facingYaw), 0, Math.sin(this.facingYaw));
     lean.addScaledVector(right, T.balance.waddle * Math.sin(this.gaitPhase) * Math.min(1, this.speedNorm));
     // bend toward low reach targets
-    if (this.reachLow > 0) lean.add(_b.set(Math.sin(this.facingYaw), 0, Math.cos(this.facingYaw)).multiplyScalar(0.7 * this.reachLow));
+    if (this.reachLow > 0) lean.add(_b.set(Math.sin(this.facingYaw), 0, Math.cos(this.facingYaw)).multiplyScalar(1.15 * this.reachLow));
     const targetUp = lean.add(Y_AXIS).normalize();
 
     const axis = _b.crossVectors(up, targetUp);
@@ -705,8 +705,11 @@ export class Player {
         h.reach.set(h.side === 0 ? 0.2 : -0.2, 0.12, 0.7).applyQuaternion(this.bodyQ).add(this.bodyPos);
         h.reachVel.copy(this.bodyVel);
       }
-      const sh = this.shoulderWorld(h.side, _a);
-      if (h.reach && !h.grip) lowest = Math.max(lowest, clamp((sh.y - h.reach.y - 0.3) / 0.45, 0, 1));
+      // how far below a *standing* shoulder the target is (measuring from the current,
+      // already-crouched shoulder would make the crouch cancel itself out)
+      const floorY = this.grounded ? this.bodyPos.y - this.groundDist : this.bodyPos.y - tuning.float.rideHeight;
+      const standShoulder = floorY + tuning.float.rideHeight + RIG.shoulder.y;
+      if (h.reach && !h.grip) lowest = Math.max(lowest, clamp((standShoulder - h.reach.y - 0.25) / 0.5, 0, 1));
     }
     this.reachLow += (lowest - this.reachLow) * Math.min(1, dt * 6);
     if (this.hands[0].grip && this.hands[1].grip) this.reachLow *= 1 - Math.min(1, dt * 3);
@@ -783,7 +786,11 @@ export class Player {
       const proj = c.projectPoint({ x: S.x, y: S.y, z: S.z }, false);
       if (!proj) continue;
       const P = _e.set(proj.point.x, proj.point.y, proj.point.z);
-      const d = proj.isInside ? 0 : P.distanceTo(S);
+      // things below the shoulder are easier to reach: we can bend over / crouch
+      const below = S.y - P.y;
+      const horiz = Math.hypot(P.x - S.x, P.z - S.z);
+      const vert = below > 0 ? Math.max(0, below - T.bendReach) : -below;
+      const d = proj.isInside ? 0 : Math.hypot(horiz, vert);
       if (d > T.reach) continue;
       const toP = _f.copy(P).sub(this.bodyPos);
       toP.y = 0;
@@ -792,12 +799,15 @@ export class Player {
       const info = phys.info(c);
       let prio = 0;
       if (info) {
-        if (info.kind === 'cargo') prio = 0.3;
-        else if (info.kind === 'prop') prio = 0.12;
-        else if (info.kind === 'player' || info.kind === 'npc') prio = 0.05;
+        if (info.kind === 'cargo') prio = 0.45;
+        else if (info.kind === 'prop') prio = 0.15;
+        else if (info.kind === 'player' || info.kind === 'npc') prio = -0.08;
         else prio = -0.05;
       }
-      const score = d - prio;
+      // prefer points the mitten is already close to
+      this.handWorld(side, _f);
+      const dHand = _f.distanceTo(P);
+      const score = d - prio + 0.35 * dHand;
       if (score < bestScore) {
         bestScore = score;
         best = c;
@@ -1041,8 +1051,9 @@ export class Player {
         pitch = -0.5 + (falling ? Math.sin(this.flail + side * 2) * 0.5 : 0);
         knee = 0.9 + (falling ? Math.cos(this.flail * 1.3 + side) * 0.4 : 0);
       } else {
-        pitch = -T.legs.swing * sn * Math.sin(ph) - 0.15 * this.reachLow;
-        knee = T.legs.knee * sn * Math.max(0, Math.cos(ph)) + 0.06 + 0.35 * this.reachLow;
+        // squat when reaching low: thighs forward, knees bent
+        pitch = -T.legs.swing * sn * Math.sin(ph) - 0.75 * this.reachLow;
+        knee = T.legs.knee * sn * Math.max(0, Math.cos(ph)) + 0.06 + 1.3 * this.reachLow;
       }
       _qz.setFromAxisAngle(Z_AXIS, spread);
       _qx.setFromAxisAngle(X_AXIS, pitch);

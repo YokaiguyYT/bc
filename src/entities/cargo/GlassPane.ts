@@ -35,6 +35,7 @@ export class GlassPane extends Cargo {
   private prevV = new THREE.Vector3();
   private prevW = new THREE.Vector3();
   private wobbleCooldown = 0;
+  private aAvg = 0;
 
   constructor(sim: Sim, opts: CargoOptions) {
     super(sim);
@@ -134,7 +135,10 @@ export class GlassPane extends Cargo {
     const ax = (v.x - this.prevV.x) / dt;
     const ay = (v.y - this.prevV.y) / dt + tuning.physics.gravity;
     const az = (v.z - this.prevV.z) / dt;
-    const aN = clamp(ax * n.x + ay * n.y + az * n.z, -400, 400);
+    const aRaw = clamp(ax * n.x + ay * n.y + az * n.z, -400, 400);
+    // only *changes* in acceleration bend the sheet (resting flat shouldn't sag through the floor)
+    this.aAvg += (aRaw - this.aAvg) * (1 - Math.exp(-dt / 0.25));
+    const aN = aRaw - this.aAvg;
     // spinning about the vertical axis also bends a wide sheet
     const alpha = clamp(Math.hypot(w.x - this.prevW.x, w.y - this.prevW.y, w.z - this.prevW.z) / dt, 0, 300);
     this.prevV.set(v.x, v.y, v.z);
@@ -144,19 +148,22 @@ export class GlassPane extends Cargo {
     const drive = -aN * 0.45 - alpha * 0.02 * Math.sign(this.flex || 1);
     this.flexVel += (-om * om * this.flex - 2 * zeta * om * this.flexVel + drive) * dt;
     this.flex += this.flexVel * dt;
-    this.flex = clamp(this.flex, -0.2, 0.2);
+    // a pane resting on something can't wobble much
+    const speed = Math.hypot(v.x, v.y, v.z) + Math.hypot(w.x, w.y, w.z) * 0.5;
+    if (speed < 0.25) this.flexVel *= Math.exp(-dt * 8);
+    this.flex = clamp(this.flex, -0.12, 0.12);
     const amp = Math.abs(this.flex);
     this.wobbleCooldown -= dt;
-    if (amp > 0.035 && this.wobbleCooldown <= 0) {
+    if (amp > 0.03 && this.wobbleCooldown <= 0) {
       this.wobbleCooldown = 0.18;
-      this.sim.events.emit('cargoWobble', { amount: Math.min(1, amp / 0.15), kind: 'glass' });
+      this.sim.events.emit('cargoWobble', { amount: Math.min(1, amp / 0.1), kind: 'glass' });
     }
     // too much bending = stress cracks
-    if (amp > 0.14 && this.grace <= 0) this.damage((amp - 0.14) * 1.5 * dt * 60 * 0.02);
+    if (amp > 0.1 && this.grace <= 0) this.damage((amp - 0.1) * dt * 1.2);
   }
 
   update() {
-    this.flexU.value = this.destroyed ? 0 : this.flex;
+    this.flexU.value = this.destroyed ? 0 : this.flex * 0.8;
   }
 
   protected onDamage(amount: number, point: THREE.Vector3) {

@@ -25,6 +25,7 @@ export interface GameEvents {
   honk: { pos: THREE.Vector3 };
   splash: { pos: THREE.Vector3; amount: number };
   chime: { pos: THREE.Vector3 };
+  tick: { pos: THREE.Vector3; tock: boolean };
 }
 
 type Handler<T> = (payload: T) => void;

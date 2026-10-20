@@ -360,8 +360,11 @@ export class App {
   // ------------------------------------------------------------ gameplay
 
   playLevel(id: string) {
-    const def = levelById(id);
+    let def = levelById(id);
     if (!def) return this.showLevels();
+    // dev: ?cargo=tv swaps the cargo of any level
+    const forced = new URLSearchParams(location.search).get('cargo');
+    if (forced) def = { ...def, cargo: forced as typeof def.cargo };
     this.attract = null;
     this.audio.unlock();
     const s = this.game.startLevel(def);

@@ -59,6 +59,13 @@ export abstract class Cargo {
   lastHitPos = new THREE.Vector3();
   /** Damage taken in the current frame (for HUD flash). */
   hitFlash = 0;
+  /**
+   * What gravity "feels like" inside the cargo, in its local frame (m/s²):
+   * real gravity minus the cargo's own acceleration, lightly smoothed. Water,
+   * pendulums and wobbly bits all hang along this.
+   */
+  readonly gEff = new THREE.Vector3(0, -9.8, 0);
+  private gEffRaw = new THREE.Vector3();
   protected material: ColliderInfo['material'] = 'wood';
 
   constructor(protected sim: Sim) {}
@@ -126,6 +133,14 @@ export abstract class Cargo {
     const w = this.body.angvel();
     _v.set(v.x - this.vPrev.x, v.y - this.vPrev.y + tuning.physics.gravity * dt, v.z - this.vPrev.z);
     _w.set(w.x - this.wPrev.x, w.y - this.wPrev.y, w.z - this.wPrev.z);
+    // effective gravity in local frame: g - a  (a = dv/dt), smoothed
+    const r = this.body.rotation();
+    _q.set(r.x, r.y, r.z, r.w).invert();
+    this.gEffRaw
+      .set(-(v.x - this.vPrev.x) / dt, -tuning.physics.gravity - (v.y - this.vPrev.y) / dt, -(v.z - this.vPrev.z) / dt)
+      .clampLength(0, 60)
+      .applyQuaternion(_q);
+    this.gEff.lerp(this.gEffRaw, 1 - Math.exp(-dt / 0.025));
     const lin = _v.length();
     const ang = _w.length() * this.radius * 0.8;
     const shock = Math.max(lin, ang);

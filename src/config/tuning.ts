@@ -125,8 +125,10 @@ export const tuning = {
   grip: {
     /** How far a hand can reach from its shoulder to latch on (m). */
     reach: 0.62,
+    /** How much lower than the shoulder you can reach by bending over (m). */
+    bendReach: 0.5,
     /** Hand latches when its surface is this close to something (m). */
-    latchDistance: 0.06,
+    latchDistance: 0.12,
     /** Grip spring between your torso and the held point (1/s², 1/s). */
     springK: 100,
     springC: 15,

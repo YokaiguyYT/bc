@@ -68,6 +68,8 @@ export class LevelSession {
   paused = false;
   /** Menu background mode: intents come from Attract, not the keyboard; nothing is scored. */
   attractMode = false;
+  /** Tests: intents are set directly, the keyboard is ignored, everything else is real. */
+  scriptedInput = false;
 
   constructor(
     readonly def: LevelDef,
@@ -148,7 +150,11 @@ export class LevelSession {
     });
   }
 
+  /** Dev/test hook: replace what the camera frames. */
+  focusOverride: (() => THREE.Vector3[]) | null = null;
+
   private focusPoints(): THREE.Vector3[] {
+    if (this.focusOverride) return this.focusOverride();
     const pts: THREE.Vector3[] = [];
     for (const p of this.players) {
       const v = this.physics.interpolatedPosition(p.body, new THREE.Vector3());
@@ -169,7 +175,7 @@ export class LevelSession {
     const playing = this.state === 'playing' || this.state === 'delivered';
 
     // input -> intents
-    if (!this.paused && !this.attractMode) {
+    if (!this.paused && !this.attractMode && !this.scriptedInput) {
       const binds = [b.p1, b.p2];
       this.players.forEach((p, i) => {
         const m = kb.readPlayer(binds[i]);

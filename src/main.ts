@@ -3,6 +3,7 @@ import { initRapier } from './physics/rapier';
 import { Game } from './game/Game';
 import { models } from './render/models';
 import { App } from './ui/App';
+import { tuning } from './config/tuning';
 
 async function boot() {
   const loading = document.getElementById('loading');
@@ -19,7 +20,7 @@ async function boot() {
     const game = new Game(document.getElementById('game')!);
     const params = new URLSearchParams(location.search);
     const app = new App(game, document.getElementById('ui')!);
-    (window as unknown as { __FF: unknown }).__FF = { game, app, models };
+    (window as unknown as { __FF: unknown }).__FF = { game, app, models, tuning };
     if (params.has('manual')) game.manual = true;
     game.start();
     const lvl = params.get('level');
