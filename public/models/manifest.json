@@ -1,1 +1,816 @@
-{ "models": {} }
+{
+  "models": {
+    "sofa": {
+      "file": "sofa.glb",
+      "size": [
+        2,
+        0.85,
+        0.9
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "style": "keep",
+      "title": "Blue Sofa - PS1 Low Poly",
+      "author": "Wersaus33",
+      "authorUrl": "https://sketchfab.com/wersaus33",
+      "url": "https://sketchfab.com/3d-models/blue-sofa-ps1-low-poly-315b8551f71b4677afb1279e5863f1f1",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "armchair": {
+      "file": "armchair.glb",
+      "size": [
+        0.85,
+        0.9,
+        0.85
+      ],
+      "style": "keep",
+      "title": "Armchair - Household Props Challenge",
+      "author": "zhixson",
+      "authorUrl": "https://sketchfab.com/zhixson",
+      "url": "https://sketchfab.com/3d-models/armchair-household-props-challenge-7b36a98d4b4c40a7bff78b61ecf9fc55",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "floorLamp": {
+      "file": "floorLamp.glb",
+      "size": [
+        0.45,
+        1.65,
+        0.45
+      ],
+      "style": "keep",
+      "title": "game ready Old floor lamp (lowpoly)",
+      "author": "Sergi Trojanski",
+      "authorUrl": "https://sketchfab.com/nathramn",
+      "url": "https://sketchfab.com/3d-models/game-ready-old-floor-lamp-lowpoly-aea464310259449a8763003672c33a94",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "plant": {
+      "file": "plant.glb",
+      "size": [
+        0.55,
+        1.15,
+        0.55
+      ],
+      "style": "keep",
+      "title": "Potted Plant, Mediterranean med leaf, low poly",
+      "author": "dudecon",
+      "authorUrl": "https://sketchfab.com/dudecon",
+      "url": "https://sketchfab.com/3d-models/potted-plant-mediterranean-med-leaf-low-poly-bc7f26baef2a45d18dbd9a5d6d2ec565",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "plantSmall": {
+      "file": "plantSmall.glb",
+      "size": [
+        0.4,
+        0.7,
+        0.4
+      ],
+      "style": "keep",
+      "title": "Potted Plant - Household Props Challenge, Day 26",
+      "author": "Pixel-bit",
+      "authorUrl": "https://sketchfab.com/Pixel-bit",
+      "url": "https://sketchfab.com/3d-models/potted-plant-household-props-challenge-day-26-4176123e70e44426be3ba0e65587af90",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "bookshelf": {
+      "file": "bookshelf.glb",
+      "size": [
+        1,
+        1.9,
+        0.4
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "style": "keep",
+      "title": "PSX Style Wooden Bookshelf (Low Poly)",
+      "author": "My Name Is This",
+      "authorUrl": "https://sketchfab.com/profileFromHere",
+      "url": "https://sketchfab.com/3d-models/psx-style-wooden-bookshelf-low-poly-bf8be00f3d344ebdafd701fb90d65497",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "fridge": {
+      "file": "fridge.glb",
+      "size": [
+        0.75,
+        1.8,
+        0.7
+      ],
+      "style": "keep",
+      "title": "House Props : Fridge",
+      "author": "Whitend",
+      "authorUrl": "https://sketchfab.com/whitend.3d",
+      "url": "https://sketchfab.com/3d-models/house-props-fridge-2fdaa56bbd85404cb4206dcaedc16658",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "washer": {
+      "file": "washer.glb",
+      "size": [
+        0.6,
+        0.85,
+        0.6
+      ],
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "style": "keep",
+      "title": "Washing machine",
+      "author": "Alex",
+      "authorUrl": "https://sketchfab.com/alexburghes",
+      "url": "https://sketchfab.com/3d-models/washing-machine-768b055ec4714ee580d12c07d6f0c24b",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "coatRack": {
+      "file": "coatRack.glb",
+      "size": [
+        0.5,
+        1.8,
+        0.5
+      ],
+      "style": "keep",
+      "title": "Blass Coat Rack",
+      "author": "Purple Ark Studio",
+      "authorUrl": "https://sketchfab.com/PurpleArkStudio",
+      "url": "https://sketchfab.com/3d-models/blass-coat-rack-221bb803aa064a7584fdc2435e0ada56",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "movingTruck": {
+      "file": "movingTruck.glb",
+      "size": [
+        2.6,
+        3.3,
+        7.2
+      ],
+      "style": "keep",
+      "title": "Low Poly Truck",
+      "author": "Arifido._",
+      "authorUrl": "https://sketchfab.com/Arifido._",
+      "url": "https://sketchfab.com/3d-models/low-poly-truck-98826ebd44e2492298ac925461509216",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "mailbox": {
+      "file": "mailbox.glb",
+      "size": [
+        0.5,
+        1.2,
+        0.4
+      ],
+      "style": "keep",
+      "title": "Mailbox version 2",
+      "author": "RavenBlox",
+      "authorUrl": "https://sketchfab.com/RavenBlox",
+      "url": "https://sketchfab.com/3d-models/mailbox-version-2-c0ce7cc330054daba7e8ee7d8e96c40d",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "trashCan": {
+      "file": "trashCan.glb",
+      "size": [
+        0.9,
+        1,
+        0.7
+      ],
+      "style": "keep",
+      "title": "Trash Can and Garbage Bag low poly",
+      "author": "daniel.2U",
+      "authorUrl": "https://sketchfab.com/daniel.2U",
+      "url": "https://sketchfab.com/3d-models/trash-can-and-garbage-bag-low-poly-63cdc7dbfa8741d7b65a856f7acca148",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "dumpster": {
+      "file": "dumpster.glb",
+      "size": [
+        2,
+        1.4,
+        1.2
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "Dumpster",
+      "author": "Sargone",
+      "authorUrl": "https://sketchfab.com/Sargone",
+      "url": "https://sketchfab.com/3d-models/dumpster-65e2f7b0452046be8ee948b49ee17ef4",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "cone": {
+      "file": "cone.glb",
+      "size": [
+        0.4,
+        0.7,
+        0.4
+      ],
+      "style": "keep",
+      "title": "Orange street cone",
+      "author": "SpatialNeglect",
+      "authorUrl": "https://sketchfab.com/jeandiz",
+      "url": "https://sketchfab.com/3d-models/orange-street-cone-77da362c4cb44295a838fd778f70f31b",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "barrier": {
+      "file": "barrier.glb",
+      "size": [
+        1.6,
+        1,
+        0.5
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "low poly road barrier",
+      "author": "muji",
+      "authorUrl": "https://sketchfab.com/muji",
+      "url": "https://sketchfab.com/3d-models/low-poly-road-barrier-e2b2282e32dc48c6bf31369cd800690a",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "cementMixer": {
+      "file": "cementMixer.glb",
+      "size": [
+        1.4,
+        1.6,
+        1.6
+      ],
+      "style": "keep",
+      "title": "Free Low Poly Concrete Mixer",
+      "author": "warcool",
+      "authorUrl": "https://sketchfab.com/warcool",
+      "url": "https://sketchfab.com/3d-models/free-low-poly-concrete-mixer-8bb9bf77e9014feab2ee197ca924c95f",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "crane": {
+      "file": "crane.glb",
+      "size": [
+        14,
+        32,
+        14
+      ],
+      "style": "keep",
+      "title": "Building crane low poly",
+      "author": "Mostafa Hamed",
+      "authorUrl": "https://sketchfab.com/Vision_X_3D",
+      "url": "https://sketchfab.com/3d-models/building-crane-low-poly-52d3ffdc37f844a892bebbd7e76f1939",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "wheelbarrow": {
+      "file": "wheelbarrow.glb",
+      "size": [
+        0.7,
+        0.6,
+        1.4
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "wheelbrows",
+      "author": "qsmsaboori",
+      "authorUrl": "https://sketchfab.com/qsmsaboori",
+      "url": "https://sketchfab.com/3d-models/wheelbrows-7e15848b0cf34864943eb046adba4fc8",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "portaPotty": {
+      "file": "portaPotty.glb",
+      "size": [
+        1.1,
+        2.3,
+        1.1
+      ],
+      "style": "keep",
+      "title": "Portable Toilet [LowPoly]",
+      "author": "Mareon",
+      "authorUrl": "https://sketchfab.com/mareoncz",
+      "url": "https://sketchfab.com/3d-models/portable-toilet-lowpoly-8f385f6ed836496d96da7c506772be04",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "excavator": {
+      "file": "excavator.glb",
+      "size": [
+        3.2,
+        3.4,
+        6.5
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "low pôly excavator",
+      "author": "KI NG",
+      "authorUrl": "https://sketchfab.com/dadybandit",
+      "url": "https://sketchfab.com/3d-models/low-poly-excavator-f870526642e14e4b9a8b9999cfa71a66",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "forklift": {
+      "file": "forklift.glb",
+      "size": [
+        1.2,
+        2.1,
+        2.5
+      ],
+      "style": "keep",
+      "title": "Low poly Forklift Truck",
+      "author": "Kolos Studios",
+      "authorUrl": "https://sketchfab.com/KolosStudios",
+      "url": "https://sketchfab.com/3d-models/low-poly-forklift-truck-81b895de490646de8c6fb1ba03099e08",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "ladder": {
+      "file": "ladder.glb",
+      "size": [
+        0.5,
+        3,
+        0.1
+      ],
+      "style": "keep",
+      "title": "Low-Poly Ladder",
+      "author": "Emma-Lie Kamping",
+      "authorUrl": "https://sketchfab.com/Ellemieke25",
+      "url": "https://sketchfab.com/3d-models/low-poly-ladder-4e1514ea39f34914a307b81a57d807ed",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "pallet": {
+      "file": "pallet.glb",
+      "size": [
+        1.2,
+        0.15,
+        1
+      ],
+      "style": "keep",
+      "title": "Wooden Pallet",
+      "author": "BytesCrafter",
+      "authorUrl": "https://sketchfab.com/BytesCrafter",
+      "url": "https://sketchfab.com/3d-models/wooden-pallet-db88dd47c3674127a353393d6532bbc5",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "wetFloorSign": {
+      "file": "wetFloorSign.glb",
+      "size": [
+        0.35,
+        0.6,
+        0.3
+      ],
+      "style": "keep",
+      "title": "Wet Floor Sign",
+      "author": "charliej1",
+      "authorUrl": "https://sketchfab.com/Charliej1",
+      "url": "https://sketchfab.com/3d-models/wet-floor-sign-71b17fc733134616b1d87a5e7d669717",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "vendingMachine": {
+      "file": "vendingMachine.glb",
+      "size": [
+        1,
+        1.9,
+        0.8
+      ],
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "style": "keep",
+      "title": "PSX - Vending Machine",
+      "author": "Kasugay𓅂",
+      "authorUrl": "https://sketchfab.com/Kasugay",
+      "url": "https://sketchfab.com/3d-models/psx-vending-machine-aff31f282155471d8222287596c7ac59",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "waterCooler": {
+      "file": "waterCooler.glb",
+      "size": [
+        0.35,
+        1.25,
+        0.35
+      ],
+      "style": "keep",
+      "title": "Water Cooler",
+      "author": "DrewA",
+      "authorUrl": "https://sketchfab.com/DrewA",
+      "url": "https://sketchfab.com/3d-models/water-cooler-fe12848d93314187b756c233feb0beda",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "desk": {
+      "file": "desk.glb",
+      "size": [
+        1.4,
+        1.1,
+        0.7
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "desk and pc",
+      "author": "linus1178",
+      "authorUrl": "https://sketchfab.com/linus1178",
+      "url": "https://sketchfab.com/3d-models/desk-and-pc-76f7abaa49014cc8a9e2aab39cabf628",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "officeChair": {
+      "file": "officeChair.glb",
+      "size": [
+        0.6,
+        1,
+        0.6
+      ],
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "style": "keep",
+      "title": "Simple Low Poly Office Chair",
+      "author": "Andrew.Mischenko",
+      "authorUrl": "https://sketchfab.com/Andrew.Mischenko",
+      "url": "https://sketchfab.com/3d-models/simple-low-poly-office-chair-f27a1912734943aab7521adf1fe6fa51",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "dog": {
+      "file": "dog.glb",
+      "size": [
+        0.42,
+        0.5,
+        0.8
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Free Shar Pei Animated Dog",
+      "author": "Artsiom Savelyeu",
+      "authorUrl": "https://sketchfab.com/artsiom",
+      "url": "https://sketchfab.com/3d-models/free-shar-pei-animated-dog-ed151fd59a894b3290d9eee3f716f0bf",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "chandelier": {
+      "file": "chandelier.glb",
+      "size": [
+        1.2,
+        1.3,
+        1.2
+      ],
+      "style": "keep",
+      "title": "Chandelier",
+      "author": "djangospel",
+      "authorUrl": "https://sketchfab.com/djangospel",
+      "url": "https://sketchfab.com/3d-models/chandelier-fb1d8d60d3354b7d888741de33090f23",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "knight": {
+      "file": "knight.glb",
+      "size": [
+        0.9,
+        1.9,
+        1
+      ],
+      "style": "keep",
+      "title": "Knight",
+      "author": "Shadow Models 3D",
+      "authorUrl": "https://sketchfab.com/shadowmodels3d",
+      "url": "https://sketchfab.com/3d-models/knight-d62d60d5e4304d2cb08b2b1678ae4215",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "piano": {
+      "file": "piano.glb",
+      "size": [
+        1.5,
+        1,
+        2
+      ],
+      "style": "keep",
+      "title": "Grand piano",
+      "author": "djangospel",
+      "authorUrl": "https://sketchfab.com/djangospel",
+      "url": "https://sketchfab.com/3d-models/grand-piano-7b66f863f989420fb4c26f875dbaf9eb",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "van": {
+      "file": "van.glb",
+      "size": [
+        2.1,
+        2.4,
+        5.2
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "style": "keep",
+      "title": "White Van - PS1 Low Poly",
+      "author": "Wersaus33",
+      "authorUrl": "https://sketchfab.com/wersaus33",
+      "url": "https://sketchfab.com/3d-models/white-van-ps1-low-poly-1cac40905d494bae8108a556d870e23e",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "muscleCar": {
+      "file": "muscleCar.glb",
+      "size": [
+        1.9,
+        1.3,
+        4.5
+      ],
+      "style": "keep",
+      "title": "Classic Muscle car",
+      "author": "Lexyc16",
+      "authorUrl": "https://sketchfab.com/Lexyc16",
+      "url": "https://sketchfab.com/3d-models/classic-muscle-car-641efc889e5f4543bae51d0922e6f4b3",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "redCar": {
+      "file": "redCar.glb",
+      "size": [
+        1.9,
+        1.4,
+        4.3
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "Low Poly Car",
+      "author": "Oleg Muzyka",
+      "authorUrl": "https://sketchfab.com/olemuzyka",
+      "url": "https://sketchfab.com/3d-models/low-poly-car-cec5f37535e04c68a34cacd5cb3bbf5f",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "taxi": {
+      "file": "taxi.glb",
+      "size": [
+        1.9,
+        1.6,
+        4.6
+      ],
+      "style": "keep",
+      "title": "CARBON MOTORS E7 TAXI (Cities Skylines)",
+      "author": "TSB3DMODELS",
+      "authorUrl": "https://sketchfab.com/TSB3DMODELS",
+      "url": "https://sketchfab.com/3d-models/carbon-motors-e7-taxi-cities-skylines-210f95a0ea374c4fbdd27849f8c3c7a0",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "minivan": {
+      "file": "minivan.glb",
+      "size": [
+        1.9,
+        2,
+        4.6
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "style": "keep",
+      "title": "RAF Taxi Van low-poly",
+      "author": "Libau Media",
+      "authorUrl": "https://sketchfab.com/robinmikart",
+      "url": "https://sketchfab.com/3d-models/raf-taxi-van-low-poly-fa7d006173df4c3fbe0bfd1fc514bfaa",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "streetLamp": {
+      "file": "streetLamp.glb",
+      "size": [
+        1.6,
+        4.5,
+        0.6
+      ],
+      "style": "keep",
+      "title": "Low Poly Psx Street lamp",
+      "author": "SaukrDev",
+      "authorUrl": "https://sketchfab.com/SaukrDev",
+      "url": "https://sketchfab.com/3d-models/low-poly-psx-street-lamp-81a8d1861bbd4cef8ab1aed2986bf873",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "hydrant": {
+      "file": "hydrant.glb",
+      "size": [
+        0.4,
+        0.75,
+        0.4
+      ],
+      "style": "keep",
+      "title": "Fire Hydrant",
+      "author": "Billy Jackman",
+      "authorUrl": "https://sketchfab.com/billyjackman3d",
+      "url": "https://sketchfab.com/3d-models/fire-hydrant-24a3da0e190e453587c394fda2a309c2",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "bench": {
+      "file": "bench.glb",
+      "size": [
+        1.8,
+        0.9,
+        0.6
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "Church bench v.2",
+      "author": "Ryoce",
+      "authorUrl": "https://sketchfab.com/Ryoce",
+      "url": "https://sketchfab.com/3d-models/church-bench-v2-a412a1b140bf41c0a342056afce6185a",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "tree": {
+      "file": "tree.glb",
+      "size": [
+        4,
+        6,
+        4
+      ],
+      "style": "keep",
+      "title": "Giant Low Poly Tree",
+      "author": "Sahir Virmani",
+      "authorUrl": "https://sketchfab.com/sahirvirmani",
+      "url": "https://sketchfab.com/3d-models/giant-low-poly-tree-acfd2b7f80894848b56c2ac8e7e59572",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "hotdogCart": {
+      "file": "hotdogCart.glb",
+      "size": [
+        1.8,
+        2.4,
+        2
+      ],
+      "style": "keep",
+      "title": "New Hot Dog Cart",
+      "author": "KainatR",
+      "authorUrl": "https://sketchfab.com/KainatR",
+      "url": "https://sketchfab.com/3d-models/new-hot-dog-cart-f5afccebf157464d8da885b49a86caa3",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "trafficLight": {
+      "file": "trafficLight.glb",
+      "size": [
+        0.4,
+        3.2,
+        0.4
+      ],
+      "style": "keep",
+      "title": "Traffic Light",
+      "author": "TomCalcoen",
+      "authorUrl": "https://sketchfab.com/TomCalcoen",
+      "url": "https://sketchfab.com/3d-models/traffic-light-aeed7931c96a4428aa8ff71eb398ee43",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "gazebo": {
+      "file": "gazebo.glb",
+      "size": [
+        4.6,
+        7.5,
+        4.6
+      ],
+      "style": "keep",
+      "title": "Gazebo",
+      "author": "lontonnhoc123",
+      "authorUrl": "https://sketchfab.com/lontonnhoc123",
+      "url": "https://sketchfab.com/3d-models/gazebo-ea24e71e14ff49c6afbac2b856086b89",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "gardenTable": {
+      "file": "gardenTable.glb",
+      "size": [
+        1.8,
+        1,
+        1.8
+      ],
+      "style": "keep",
+      "title": "Metallic garden table",
+      "author": "anDDDres",
+      "authorUrl": "https://sketchfab.com/anDDDres",
+      "url": "https://sketchfab.com/3d-models/metallic-garden-table-3059668094e847e286d2a95716694b87",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "pigeon": {
+      "file": "pigeon.glb",
+      "size": [
+        0.22,
+        0.28,
+        0.36
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Pigeon",
+      "author": "FourthGreen",
+      "authorUrl": "https://sketchfab.com/FourthGreen",
+      "url": "https://sketchfab.com/3d-models/pigeon-5884a0f5200c44ceaa7d0399bea577f9",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "bicycle": {
+      "file": "bicycle.glb",
+      "size": [
+        0.5,
+        1,
+        1.7
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "style": "keep",
+      "title": "Low poly bicycle",
+      "author": "takeawalk",
+      "authorUrl": "https://sketchfab.com/takeawalk",
+      "url": "https://sketchfab.com/3d-models/low-poly-bicycle-0f35b95712d44704a5521829a5ebdb42",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "parasol": {
+      "file": "parasol.glb",
+      "size": [
+        2.2,
+        2.4,
+        2.2
+      ],
+      "style": "keep",
+      "title": "Parasol lowpoly - beach umbrella",
+      "author": "Harold.Llanos",
+      "authorUrl": "https://sketchfab.com/Harold.Llanos",
+      "url": "https://sketchfab.com/3d-models/parasol-lowpoly-beach-umbrella-bac8486298ab41ab884fccb867f1527b",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "flowerPot": {
+      "file": "flowerPot.glb",
+      "size": [
+        0.45,
+        0.7,
+        0.45
+      ],
+      "style": "keep",
+      "title": "Flower pot",
+      "author": "omegaru010",
+      "authorUrl": "https://sketchfab.com/omegaru010",
+      "url": "https://sketchfab.com/3d-models/flower-pot-38f4084af88a4b23a125046dc04912f4",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    }
+  }
+}

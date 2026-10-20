@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import embedded from 'virtual:ff-models';
 import { matte } from './materials';
 
@@ -35,6 +36,8 @@ export interface Manifest {
 interface Loaded {
   scene: THREE.Object3D;
   entry: ManifestEntry;
+  clips: THREE.AnimationClip[];
+  skinned: boolean;
 }
 
 class ModelLibrary {
@@ -96,23 +99,34 @@ class ModelLibrary {
     }
     const wrapper = new THREE.Group();
     wrapper.add(scene);
-    this.loaded.set(name, { scene: wrapper, entry });
+    let skinned = false;
+    scene.traverse((o) => {
+      if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned = true;
+    });
+    this.loaded.set(name, { scene: wrapper, entry, clips: gltf.animations ?? [], skinned });
   }
 
   has(name: string) {
     return this.loaded.has(name);
   }
 
+  names() {
+    return Object.keys(this.manifest.models);
+  }
+
   /**
    * A fresh copy of a model, uniformly scaled to fit `target` and centred on
    * its bounding box. Returns the actual size after scaling.
    */
-  instance(name: string, target?: [number, number, number]): { object: THREE.Object3D; size: [number, number, number] } {
+  instance(
+    name: string,
+    target?: [number, number, number],
+  ): { object: THREE.Object3D; size: [number, number, number]; clips: THREE.AnimationClip[]; root?: THREE.Object3D } {
     const l = this.loaded.get(name);
     const entry = this.manifest.models[name];
     const want = target ?? entry?.size ?? [1, 1, 1];
-    if (!l) return placeholder(name, want, entry?.fallbackColor);
-    const obj = l.scene.clone(true);
+    if (!l) return { ...placeholder(name, want, entry?.fallbackColor), clips: [] };
+    const obj = l.skinned ? cloneSkinned(l.scene) : l.scene.clone(true);
     obj.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(obj);
     const size = box.getSize(new THREE.Vector3());
@@ -128,9 +142,11 @@ class ModelLibrary {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true;
         o.receiveShadow = true;
+        // skinned meshes have stale bounds once animated; never cull them
+        if ((o as THREE.SkinnedMesh).isSkinnedMesh) o.frustumCulled = false;
       }
     });
-    return { object: outer, size: [size.x * s, size.y * s, size.z * s] };
+    return { object: outer, size: [size.x * s, size.y * s, size.z * s], clips: l.clips, root: obj };
   }
 }
 

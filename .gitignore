@@ -23,3 +23,5 @@ screenshots/
 .idea/
 .vscode/
 *.log
+scripts/.contact-shot.mjs
+scripts/.combine-sheets.mjs

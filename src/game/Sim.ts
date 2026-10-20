@@ -3,6 +3,7 @@ import type { RigidBody } from '../physics/rapier';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { EventBus } from './events';
 import { playerBodyBit } from '../physics/groups';
+import type { Effects } from '../render/Effects';
 
 /**
  * Tracks who is holding what. When a player grabs a dynamic body, that body
@@ -101,4 +102,6 @@ export interface Sim {
   grips: GripRegistry;
   /** Seconds since the level started (physics time). */
   time(): number;
+  /** Particle effects (absent in headless tests). */
+  fx?: Effects;
 }

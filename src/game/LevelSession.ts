@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { RAPIER } from '../physics/rapier';
 import { EventBus } from './events';
 import { GripRegistry, Sim } from './Sim';
 import type { LevelDef, SpawnSet, Vec3 } from '../levels/types';
@@ -83,6 +84,11 @@ export class LevelSession {
     renderer.scene.add(this.root);
     renderer.applyTheme({ ...DEFAULT_THEME, ...(def.theme ?? {}) });
     this.effects = new Effects(this.root, this.events);
+    this.sim.fx = this.effects;
+    this.effects.groundAt = (x, y, z) => {
+      const hit = this.physics.world.castRay(new RAPIER.Ray({ x, y, z }, { x: 0, y: -1, z: 0 }), 30, true, RAPIER.QueryFilterFlags.ONLY_FIXED);
+      return hit ? y - hit.timeOfImpact : y - 30;
+    };
 
     // world
     this.level = new LevelBuilder(this.sim).build(def);

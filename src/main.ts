@@ -23,7 +23,8 @@ async function boot() {
     if (params.has('manual')) game.manual = true;
     game.start();
     const lvl = params.get('level');
-    if (lvl) app.playLevel(lvl);
+    if (params.has('gallery')) (await import('./dev/gallery')).showGallery(game);
+    else if (lvl) app.playLevel(lvl);
     else app.showTitle();
     loading?.classList.add('done');
     setTimeout(() => loading?.remove(), 600);

@@ -1,0 +1,621 @@
+{
+  "_comment": "Curated Sketchfab models (CC0 / CC-BY only). size = target bounding box in metres. Run `npm run fetch-models` to (re)download.",
+  "models": {
+    "sofa": {
+      "uid": "315b8551f71b4677afb1279e5863f1f1",
+      "name": "Blue Sofa - PS1 Low Poly",
+      "size": [
+        2.0,
+        0.85,
+        0.9
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        -90,
+        0
+      ]
+    },
+    "armchair": {
+      "uid": "7b36a98d4b4c40a7bff78b61ecf9fc55",
+      "name": "Armchair - Household Props Challenge",
+      "size": [
+        0.85,
+        0.9,
+        0.85
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "floorLamp": {
+      "uid": "aea464310259449a8763003672c33a94",
+      "name": "game ready Old floor lamp (lowpoly)",
+      "size": [
+        0.45,
+        1.65,
+        0.45
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "plant": {
+      "uid": "bc7f26baef2a45d18dbd9a5d6d2ec565",
+      "name": "Potted Plant, Mediterranean med leaf, low poly",
+      "size": [
+        0.55,
+        1.15,
+        0.55
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "plantSmall": {
+      "uid": "4176123e70e44426be3ba0e65587af90",
+      "name": "Potted Plant - Household Props Challenge, Day 26",
+      "size": [
+        0.4,
+        0.7,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "bookshelf": {
+      "uid": "bf8be00f3d344ebdafd701fb90d65497",
+      "name": "PSX Style Wooden Bookshelf (Low Poly)",
+      "size": [
+        1.0,
+        1.9,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        -90,
+        0
+      ]
+    },
+    "fridge": {
+      "uid": "2fdaa56bbd85404cb4206dcaedc16658",
+      "name": "House Props : Fridge",
+      "size": [
+        0.75,
+        1.8,
+        0.7
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "washer": {
+      "uid": "768b055ec4714ee580d12c07d6f0c24b",
+      "name": "Washing machine",
+      "size": [
+        0.6,
+        0.85,
+        0.6
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        180,
+        0
+      ]
+    },
+    "coatRack": {
+      "uid": "221bb803aa064a7584fdc2435e0ada56",
+      "name": "Blass Coat Rack",
+      "size": [
+        0.5,
+        1.8,
+        0.5
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "movingTruck": {
+      "uid": "98826ebd44e2492298ac925461509216",
+      "name": "Low Poly Truck",
+      "size": [
+        2.6,
+        3.3,
+        7.2
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "mailbox": {
+      "uid": "c0ce7cc330054daba7e8ee7d8e96c40d",
+      "name": "Mailbox version 2",
+      "size": [
+        0.5,
+        1.2,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "trashCan": {
+      "uid": "63cdc7dbfa8741d7b65a856f7acca148",
+      "name": "Trash Can and Garbage Bag low poly",
+      "size": [
+        0.9,
+        1.0,
+        0.7
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "dumpster": {
+      "uid": "65e2f7b0452046be8ee948b49ee17ef4",
+      "name": "Dumpster",
+      "size": [
+        2.0,
+        1.4,
+        1.2
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "cone": {
+      "uid": "77da362c4cb44295a838fd778f70f31b",
+      "name": "Orange street cone",
+      "size": [
+        0.4,
+        0.7,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "barrier": {
+      "uid": "e2b2282e32dc48c6bf31369cd800690a",
+      "name": "low poly road barrier",
+      "size": [
+        1.6,
+        1.0,
+        0.5
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "cementMixer": {
+      "uid": "8bb9bf77e9014feab2ee197ca924c95f",
+      "name": "Free Low Poly Concrete Mixer",
+      "size": [
+        1.4,
+        1.6,
+        1.6
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "crane": {
+      "uid": "52d3ffdc37f844a892bebbd7e76f1939",
+      "name": "Building crane low poly",
+      "size": [
+        14,
+        32,
+        14
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "wheelbarrow": {
+      "uid": "7e15848b0cf34864943eb046adba4fc8",
+      "name": "wheelbrows",
+      "size": [
+        0.7,
+        0.6,
+        1.4
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "portaPotty": {
+      "uid": "8f385f6ed836496d96da7c506772be04",
+      "name": "Portable Toilet [LowPoly]",
+      "size": [
+        1.1,
+        2.3,
+        1.1
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "excavator": {
+      "uid": "f870526642e14e4b9a8b9999cfa71a66",
+      "name": "low p\u00f4ly excavator",
+      "size": [
+        3.2,
+        3.4,
+        6.5
+      ],
+      "style": "keep",
+      "maxTexture": 512,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "forklift": {
+      "uid": "81b895de490646de8c6fb1ba03099e08",
+      "name": "Low poly Forklift Truck",
+      "size": [
+        1.2,
+        2.1,
+        2.5
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "ladder": {
+      "uid": "4e1514ea39f34914a307b81a57d807ed",
+      "name": "Low-Poly Ladder",
+      "size": [
+        0.5,
+        3.0,
+        0.1
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "pallet": {
+      "uid": "db88dd47c3674127a353393d6532bbc5",
+      "name": "Wooden Pallet",
+      "size": [
+        1.2,
+        0.15,
+        1.0
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "wetFloorSign": {
+      "uid": "71b17fc733134616b1d87a5e7d669717",
+      "name": "Wet Floor Sign",
+      "size": [
+        0.35,
+        0.6,
+        0.3
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "vendingMachine": {
+      "uid": "aff31f282155471d8222287596c7ac59",
+      "name": "PSX - Vending Machine",
+      "size": [
+        1.0,
+        1.9,
+        0.8
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        180,
+        0
+      ]
+    },
+    "waterCooler": {
+      "uid": "fe12848d93314187b756c233feb0beda",
+      "name": "Water Cooler",
+      "size": [
+        0.35,
+        1.25,
+        0.35
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "desk": {
+      "uid": "76f7abaa49014cc8a9e2aab39cabf628",
+      "name": "desk and pc",
+      "size": [
+        1.4,
+        1.1,
+        0.7
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "officeChair": {
+      "uid": "f27a1912734943aab7521adf1fe6fa51",
+      "name": "Simple Low Poly Office Chair",
+      "size": [
+        0.6,
+        1.0,
+        0.6
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        180,
+        0
+      ]
+    },
+    "dog": {
+      "uid": "ed151fd59a894b3290d9eee3f716f0bf",
+      "name": "Free Shar Pei Animated Dog",
+      "size": [
+        0.42,
+        0.5,
+        0.8
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "animated": true
+    },
+    "chandelier": {
+      "uid": "fb1d8d60d3354b7d888741de33090f23",
+      "name": "Chandelier",
+      "size": [
+        1.2,
+        1.3,
+        1.2
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "knight": {
+      "uid": "d62d60d5e4304d2cb08b2b1678ae4215",
+      "name": "Knight",
+      "size": [
+        0.9,
+        1.9,
+        1.0
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "piano": {
+      "uid": "7b66f863f989420fb4c26f875dbaf9eb",
+      "name": "Grand piano",
+      "size": [
+        1.5,
+        1.0,
+        2.0
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "van": {
+      "uid": "1cac40905d494bae8108a556d870e23e",
+      "name": "White Van - PS1 Low Poly",
+      "size": [
+        2.1,
+        2.4,
+        5.2
+      ],
+      "style": "keep",
+      "maxTexture": 512,
+      "rotation": [
+        0,
+        -90,
+        0
+      ]
+    },
+    "muscleCar": {
+      "uid": "641efc889e5f4543bae51d0922e6f4b3",
+      "name": "Classic Muscle car",
+      "size": [
+        1.9,
+        1.3,
+        4.5
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "redCar": {
+      "uid": "cec5f37535e04c68a34cacd5cb3bbf5f",
+      "name": "Low Poly Car",
+      "size": [
+        1.9,
+        1.4,
+        4.3
+      ],
+      "style": "keep",
+      "maxTexture": 512,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "taxi": {
+      "uid": "210f95a0ea374c4fbdd27849f8c3c7a0",
+      "name": "CARBON MOTORS E7 TAXI",
+      "size": [
+        1.9,
+        1.6,
+        4.6
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "minivan": {
+      "uid": "fa7d006173df4c3fbe0bfd1fc514bfaa",
+      "name": "RAF Taxi Van low-poly",
+      "size": [
+        1.9,
+        2.0,
+        4.6
+      ],
+      "style": "keep",
+      "maxTexture": 512,
+      "rotation": [
+        0,
+        -90,
+        0
+      ]
+    },
+    "streetLamp": {
+      "uid": "81a8d1861bbd4cef8ab1aed2986bf873",
+      "name": "Low Poly Psx Street lamp",
+      "size": [
+        1.6,
+        4.5,
+        0.6
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "hydrant": {
+      "uid": "24a3da0e190e453587c394fda2a309c2",
+      "name": "Fire Hydrant",
+      "size": [
+        0.4,
+        0.75,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "bench": {
+      "uid": "a412a1b140bf41c0a342056afce6185a",
+      "name": "Church bench v.2",
+      "size": [
+        1.8,
+        0.9,
+        0.6
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "tree": {
+      "uid": "acfd2b7f80894848b56c2ac8e7e59572",
+      "name": "Giant Low Poly Tree",
+      "size": [
+        4.0,
+        6.0,
+        4.0
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "hotdogCart": {
+      "uid": "f5afccebf157464d8da885b49a86caa3",
+      "name": "New Hot Dog Cart",
+      "size": [
+        1.8,
+        2.4,
+        2.0
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "trafficLight": {
+      "uid": "aeed7931c96a4428aa8ff71eb398ee43",
+      "name": "Traffic Light",
+      "size": [
+        0.4,
+        3.2,
+        0.4
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "gazebo": {
+      "uid": "ea24e71e14ff49c6afbac2b856086b89",
+      "name": "Gazebo",
+      "size": [
+        4.6,
+        7.5,
+        4.6
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "gardenTable": {
+      "uid": "3059668094e847e286d2a95716694b87",
+      "name": "Metallic garden table",
+      "size": [
+        1.8,
+        1.0,
+        1.8
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "pigeon": {
+      "uid": "5884a0f5200c44ceaa7d0399bea577f9",
+      "name": "Pigeon",
+      "size": [
+        0.22,
+        0.28,
+        0.36
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "animated": true
+    },
+    "bicycle": {
+      "uid": "0f35b95712d44704a5521829a5ebdb42",
+      "name": "Low poly bicycle",
+      "size": [
+        0.5,
+        1.0,
+        1.7
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "rotation": [
+        0,
+        90,
+        0
+      ]
+    },
+    "parasol": {
+      "uid": "bac8486298ab41ab884fccb867f1527b",
+      "name": "Parasol lowpoly - beach umbrella",
+      "size": [
+        2.2,
+        2.4,
+        2.2
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "flowerPot": {
+      "uid": "38f4084af88a4b23a125046dc04912f4",
+      "name": "Flower pot",
+      "size": [
+        0.45,
+        0.7,
+        0.45
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    }
+  }
+}
