@@ -1,0 +1,29 @@
+{
+  "name": "fragile-freight",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Goofy local 2-player physics game: carry fragile cargo through chaotic obstacle courses.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:single": "tsc --noEmit && vite build --mode single",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "fetch-models": "node scripts/fetch-models.mjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "lil-gui": "^0.21.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/three": "^0.186.0",
+    "playwright-core": "^1.56.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.4"
+  }
+}

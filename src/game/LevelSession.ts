@@ -1,0 +1,347 @@
+import * as THREE from 'three';
+import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { EventBus } from './events';
+import { GripRegistry, Sim } from './Sim';
+import type { LevelDef, SpawnSet, Vec3 } from '../levels/types';
+import { BuiltLevel, LevelBuilder } from '../levels/LevelBuilder';
+import { Player } from '../entities/Player';
+import { PlayerRig } from '../entities/PlayerRig';
+import type { Cargo } from '../entities/cargo/Cargo';
+import { createCargo } from '../entities/cargo';
+import { CameraRig } from '../render/CameraRig';
+import type { Renderer } from '../render/Renderer';
+import { DEFAULT_THEME } from '../render/Renderer';
+import type { Keyboard } from '../input/Keyboard';
+import { tuning } from '../config/tuning';
+import { createHazard, Hazard } from '../entities/hazards';
+import { Zone } from '../render/Zone';
+import { Effects } from '../render/Effects';
+
+export const PLAYER_COLORS = [0xff7a3d, 0x3d9bff];
+export const PLAYER_NAMES = ['P1', 'P2'];
+
+export type SessionState = 'playing' | 'delivered' | 'failed';
+
+export interface SessionResult {
+  levelId: string;
+  success: boolean;
+  time: number;
+  condition: number;
+  value: number;
+  falls: number;
+  payout: number;
+  timeBonus: number;
+  penalty: number;
+  cargoName: string;
+}
+
+const v3 = (a: Vec3) => new THREE.Vector3(a[0], a[1], a[2]);
+const _a = new THREE.Vector3();
+
+/** One attempt at one level. */
+export class LevelSession {
+  readonly sim: Sim;
+  readonly events = new EventBus();
+  readonly physics = new PhysicsWorld();
+  readonly players: Player[] = [];
+  readonly rigs: PlayerRig[] = [];
+  cargo!: Cargo;
+  hazards: Hazard[] = [];
+  level: BuiltLevel;
+  readonly root = new THREE.Group();
+  readonly cameraRig: CameraRig;
+  readonly effects: Effects;
+  state: SessionState = 'playing';
+  stateTime = 0;
+  time = 0;
+  falls = 0;
+  checkpoint = -1;
+  private spawn: SpawnSet;
+  private goalZone: Zone;
+  private cpZones: Zone[] = [];
+  private goalTimer = 0;
+  /** Seconds the cargo has been in the goal and settled (0..needed). */
+  goalProgress = 0;
+  readonly goalNeeded = 1.2;
+  result: SessionResult | null = null;
+  paused = false;
+  /** Menu background mode: intents come from Attract, not the keyboard; nothing is scored. */
+  attractMode = false;
+
+  constructor(
+    readonly def: LevelDef,
+    private renderer: Renderer,
+    private keyboard: Keyboard,
+  ) {
+    this.sim = {
+      physics: this.physics,
+      scene: this.root,
+      events: this.events,
+      grips: new GripRegistry(),
+      time: () => this.physics.time,
+    };
+    renderer.scene.add(this.root);
+    renderer.applyTheme({ ...DEFAULT_THEME, ...(def.theme ?? {}) });
+    this.effects = new Effects(this.root, this.events);
+
+    // world
+    this.level = new LevelBuilder(this.sim).build(def);
+    this.root.add(this.level.root);
+    for (const o of def.objects) if (o.type === 'hazard') {
+      const h = createHazard(o, this.sim, this.level);
+      if (h) this.hazards.push(h);
+    }
+
+    // zones
+    this.goalZone = new Zone(v3(def.goal.pos), v3(def.goal.size), 0x52d39a, def.goal.label ?? 'DELIVER HERE');
+    this.root.add(this.goalZone.object);
+    def.checkpoints.forEach((c, i) => {
+      const z = new Zone(v3(c.pos), v3(c.size), 0xffc94d, `CHECKPOINT ${i + 1}`, true);
+      this.cpZones.push(z);
+      this.root.add(z.object);
+    });
+
+    // movers
+    this.spawn = def.spawn;
+    const s = def.spawn;
+    for (let i = 0; i < 2; i++) {
+      const p = new Player(this.sim, {
+        index: i,
+        name: PLAYER_NAMES[i],
+        color: PLAYER_COLORS[i],
+        position: v3(i === 0 ? s.p1 : s.p2),
+        yaw: (s.yaw * Math.PI) / 180,
+      });
+      this.players.push(p);
+      const rig = new PlayerRig(p, this.physics);
+      this.rigs.push(rig);
+      this.root.add(rig.root);
+    }
+    this.cargo = createCargo(def.cargo, this.sim, { pos: v3(s.cargo), yaw: ((s.cargoYaw ?? 0) * Math.PI) / 180 });
+
+    // physics hooks
+    this.physics.preStep.push((dt) => {
+      for (const h of this.hazards) h.preStep(dt);
+      for (const p of this.players) p.preStep(dt);
+      this.cargo.preStep(dt);
+    });
+    this.physics.postStep.push((dt) => {
+      for (const p of this.players) p.postStep(dt);
+      this.cargo.postStep(dt);
+      for (const h of this.hazards) h.postStep?.(dt);
+    });
+
+    this.cameraRig = new CameraRig(renderer.camera);
+    this.cameraRig.reset(def.cameraYaw, this.focusPoints());
+
+    this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
+    this.events.on('cargoBreak', () => this.cameraRig.addShake(0.5));
+    this.events.on('cargoDamage', (e) => {
+      this.cameraRig.addShake(Math.min(0.35, e.amount * 3));
+      for (const r of this.rigs) r.worriedTime = 1.4;
+    });
+  }
+
+  private focusPoints(): THREE.Vector3[] {
+    const pts: THREE.Vector3[] = [];
+    for (const p of this.players) {
+      const v = this.physics.interpolatedPosition(p.body, new THREE.Vector3());
+      // ignore a player who is far below (falling off) so the camera doesn't dive
+      if (v.y > this.def.killY + 2) pts.push(v);
+    }
+    const c = this.physics.interpolatedPosition(this.cargo.body, new THREE.Vector3());
+    if (c.y > this.def.killY + 2) pts.push(c, c.clone());
+    return pts;
+  }
+
+  /** Per rendered frame. */
+  update(frameDt: number) {
+    const kb = this.keyboard;
+    const b = kb.bindings;
+    const camF = this.cameraRig.forward(new THREE.Vector3());
+    const camR = this.cameraRig.right(new THREE.Vector3());
+    const playing = this.state === 'playing' || this.state === 'delivered';
+
+    // input -> intents
+    if (!this.paused && !this.attractMode) {
+      const binds = [b.p1, b.p2];
+      this.players.forEach((p, i) => {
+        const m = kb.readPlayer(binds[i]);
+        const ctl = playing && this.state !== 'delivered';
+        p.intent.moveX = ctl ? camR.x * m.x + camF.x * m.y : 0;
+        p.intent.moveZ = ctl ? camR.z * m.x + camF.z * m.y : 0;
+        p.intent.jump = ctl && m.jump;
+        if (ctl && m.jumpPressed) p.intent.jumpPressed = true;
+        p.intent.grab = (ctl || this.state === 'delivered') && m.grab;
+      });
+    }
+
+    const dt = this.paused ? 0 : frameDt;
+    if (dt > 0) {
+      this.physics.advance(dt);
+      this.time += this.state === 'playing' ? dt : 0;
+      this.stateTime += dt;
+      this.checkZones(dt);
+    }
+    this.physics.syncVisuals();
+    for (const r of this.rigs) r.update(frameDt);
+    this.cargo.update(frameDt, this.physics.time);
+    for (const h of this.hazards) h.update(frameDt, this.physics.time);
+    this.goalZone.update(frameDt, this.goalProgress / this.goalNeeded);
+    this.cpZones.forEach((z, i) => z.update(frameDt, i <= this.checkpoint ? 1 : 0));
+    this.effects.update(frameDt);
+
+    let rot = 0;
+    if (!this.paused) {
+      if (kb.isDown(b.camLeft)) rot -= 1;
+      if (kb.isDown(b.camRight)) rot += 1;
+    }
+    const pts = this.focusPoints();
+    this.cameraRig.update(frameDt, pts.length ? pts : [this.cameraRig.focusPoint.clone()], rot);
+    this.renderer.setShadowFocus(this.cameraRig.focusPoint, this.cameraRig.currentDistance * 0.9 + 6);
+  }
+
+  private inZone(p: THREE.Vector3, pos: Vec3, size: Vec3, pad = 0) {
+    return (
+      Math.abs(p.x - pos[0]) <= size[0] / 2 + pad &&
+      Math.abs(p.y - pos[1]) <= size[1] / 2 + pad &&
+      Math.abs(p.z - pos[2]) <= size[2] / 2 + pad
+    );
+  }
+
+  private checkZones(dt: number) {
+    const def = this.def;
+    const cargoPos = this.cargo.position(new THREE.Vector3());
+
+    // checkpoints: reached when the cargo (or both players) gets there
+    def.checkpoints.forEach((cp, i) => {
+      if (i <= this.checkpoint) return;
+      const cargoIn = this.inZone(cargoPos, cp.pos, cp.size, 0.2);
+      if (cargoIn) {
+        this.checkpoint = i;
+        this.spawn = cp.spawn;
+        this.events.emit('checkpoint', { index: i, pos: v3(cp.pos) });
+      }
+    });
+
+    if (this.attractMode) {
+      for (const p of this.players) if (p.body.translation().y < def.killY) this.respawnPlayer(p);
+      if (cargoPos.y < def.killY) this.respawnAll(false);
+      this.cargo.health = 1;
+      return;
+    }
+    if (this.state === 'playing') {
+      // out of bounds
+      for (const p of this.players) {
+        if (p.body.translation().y < def.killY) this.respawnPlayer(p);
+      }
+      if (cargoPos.y < def.killY && !this.cargo.destroyed) this.respawnAll(true);
+
+      // fail
+      if (this.cargo.destroyed) {
+        this.goalTimer += dt;
+        if (this.goalTimer > 2.2) this.finish(false);
+        return;
+      }
+
+      // goal: cargo inside and settled
+      const inGoal = this.inZone(cargoPos, def.goal.pos, def.goal.size, 0.05);
+      const v = this.cargo.body.linvel();
+      const slow = Math.hypot(v.x, v.y, v.z) < 1.2;
+      if (inGoal && slow) this.goalProgress = Math.min(this.goalNeeded, this.goalProgress + dt);
+      else this.goalProgress = Math.max(0, this.goalProgress - dt * 2);
+      if (this.goalProgress >= this.goalNeeded) {
+        this.state = 'delivered';
+        this.stateTime = 0;
+        this.events.emit('goal', {});
+        for (const r of this.rigs) r.happyTime = 4;
+      }
+    } else if (this.state === 'delivered' && this.stateTime > 2.0 && !this.result) {
+      this.finish(true);
+    }
+  }
+
+  respawnPlayer(p: Player) {
+    const s = this.spawn;
+    const pos = v3(p.index === 0 ? s.p1 : s.p2);
+    p.teleport(pos.add(_a.set(0, 0.3, 0)), (s.yaw * Math.PI) / 180);
+    this.physics.snapLinks();
+    this.falls++;
+    this.events.emit('respawn', { pos: pos.clone() });
+  }
+
+  /** Put players and cargo back at the last checkpoint. */
+  respawnAll(cargoFell: boolean) {
+    const s = this.spawn;
+    for (const p of this.players) {
+      const pos = v3(p.index === 0 ? s.p1 : s.p2);
+      p.teleport(pos.add(_a.set(0, 0.3, 0)), (s.yaw * Math.PI) / 180);
+    }
+    this.cargo.reset(v3(s.cargo).add(_a.set(0, 0.25, 0)), ((s.cargoYaw ?? 0) * Math.PI) / 180);
+    this.physics.snapLinks();
+    if (cargoFell) this.falls += 2;
+    this.events.emit('respawn', { pos: v3(s.cargo) });
+  }
+
+  private finish(success: boolean) {
+    const condition = this.cargo.destroyed ? 0 : this.cargo.health;
+    const value = this.cargo.value;
+    const base = success ? value * condition : 0;
+    const penalty = success ? Math.min(base, value * 0.05 * this.falls) : 0;
+    const timeBonus = success && this.time < this.def.parTime ? Math.round(value * 0.1 * condition) : 0;
+    const payout = Math.max(0, Math.round(base - penalty + timeBonus));
+    this.result = {
+      levelId: this.def.id,
+      success,
+      time: this.time,
+      condition,
+      value,
+      falls: this.falls,
+      payout,
+      timeBonus,
+      penalty: Math.round(penalty),
+      cargoName: this.cargo.displayName,
+    };
+    if (!success) this.state = 'failed';
+  }
+
+  /** Live payout estimate for the HUD. */
+  currentPayout() {
+    if (this.cargo.destroyed) return 0;
+    const v = this.cargo.value * this.cargo.health;
+    return Math.max(0, v - this.cargo.value * 0.05 * this.falls);
+  }
+
+  dispose() {
+    for (const h of this.hazards) h.dispose();
+    for (const r of this.rigs) r.dispose();
+    this.effects.dispose();
+    this.root.removeFromParent();
+    this.root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && m.geometry && m.name === 'static_batch') m.geometry.dispose();
+    });
+    this.physics.dispose();
+    this.events.clear();
+  }
+
+  /** Debug summary used by automated tests. */
+  debugState() {
+    const r = (v: { x: number; y: number; z: number }) => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
+    return {
+      state: this.state,
+      time: +this.time.toFixed(2),
+      falls: this.falls,
+      checkpoint: this.checkpoint,
+      goalProgress: +this.goalProgress.toFixed(2),
+      cargo: { pos: r(this.cargo.body.translation()), health: +this.cargo.health.toFixed(3), destroyed: this.cargo.destroyed },
+      players: this.players.map((p) => ({
+        pos: r(p.body.translation()),
+        state: p.state,
+        grounded: p.grounded,
+        grips: p.hands.map((h) => (h.grip ? h.grip.kind : null)),
+      })),
+      tuningHz: tuning.physics.hz,
+    };
+  }
+}
