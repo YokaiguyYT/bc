@@ -1,5 +1,6 @@
 // Scripted co-op carry through a level, segment by segment.
-// env LEVEL (default delivery), SEG (comma list of segment names to run).
+// env LEVEL (default delivery), SEG (comma list of segment names to run),
+// DIGITAL=1 (move like a keyboard: full speed or stopped, no easing).
 //
 // Each segment teleports the cargo + both movers to a start pose (movers on
 // either side of the cargo, across the direction of travel), grabs, then
@@ -12,7 +13,7 @@ const ROUTES = {
   'delivery-full': {
     unload: { wait: 15, cargo: null, path: [[3.5, -35, 'broad']] },
     door: { keep: true, path: [[5.4, -35], [6.3, -34.3], [7.2, -33.4], [8, -33.2], [8.8, -33.4], [9.7, -34.3], [10.4, -35]] },
-    lobby: { keep: true, path: [[10.4, -30.2, 'inline'], [15.6, -30.2, 'broad'], [15.6, -38.6, 'inline'], [16.05, -41.4, 'inline']] },
+    lobby: { keep: true, path: [[10.4, -30.2, 'inline'], [15.6, -30.2, 'broad'], [15.6, -38.6, 'inline'], [16.05, -41.4, 'broad']] },
     lift: { keep: true, path: [], ride: 9.5 },
     walkway: { keep: true, path: [[13.6, -41.3, 'inline'], [3, -41.3, 'inline'], [0, -41.3, 'inline'], [-2, -41.6, 'inline'], [-2, -47.4, 'broad'], [-2, -48.42, 'broad']], place: true },
   },
@@ -84,8 +85,10 @@ const ROUTES = {
         [-5.6, -7.6, 'broad'],
         [-0.4, -10.4, 'broad'],
         [4, -12.4, 'broad'],
-        { wait: 'gap', x: 4, z: [-22, -14] },
-        [4, -18, 'broad'],
+        // one lane at a time, waiting on the strip between the lanes, like people do
+        { wait: 'gap', x: 4, z: [-17.5, -14], ahead: 13 },
+        [4, -18.1, 'broad'],
+        { wait: 'gap', x: 4, z: [-22, -18.5], ahead: 13 },
         [4, -23.6, 'broad'],
         [4, -27.5, 'broad'],
         [4, -35.6, 'broad'],
@@ -124,7 +127,10 @@ export default async function ({ page, base, shot }) {
   await page.goto(base + `?level=${id}&manual=1`);
   await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
-  await page.evaluate(() => { window.__FF.game.session.scriptedInput = true; });
+  await page.evaluate((digital) => {
+    window.__FF.game.session.scriptedInput = true;
+    window.__digital = digital;
+  }, !!process.env.DIGITAL);
   const st = () =>
     page.evaluate(() => {
       const s = window.__FF.game.session;
@@ -245,10 +251,10 @@ export default async function ({ page, base, shot }) {
         const pos = (p) => p.body.translation();
         const setI = (p, x, z) => {
           const l = Math.hypot(x, z);
-          if (l > 1) {
-            x /= l;
-            z /= l;
-          }
+          // DIGITAL: like a keyboard, either full speed or stopped
+          const m = window.__digital ? (l > 0.15 ? 1 : 0) : Math.min(1, l);
+          x = l > 0 ? (x / l) * m : 0;
+          z = l > 0 ? (z / l) * m : 0;
           Object.assign(p.intent, { moveX: x, moveZ: z });
         };
         if (form === 'inline' || form === 'snake') {
@@ -320,6 +326,18 @@ export default async function ({ page, base, shot }) {
             const fs = fl > 0.04 ? (Math.min(1, speed * (0.4 + fl * 1.6)) * crowd) / fl : 0;
             setI(fol, fx * fs, fz * fs);
             g.advance(0.1, 60, false);
+            if (window.__trace) {
+              const cg = s.cargo;
+              const c = cg.body.translation();
+              window.__trace.push({
+                t: +s.physics.time.toFixed(1),
+                h: +cg.health.toFixed(3),
+                water: +(cg.water ?? 0).toFixed(3),
+                slosh: cg.slosh ? [+cg.slosh.x.toFixed(2), +cg.slosh.y.toFixed(2)] : null,
+                c: [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2)],
+                p: P.map((p) => { const b = pos(p); return [+b.x.toFixed(2), +b.y.toFixed(2), p.state[0]]; }),
+              });
+            }
           }
           sn.last = [tx, tz];
           P.forEach((p) => Object.assign(p.intent, { moveX: 0, moveZ: 0 }));
@@ -435,7 +453,7 @@ export default async function ({ page, base, shot }) {
           const toCross = (w.x - p.x) * dir.x; // metres until it reaches the crossing
           // the near lane is crossed first; the far lane needs a longer gap
           const near = w.z ? Math.abs(p.z - w.z[1]) < Math.abs(p.z - w.z[0]) : true;
-          return toCross < -3 || toCross > (near ? 12 : 17);
+          return toCross < -3 || toCross > (w.ahead ?? (near ? 12 : 17));
         });
       let run = 0;
       while (t < 40) {

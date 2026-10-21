@@ -318,6 +318,13 @@ export class Player {
     return out;
   }
 
+  /** The most careful handling any held cargo asks for (0..1, see Cargo.care). */
+  heldCare() {
+    let c = 0;
+    for (const h of this.hands) if (h.grip?.kind === 'cargo') c = Math.max(c, (h.grip.owner as { care?: number }).care ?? 0);
+    return c;
+  }
+
   /** How heavy our share of the held stuff is (kg). */
   heldMass() {
     let m = 0;
@@ -525,7 +532,7 @@ export class Player {
     let accel = this.grounded ? T.move.accel : T.move.airAccel;
     // heavy loads have momentum: speed up and slow down gently while carrying
     if (this.isHolding()) {
-      const load = clamp(this.heldMass() / 12, 0, 1);
+      const load = clamp(Math.max(this.heldMass() / 12, this.heldCare()), 0, 1);
       accel += (Math.min(accel, T.move.carryAccel) - accel) * load;
     }
     if (this.grounded && this.groundFriction < T.move.slipperyFriction) accel *= T.move.slipperyAccelScale;

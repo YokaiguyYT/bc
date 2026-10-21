@@ -38,6 +38,8 @@ export class WeddingCake extends Cargo {
   readonly value = 1200;
   readonly tip = 'Super fragile! Keep the cake LEVEL and never let it bump anything.';
   readonly fragility: Fragility = { safeShock: 0.95, perShock: 0.22, maxPerHit: 0.35, spinLimit: 2.4, spinDamage: 0.12 };
+  /** Light, but nobody sprints off with a wedding cake: keyboard starts and stops would slide the frosting. */
+  readonly care = 1;
 
   private tiers: Tier[] = [];
   private topper!: THREE.Group;

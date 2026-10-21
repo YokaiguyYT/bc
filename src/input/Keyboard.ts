@@ -24,11 +24,26 @@ export interface MoveState {
   grab: boolean;
 }
 
+/** Modifier keys and the event flag that says whether either of the pair is held. */
+const MODIFIERS: Record<string, 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'> = {
+  ShiftLeft: 'shiftKey',
+  ShiftRight: 'shiftKey',
+  ControlLeft: 'ctrlKey',
+  ControlRight: 'ctrlKey',
+  AltLeft: 'altKey',
+  AltRight: 'altKey',
+  MetaLeft: 'metaKey',
+  MetaRight: 'metaKey',
+};
+
 /**
  * Tracks physical key state. Robust to the usual Mac/Safari gotchas:
  * - releasing a key while ⌘ is held never sends keyup → we clear on ⌘ up
  * - window blur / tab switch → clear everything
- * - the two Shift keys can get stuck → trust e.shiftKey when it says "no shift"
+ * - Safari reports releasing one of a modifier pair while the other is held
+ *   (Right ⇧ while Left ⇧ is down) as another keydown → a second keydown of a
+ *   held modifier means it was released
+ * - modifier keyups can go missing → trust e.shiftKey etc. when they say "not held"
  */
 export class Keyboard {
   readonly down = new Set<string>();
@@ -54,10 +69,12 @@ export class Keyboard {
     if (this.suspended) return;
     const code = e.code || e.key;
     if (SWALLOW.has(code) || code.startsWith('Arrow') || code === 'ShiftLeft' || code === 'ShiftRight') e.preventDefault();
-    if (!e.shiftKey && code !== 'ShiftLeft' && code !== 'ShiftRight') {
-      this.down.delete('ShiftLeft');
-      this.down.delete('ShiftRight');
+    if (MODIFIERS[code] && !e.repeat && this.down.has(code)) {
+      // modifiers never auto-repeat on a Mac: this is Safari reporting a release
+      this.down.delete(code);
+      return;
     }
+    this.syncModifiers(e, code);
     if (!e.repeat) {
       this.pressedQueue.add(code);
       this.onKey?.(code, e);
@@ -73,11 +90,13 @@ export class Keyboard {
       // macOS swallows keyups of keys released while ⌘ was held
       for (const k of [...this.down]) if (!k.startsWith('Shift') && !k.startsWith('Alt') && !k.startsWith('Control')) this.down.delete(k);
     }
-    if (!e.shiftKey) {
-      this.down.delete('ShiftLeft');
-      this.down.delete('ShiftRight');
-    }
+    this.syncModifiers(e, code);
   };
+
+  /** A modifier the event says isn't held can't be down, whatever events we missed. */
+  private syncModifiers(e: KeyboardEvent, code: string) {
+    for (const k in MODIFIERS) if (k !== code && !e[MODIFIERS[k]]) this.down.delete(k);
+  }
 
   clear() {
     this.down.clear();

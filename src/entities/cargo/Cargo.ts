@@ -46,6 +46,11 @@ export abstract class Cargo {
   abstract readonly fragility: Fragility;
   /** Short handling tip shown at the start. */
   abstract readonly tip: string;
+  /**
+   * 0..1: how much the movers treat this like a heavy load (speeding up and
+   * slowing down gently) whatever it weighs. Light but delicate things want 1.
+   */
+  readonly care: number = 0;
 
   body!: RigidBody;
   colliders: Collider[] = [];

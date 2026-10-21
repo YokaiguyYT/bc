@@ -110,6 +110,12 @@ FF_URL=http://localhost:5199/ node tests/browser/run.mjs carryall  # every cargo
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs menus     # screenshots of every menu
 ```
 
-Screenshots go to a scratch folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball.
+Screenshots go to a scratch folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.
+
+The same scenarios also run in WebKit (Safari's engine) on Linux, through WebKitGTK. Install `gir1.2-webkit2-4.1 python3-gi-cairo xvfb` with apt, then:
+
+```sh
+xvfb-run -a python3 tests/webkit/bridge.py node tests/webkit/run.mjs deliver   # plays play/FragileFreight.html
+```
 
 See **NOTES.md** for design decisions and tuning notes, and **CREDITS.md** for model credits.
