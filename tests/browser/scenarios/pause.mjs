@@ -20,6 +20,10 @@ export default async function ({ page, base, shot }) {
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   check('a second blur keeps the pause menu', await screen(), 'paused');
+  // coming back and walking up then jumping must not quit the job
+  await page.keyboard.press('KeyW');
+  await page.keyboard.press('Space');
+  check('W then Space on the pause menu resumes', await screen(), 'playing');
 
   // real time: headless software rendering is slow, so the tip should show up
   await page.goto(base + '?level=moveout');

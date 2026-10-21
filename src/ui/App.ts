@@ -115,7 +115,8 @@ export class App {
     if (prev.includes(code) || next.includes(code)) {
       if (!this.focusables.length) return;
       e.preventDefault();
-      this.focusIndex = (this.focusIndex + (prev.includes(code) ? -1 : 1) + this.focusables.length) % this.focusables.length;
+      // stop at the ends instead of wrapping: from Resume, a stray W must not land on Quit
+      this.focusIndex = Math.max(0, Math.min(this.focusables.length - 1, this.focusIndex + (prev.includes(code) ? -1 : 1)));
       this.updateFocus();
       this.focusables[this.focusIndex]?.scrollIntoView({ block: 'nearest' });
       this.audio.ui('move');
