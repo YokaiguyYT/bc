@@ -83,6 +83,20 @@ export class App {
     }
   }
 
+  /** Up and down move a whole row in a grid of cards (the job list); everything else moves one. */
+  private navStep(code: string) {
+    const el = this.focusables[this.focusIndex];
+    const vertical = code === 'ArrowUp' || code === 'ArrowDown' || code === 'KeyW' || code === 'KeyS';
+    if (!vertical || !el?.classList.contains('level-card')) return 1;
+    const cards = this.focusables.filter((c) => c.classList.contains('level-card'));
+    const cols = cards.filter((c) => c.offsetTop === cards[0].offsetTop).length;
+    const i = cards.indexOf(el);
+    const up = code === 'ArrowUp' || code === 'KeyW';
+    // from the top row, up stays put; from the bottom row, down goes on to Back
+    if (up) return i >= cols ? cols : 0;
+    return i + cols < cards.length ? cols : cards.length - i;
+  }
+
   private updateFocus() {
     this.focusables.forEach((el, i) => el.classList.toggle('focus', i === this.focusIndex));
   }
@@ -123,7 +137,7 @@ export class App {
       if (!this.focusables.length) return;
       e.preventDefault();
       // stop at the ends instead of wrapping: from Resume, a stray W must not land on Quit
-      this.focusIndex = Math.max(0, Math.min(this.focusables.length - 1, this.focusIndex + (prev.includes(code) ? -1 : 1)));
+      this.focusIndex = Math.max(0, Math.min(this.focusables.length - 1, this.focusIndex + (prev.includes(code) ? -1 : 1) * this.navStep(code)));
       this.updateFocus();
       this.focusables[this.focusIndex]?.scrollIntoView({ block: 'nearest' });
       this.audio.ui('move');

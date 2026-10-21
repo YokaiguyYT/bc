@@ -292,9 +292,13 @@ kbd.p2 {
 /* ---------- level select ---------- */
 .levels {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  width: min(1040px, 94vw);
+  grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
+  gap: 14px;
+  width: min(1180px, 96vw);
+  /* a long list scrolls; the title and Back stay on screen */
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding: 6px 10px 14px;
 }
 .level-card {
   font-family: var(--font);
@@ -322,7 +326,7 @@ kbd.p2 {
   color: var(--ink-soft);
 }
 .level-card .name {
-  font-size: 25px;
+  font-size: 23px;
   font-weight: 700;
   line-height: 1.05;
 }
@@ -331,7 +335,7 @@ kbd.p2 {
   font-weight: 600;
 }
 .level-card .tag {
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--ink-soft);
   line-height: 1.25;
 }
