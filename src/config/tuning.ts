@@ -158,10 +158,10 @@ export const tuning = {
     holdRotK: 18,
     holdRotMax: 60,
     /** Letting go of a load lowers it first: hand speed (m/s), squat rate (1/s), lowest hand height (torso-relative m), max time (s). */
-    setDownSpeed: 0.45,
-    setDownSquat: 1.2,
+    setDownSpeed: 0.3,
+    setDownSquat: 0.75,
     setDownLow: -0.32,
-    setDownMax: 1.6,
+    setDownMax: 2.2,
   },
 
   knock: {

@@ -16,6 +16,30 @@ const ROUTES = {
     lift: { keep: true, path: [], ride: 9.5 },
     walkway: { keep: true, path: [[13.6, -41.3, 'inline'], [3, -41.3, 'inline'], [0, -41.3, 'inline'], [-2, -41.6, 'inline'], [-2, -47.4, 'broad'], [-2, -48.42, 'broad']], place: true },
   },
+  // wedding cake: side by side the whole way; wait for the lights / a gap in traffic
+  'city-full': {
+    walk: {
+      start: true,
+      path: [
+        [-2, 15.4, 'broad'],
+        [-2, 12.2, 'broad'],
+        { wait: 'red', signal: 'main' },
+        [-2, 7, 'broad'],
+        [-2, 0.8, 'broad'],
+        [-5.6, -3.2, 'broad'],
+        [-5.6, -7.6, 'broad'],
+        [-0.4, -10.4, 'broad'],
+        [4, -12.4, 'broad'],
+        { wait: 'gap', x: 4, z: [-22, -14] },
+        [4, -18, 'broad'],
+        [4, -23.6, 'broad'],
+        [4, -27.5, 'broad'],
+        [4, -35.6, 'broad'],
+        [4, -36.6, 'broad'],
+      ],
+      place: true,
+    },
+  },
   // just the van ramp: clock lying along Z at the foot of the ramp, both press forward
   'mansion-van': {
     van: { cargo: [6, 0.4, 10.6], yaw: 0, lying: true, path: [[6, 22.6, 'inline']], place: true },
@@ -312,6 +336,47 @@ export default async function ({ page, base, shot }) {
     );
   }
 
+  /** Stand still until the light turns red for cars, or the street is clear near x. */
+  async function waitFor(w) {
+    return page.evaluate((w) => {
+      const g = window.__FF.game;
+      const s = g.session;
+      s.players.forEach((p) => Object.assign(p.intent, { moveX: 0, moveZ: 0 }));
+      let t = 0;
+      if (w.wait === 'red') {
+        // wait for a fresh red so we get the whole of it
+        while (t < 30 && s.sim.signals.get(w.signal) === 'red') {
+          g.advance(0.1, 60, false);
+          t += 0.1;
+        }
+        while (t < 30 && s.sim.signals.get(w.signal) !== 'red') {
+          g.advance(0.1, 60, false);
+          t += 0.1;
+        }
+        return t;
+      }
+      // a gap: no car within reach of the crossing in either direction
+      const cars = s.hazards.filter((h) => Array.isArray(h.cars)).flatMap((h) => h.cars.map((c) => ({ c, dir: h.dir })));
+      const clear = () =>
+        cars.every(({ c, dir }) => {
+          const p = c.body.translation();
+          if (w.z && (p.z < w.z[0] || p.z > w.z[1])) return true; // another street
+          const toCross = (w.x - p.x) * dir.x; // metres until it reaches the crossing
+          // the near lane is crossed first; the far lane needs a longer gap
+          const near = w.z ? Math.abs(p.z - w.z[1]) < Math.abs(p.z - w.z[0]) : true;
+          return toCross < -3 || toCross > (near ? 12 : 17);
+        });
+      let run = 0;
+      while (t < 40) {
+        run = clear() ? run + 0.1 : 0;
+        if (run > 0.3) break;
+        g.advance(0.1, 60, false);
+        t += 0.1;
+      }
+      return t;
+    }, w);
+  }
+
   // debug: record hard impacts and what the cargo was touching
   await page.evaluate(() => {
     const s = window.__FF.game.session;
@@ -352,7 +417,13 @@ export default async function ({ page, base, shot }) {
     }
     if (process.env.TRACE) await page.evaluate(() => { window.__trace = []; });
     const h0 = (await st()).health;
-    for (const [x, z, form] of seg.path) {
+    for (const wp of seg.path) {
+      if (!Array.isArray(wp)) {
+        const waited = await waitFor(wp);
+        console.log(name.padEnd(8), `waited ${waited.toFixed(1)}s for ${wp.wait}`, JSON.stringify(await st()));
+        continue;
+      }
+      const [x, z, form] = wp;
       const t = await carryTo(x, z, form ?? null);
       const s = await st();
       console.log(name.padEnd(8), `→ [${x}, ${z}]`, `${t.toFixed(1)}s`, JSON.stringify(s));
@@ -370,7 +441,33 @@ export default async function ({ page, base, shot }) {
     await shot(`deliver_${name}`);
     if (seg.place || (seg.path.length && !route[Object.keys(route)[Object.keys(route).indexOf(name) + 1]]?.keep)) {
       await setBoth({ grab: false });
-      await adv(2.5);
+      if (process.env.TRACE_PLACE) {
+        for (let i = 0; i < 25; i++) {
+          await adv(0.1);
+          console.log(
+            '   place',
+            JSON.stringify(
+              await page.evaluate(() => {
+                const s = window.__FF.game.session;
+                const c = s.cargo;
+                const g = c.gEff;
+                const tilt = Math.acos(Math.max(-1, Math.min(1, -g.y / Math.max(0.1, g.length()))));
+                const v = c.body.linvel();
+                return {
+                  h: +c.health.toFixed(3),
+                  y: +c.body.translation().y.toFixed(3),
+                  v: [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)],
+                  g: [+g.x.toFixed(1), +g.y.toFixed(1), +g.z.toFixed(1)],
+                  tilt: +((tilt * 180) / Math.PI).toFixed(0),
+                  shock: +c.recentShock.toFixed(2),
+                  grips: s.players.map((p) => p.hands.map((h) => (h.grip ? 'c' : '-')).join('')),
+                  low: s.players.map((p) => +p.reachLow.toFixed(2)),
+                };
+              }),
+            ),
+          );
+        }
+      } else await adv(2.5);
     }
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));

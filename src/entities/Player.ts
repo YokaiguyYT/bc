@@ -729,12 +729,13 @@ export class Player {
   private updateSetDown(dt: number) {
     const T = tuning.grip;
     this.setDownT += dt;
-    // squat and lower the hands at a gentle, steady pace
-    this.reachLow = Math.min(1, this.reachLow + dt * T.setDownSquat);
+    // squat and lower the hands at a gentle, steady pace (eased in, so it doesn't lurch)
+    const ease = Math.min(1, this.setDownT / 0.3);
+    this.reachLow = Math.min(1, this.reachLow + dt * T.setDownSquat * ease);
     for (const h of this.hands) {
       const g = h.grip;
       if (!g) continue;
-      g.anchorGoal.y = Math.max(T.setDownLow, g.anchorGoal.y - T.setDownSpeed * dt);
+      g.anchorGoal.y = Math.max(T.setDownLow, g.anchorGoal.y - T.setDownSpeed * ease * dt);
       const sx = g.side === 0 ? 1 : -1;
       const sh = _a.set(sx * RIG.shoulder.x, RIG.shoulder.y, 0);
       const d = _b.copy(g.anchorGoal).sub(sh);
