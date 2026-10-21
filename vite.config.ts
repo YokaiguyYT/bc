@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
-import { existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -34,6 +34,28 @@ function embedModels(single: boolean): Plugin {
   };
 }
 
+/**
+ * Single-file build: name the page FragileFreight.html and keep a copy in
+ * play/ (committed, so people can download it and double-click it — no
+ * command line needed).
+ */
+function namePlayableFile(): Plugin {
+  return {
+    name: 'ff-name-playable',
+    apply: 'build',
+    closeBundle() {
+      const out = resolve(import.meta.dirname, 'dist-single');
+      const from = resolve(out, 'index.html');
+      if (!existsSync(from)) return;
+      const to = resolve(out, 'FragileFreight.html');
+      renameSync(from, to);
+      const play = resolve(import.meta.dirname, 'play');
+      mkdirSync(play, { recursive: true });
+      copyFileSync(to, resolve(play, 'FragileFreight.html'));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
   return {
@@ -52,6 +74,6 @@ export default defineConfig(({ mode }) => {
     },
     server: { host: true, port: 5173 },
     preview: { port: 4173 },
-    plugins: [embedModels(single), ...(single ? [viteSingleFile({ removeViteModuleLoader: true })] : [])],
+    plugins: [embedModels(single), ...(single ? [viteSingleFile({ removeViteModuleLoader: true }), namePlayableFile()] : [])],
   };
 });
