@@ -132,6 +132,8 @@ const objects: LevelObject[] = [
   { type: 'box', pos: [16.1, 4.95, -43.0], size: [3.1, 9.9, 0.2], surface: 'brick', color: 0xb6624a },
   { type: 'box', pos: [16.1, 6.55, -39.95], size: [3.1, 6.3, 0.2], surface: 'brick', color: 0xb6624a, fade: true },
   { type: 'box', pos: [16.1, 0.42, -41.45], size: [2.9, 0.84, 3.0], surface: 'concrete', color: 0x8d8a85 }, // pit floor
+  // threshold: the walkway stops at x 14.6 and the lift floor starts at 14.75; don't let feet (or the tank) catch in the gap
+  { type: 'box', pos: [14.67, TOP - 0.1, -41.35], size: [0.14, 0.2, 2.5], surface: 'metal', color: 0x9aa3ad },
 
   // ---- apartment block (solid up to TOP), walkway on top
   { type: 'box', pos: [4.3, TOP / 2, -44.5], size: [20.6, TOP, 9], surface: 'brick', color: 0xd27a5c },
@@ -169,7 +171,8 @@ const objects: LevelObject[] = [
   { type: 'box', pos: [8.3, TOP + 2.95, -45.8], size: [12.8, 0.3, 6.6], surface: 'concrete', color: 0xb9b4ab },
   { type: 'box', pos: [8.3, TOP + 2.95, -42.6], size: [12.8, 0.34, 0.3], color: 0xf2e6d0 },
   // neighbour Gary has had a few
-  { type: 'hazard', kind: 'drunk', pos: [9.4, TOP, -41.85], params: { radius: 3, area: [5, 0.5] } },
+  // Gary hangs about by the flat doors, leaving a lane along the railing
+  { type: 'hazard', kind: 'drunk', pos: [9.4, TOP, -42.0], params: { radius: 3, area: [5, 0.35] } },
 
   // ---- the customer's flat (x -6..2, z -49..-40) — goal: the aquarium stand
   { type: 'box', pos: [-2, TOP + 0.006, -44.5], size: [8, 0.012, 9], surface: 'wood', collide: false, radius: 0.003, castShadow: false },

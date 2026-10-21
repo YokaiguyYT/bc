@@ -9,6 +9,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Five jobs and the Practice Yard | Playable start to finish |
 | Keyboard controls, rebinding, key tester | Done |
 | Menus, HUD, results, saved bests | Done |
+| Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click in Safari) and GitHub Pages | Done |
 | Gamepad | Not planned (by request) |
 | **Audio** | **Planned, not yet implemented** |
@@ -75,7 +76,13 @@ This keeps walking reliable while still looking floppy.
 - Safari reports letting go of one Shift key while the other is held as another *keydown*. P1 grabs with Left Shift and P2 jumps with Right Shift, so this used to cause phantom jumps and stuck grips. A second keydown of a held modifier now counts as its release.
 - A modifier the event says isn't held can't be down, whatever events went missing.
 
-**Pausing.** Switching to another app or tab pauses the job, so nobody comes back to a broken cake.
+**Helping first-timers.**
+- An arrow at the screen edge points to the next checkpoint (🚩) or the drop-off (🏁) whenever it's off screen.
+- Levels list `tips` tied to tricky spots (the lift, the wrecking ball, the streets…). Each shows once per attempt when the cargo or a mover gets near. The start-of-job `hints` keep only general handling advice.
+- Switching to another app or tab pauses the job, so nobody comes back to a broken cake.
+- Jump keys double as "select" in menus, so the results card ignores keys for its first 1.2 s, and menu selection stops at the ends instead of wrapping (a stray W on the pause menu used to land on Quit).
+- Leaving the page mid-job (a stray trackpad swipe back, ⌘R) asks first.
+- If play stays under 40 fps, a one-time tip suggests Graphics: Fast.
 
 **Testing.** `tests/browser/` drives the real game in headless Chromium. A deterministic `advance()` steps the game, so tests never wait in real time.
 - `deliver` is a scripted pair of movers that carries the cargo through a whole level. Most level changes were checked with it. `DIGITAL=1` makes them move like keyboard players: full speed or stopped.

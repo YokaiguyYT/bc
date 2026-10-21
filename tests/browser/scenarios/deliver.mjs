@@ -15,7 +15,8 @@ const ROUTES = {
     door: { keep: true, path: [[5.4, -35], [6.3, -34.3], [7.2, -33.4], [8, -33.2], [8.8, -33.4], [9.7, -34.3], [10.4, -35]] },
     lobby: { keep: true, path: [[10.4, -30.2, 'inline'], [15.6, -30.2, 'broad'], [15.6, -38.6, 'inline'], [16.05, -41.4, 'broad']] },
     lift: { keep: true, path: [], ride: 9.5 },
-    walkway: { keep: true, path: [[13.6, -41.3, 'inline'], [3, -41.3, 'inline'], [0, -41.3, 'inline'], [-2, -41.6, 'inline'], [-2, -47.4, 'broad'], [-2, -48.42, 'broad']], place: true },
+    // along the railing side: the neighbour wanders the other half of the walkway
+    walkway: { keep: true, path: [[13.6, -40.8, 'inline'], [3, -40.8, 'inline'], [0, -41.3, 'inline'], [-2, -41.6, 'inline'], [-2, -47.4, 'broad'], [-2, -48.42, 'broad']], place: true },
   },
   // glass pane: edge-first through the slalom, one plank each, edge-first up ramps / see-saw / conveyor
   'glass-full': {
@@ -100,6 +101,11 @@ const ROUTES = {
   // just the van ramp: clock lying along Z at the foot of the ramp, both press forward
   'mansion-van': {
     van: { cargo: [6, 0.4, 10.6], yaw: 0, lying: true, path: [[6, 22.6, 'inline']], place: true },
+  },
+  // aquarium: ride the lift up and walk out onto the walkway (the lift door is a classic spot to slosh)
+  'delivery-liftexit': {
+    lift: { cargo: [16.1, 1.4, -41.2], yaw: 0, path: [], ride: 9 },
+    exit: { keep: true, path: [[13.6, -41.3, 'inline'], [10.5, -41.3, 'inline']] },
   },
   // inline waypoints are for the leading mover
   'mansion-full': {

@@ -96,8 +96,12 @@ class Npc implements Hazard {
         this.retarget = 2 + Math.random() * 3;
         const players = this.sim.players ?? [];
         const near = players.find((pl) => pl.bodyPos.distanceTo(pos) < 4 && pl.bodyPos.distanceTo(this.home) < radius + 2);
-        if (near && Math.random() < 0.45) this.target.copy(near.bodyPos);
-        else randomTarget(this.target, this.home, radius, this.o.params?.area as [number, number] | undefined);
+        if (near && Math.random() < 0.45) {
+          // stagger up for a chat, but stop short: he's a nuisance, not a tackle
+          const back = pos.clone().sub(near.bodyPos).setY(0);
+          const l = back.length() || 1;
+          this.target.copy(near.bodyPos).addScaledVector(back, Math.min(1.3, l) / l);
+        } else randomTarget(this.target, this.home, radius, this.o.params?.area as [number, number] | undefined);
       }
       this.wobbleT += dt;
       const to = this.target.clone().sub(pos).setY(0);
