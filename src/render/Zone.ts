@@ -89,7 +89,8 @@ export class Zone {
     this.object.add(this.pad);
 
     // floating label
-    const tex = textTexture(text, 3.2, 0.7, '#ffffff', undefined, 0.42);
+    // outlined so it reads over snow, marble and white gazebos alike
+    const tex = textTexture(text, 3.2, 0.7, '#ffffff', undefined, 0.42, 'rgba(38,44,62,0.8)');
     this.label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
     this.label.scale.set(3.2 * 0.8, 0.7 * 0.8, 1);
     this.label.position.y = -size.y / 2 + h + 0.7;

@@ -317,7 +317,7 @@ export class LevelBuilder {
   }
 }
 
-export function textTexture(text: string, w: number, h: number, color: string, bg?: string, fontSize?: number) {
+export function textTexture(text: string, w: number, h: number, color: string, bg?: string, fontSize?: number, outline?: string) {
   const scale = 256;
   const cw = Math.max(64, Math.round(w * scale));
   const ch = Math.max(32, Math.round(h * scale));
@@ -331,11 +331,27 @@ export function textTexture(text: string, w: number, h: number, color: string, b
   }
   ctx.fillStyle = color;
   const lines = text.split('\n');
-  const fs = fontSize ? fontSize * scale : Math.min(ch / (lines.length * 1.25), (cw / Math.max(...lines.map((l) => l.length))) * 1.7);
-  ctx.font = `800 ${fs}px "Fredoka", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif`;
+  let fs = fontSize ? fontSize * scale : Math.min(ch / (lines.length * 1.25), (cw / Math.max(...lines.map((l) => l.length))) * 1.7);
+  const font = (px: number) => `800 ${px}px "Fredoka", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif`;
+  ctx.font = font(fs);
+  // never run off the edge: shrink long lines to fit
+  const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  if (widest > cw * 0.94) {
+    fs *= (cw * 0.94) / widest;
+    ctx.font = font(fs);
+  }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  lines.forEach((l, i) => ctx.fillText(l, cw / 2, ch / 2 + (i - (lines.length - 1) / 2) * fs * 1.15));
+  lines.forEach((l, i) => {
+    const y = ch / 2 + (i - (lines.length - 1) / 2) * fs * 1.15;
+    if (outline) {
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = fs * 0.16;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(l, cw / 2, y);
+    }
+    ctx.fillText(l, cw / 2, y);
+  });
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;

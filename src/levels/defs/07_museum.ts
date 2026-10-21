@@ -194,7 +194,7 @@ const level: LevelDef = {
   cargo: 'egg',
   cameraYaw: 0,
   spawn: { p1: [-1.0, 0, 18], p2: [1.0, 0, 18], cargo: [0, EGG_Y, 18], yaw: 180 },
-  goal: { pos: [0, LOW + 0.5 + 0.4, -49.2], size: [1.0, 0.9, 1.0], label: 'INCUBATOR' },
+  goal: { pos: [0, LOW + 0.5 + 0.4, -49.2], size: [1.0, 0.9, 1.0], label: 'INTO THE INCUBATOR' },
   checkpoints: [
     // before the lasers; after them, at the top of the ramp
     { pos: [0, 1, -15.3], size: [6.4, 2, 2.2], spawn: { p1: [-1.0, 0, -15.6], p2: [1.0, 0, -15.6], cargo: [0, EGG_Y, -15.6], yaw: 180 } },
