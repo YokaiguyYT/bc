@@ -49,9 +49,9 @@ export class Aquarium extends Cargo {
   readonly fragility: Fragility = { safeShock: 1.9, perShock: 0.1, maxPerHit: 0.3, spinLimit: 0, spinDamage: 0 };
 
   /** Water height above the inner floor, fraction of the inner height. */
-  water = 0.72;
-  private readonly startWater = 0.72;
-  private slosh = new Wobble(1.25, 0.06, 1.4);
+  water = 0.62;
+  private readonly startWater = 0.62;
+  private slosh = new Wobble(1.25, 0.18, 1.4);
   private waterMesh!: THREE.Mesh;
   private waterBase!: Float32Array;
   private surface!: THREE.Mesh;
@@ -231,7 +231,7 @@ export class Aquarium extends Cargo {
     const over = pourAll ? INNER_H : peak - INNER_H;
     this.splashCooldown -= dt;
     if (over > 0 && this.water > 0.02) {
-      const spill = Math.min(this.water, (over / INNER_H) * dt * 2.2 + (pourAll ? dt * 1.5 : 0));
+      const spill = Math.min(this.water, (over / INNER_H) * dt * 0.9 + (pourAll ? dt * 1.5 : 0));
       this.water -= spill;
       this.spilledTotal += spill;
       this.col.setMass(this.massNow());

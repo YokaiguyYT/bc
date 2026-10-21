@@ -73,6 +73,8 @@ export class LevelSession {
   private goalTimer = 0;
   /** Seconds the cargo has been in the goal and settled (0..needed). */
   goalProgress = 0;
+  /** The cargo is in the goal but someone is still holding it. */
+  goalHeld = false;
   readonly goalNeeded = 1.2;
   result: SessionResult | null = null;
   paused = false;
@@ -299,11 +301,13 @@ export class LevelSession {
         return;
       }
 
-      // goal: cargo inside and settled
+      // goal: cargo set down inside it (not still in someone's hands) and settled
       const inGoal = this.inZone(cargoPos, def.goal.pos, def.goal.size, 0.05);
       const v = this.cargo.body.linvel();
       const slow = Math.hypot(v.x, v.y, v.z) < 1.2;
-      if (inGoal && slow) this.goalProgress = Math.min(this.goalNeeded, this.goalProgress + dt);
+      const held = this.sim.grips.isHeld(this.cargo.body);
+      this.goalHeld = inGoal && held;
+      if (inGoal && slow && !held) this.goalProgress = Math.min(this.goalNeeded, this.goalProgress + dt);
       else this.goalProgress = Math.max(0, this.goalProgress - dt * 2);
       if (this.goalProgress >= this.goalNeeded) {
         this.state = 'delivered';

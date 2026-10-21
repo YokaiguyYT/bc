@@ -22,6 +22,7 @@ export class Hud {
   private hint: HTMLElement;
   private goalMeter: HTMLElement;
   private goalFill: HTMLElement;
+  private goalLabel: HTMLElement;
   private lastHealth = 1;
   private hintIdx = -1;
   private hintTimer = 0.6;
@@ -58,7 +59,7 @@ export class Hud {
       ${pcard(0)}${pcard(1)}
       <div class="tags"><div class="tag">P1</div><div class="tag">P2</div></div>
       <div class="hint" style="opacity:0"></div>
-      <div class="card goal-meter" style="display:none"><div style="font-size:14px;text-align:center">DELIVERING…</div><div class="bar"><div class="fill" style="background:var(--good)"></div></div></div>
+      <div class="card goal-meter" style="display:none"><div class="goal-label" style="font-size:14px;text-align:center">DELIVERING…</div><div class="bar"><div class="fill" style="background:var(--good)"></div></div></div>
     `;
     parent.appendChild(this.el);
     const q = <T extends HTMLElement>(sel: string) => this.el.querySelector(sel) as T;
@@ -71,6 +72,7 @@ export class Hud {
     this.hint = q('.hint');
     this.goalMeter = q('.goal-meter');
     this.goalFill = q('.goal-meter .fill');
+    this.goalLabel = q('.goal-meter .goal-label');
     this.el.querySelectorAll('.player-card').forEach((pc) => {
       this.hands.push([...pc.querySelectorAll<HTMLElement>('.hand')]);
       this.states.push(pc.querySelector('.state') as HTMLElement);
@@ -137,8 +139,9 @@ export class Hud {
 
     // goal meter
     const g = s.goalProgress / s.goalNeeded;
-    this.goalMeter.style.display = g > 0.01 && s.state === 'playing' ? '' : 'none';
+    this.goalMeter.style.display = (g > 0.01 || s.goalHeld) && s.state === 'playing' ? '' : 'none';
     this.goalFill.style.transform = `scaleX(${g})`;
+    this.goalLabel.textContent = s.goalHeld && g < 0.01 ? 'LET GO TO DELIVER' : 'DELIVERING…';
 
     // hints
     const hints = [...(s.def.hints ?? []), s.cargo.tip];

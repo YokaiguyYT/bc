@@ -169,7 +169,7 @@ const objects: LevelObject[] = [
   { type: 'box', pos: [8.3, TOP + 2.95, -45.8], size: [12.8, 0.3, 6.6], surface: 'concrete', color: 0xb9b4ab },
   { type: 'box', pos: [8.3, TOP + 2.95, -42.6], size: [12.8, 0.34, 0.3], color: 0xf2e6d0 },
   // neighbour Gary has had a few
-  { type: 'hazard', kind: 'drunk', pos: [10.6, TOP, -41.3], params: { radius: 3, area: [7, 1.4] } },
+  { type: 'hazard', kind: 'drunk', pos: [9.4, TOP, -41.85], params: { radius: 3, area: [5, 0.5] } },
 
   // ---- the customer's flat (x -6..2, z -49..-40) — goal: the aquarium stand
   { type: 'box', pos: [-2, TOP + 0.006, -44.5], size: [8, 0.012, 9], surface: 'wood', collide: false, radius: 0.003, castShadow: false },
@@ -177,17 +177,19 @@ const objects: LevelObject[] = [
   ...wall([-6, TOP, -49], [2, TOP, -49], 2.8, { surface: 'wallpaper', color: 0xd9ecd0 }),
   ...wall([-6, TOP, -49], [-6, TOP, -40], 2.8, { surface: 'wallpaper', color: 0xd9ecd0, fade: true }),
   ...wall([-6, TOP, -40], [2, TOP, -40], 0.9, { surface: 'wallpaper', color: 0xd9ecd0 }),
-  rug([-2.2, TOP, -45.2], [3.6, 2.6], 0x5b8def),
-  { type: 'model', model: 'sofa', pos: [-2.2, TOP, -43.2], rot: [0, 180, 0] },
-  ...table([-2.2, TOP, -45.0], [1.1, 0.42, 0.6], PALETTE.woodDark),
-  { type: 'model', model: 'armchair', pos: [-4.8, TOP, -45.2], rot: [0, 90, 0] },
+  // seating against the west wall, leaving a clear run from the door to the stand
+  rug([-4.4, TOP, -45.2], [2.8, 3.2], 0x5b8def),
+  { type: 'model', model: 'sofa', pos: [-5.45, TOP, -45.2], rot: [0, 90, 0] },
+  ...table([-4.45, TOP, -45.2], [1.1, 0.42, 0.6], PALETTE.woodDark, 90),
+  { type: 'model', model: 'armchair', pos: [-4.7, TOP, -41.4], rot: [0, 140, 0] },
   { type: 'model', model: 'floorLamp', pos: [-5.4, TOP, -48.4], dynamic: { mass: 6 } },
   { type: 'model', model: 'bookshelf', pos: [0.8, TOP, -48.75] },
   { type: 'model', model: 'plant', pos: [1.4, TOP, -40.6] },
-  // the stand
-  ...counter([-2.6, TOP, -48.45], [1.7, 0.45, 0.62], 0x5b3a22, 0x3b2616),
-  { type: 'sign', pos: [-2.6, TOP + 2.1, -48.88], size: [2.4, 0.5, 0.04], text: 'FISHY GOES HERE', color: 0x3d9bff },
-  ...picture([-2.6, TOP + 1.35, -48.88], 0, 0.5, 0.35, 0xffd36b),
+  { type: 'model', model: 'plantSmall', pos: [-5.5, TOP, -40.5] },
+  // the stand: a touch longer than the tank, so the movers either side of it clear it
+  ...counter([-2.0, TOP, -48.45], [1.12, 0.28, 0.62], 0x5b3a22, 0x3b2616),
+  { type: 'sign', pos: [-2.0, TOP + 2.1, -48.88], size: [2.4, 0.5, 0.04], text: 'FISHY GOES HERE', color: 0x3d9bff },
+  ...picture([-2.0, TOP + 1.35, -48.88], 0, 0.5, 0.35, 0xffd36b),
 ];
 
 const level: LevelDef = {
@@ -198,7 +200,7 @@ const level: LevelDef = {
   cargo: 'aquarium',
   cameraYaw: 0,
   spawn: { attach: 'truck', p1: [0.6, DOCK, -2.3], p2: [-0.6, DOCK, -2.3], cargo: [0, DOCK + 0.3, -1.0], yaw: 0, cargoYaw: 0 },
-  goal: { pos: [-2.6, TOP + 0.95, -48.45], size: [1.9, 1.0, 1.0], label: 'ON THE STAND' },
+  goal: { pos: [-2.0, TOP + 0.9, -48.45], size: [1.3, 1.0, 0.9], label: 'ON THE STAND' },
   checkpoints: [
     { pos: [4, DOCK + 1, -35], size: [7.4, 2, 9.4], spawn: { p1: [4.5, DOCK, -33.9], p2: [4.5, DOCK, -36.1], cargo: [4.5, DOCK + 0.3, -35], yaw: 90, cargoYaw: 90 } },
     { pos: [12.6, TOP + 1, -41.3], size: [3.6, 2, 2.6], spawn: { p1: [10.1, TOP, -41.3], p2: [12.3, TOP, -41.3], cargo: [11.2, TOP + 0.3, -41.3], yaw: -90, cargoYaw: 0 } },

@@ -47,6 +47,7 @@ export class DevPanel {
     mv.add(T.move, 'accel', 2, 80, 0.5).name('acceleration');
     mv.add(T.move, 'airAccel', 0, 40, 0.5).name('air control');
     mv.add(T.move, 'carrySpeed', 0.2, 1.2, 0.01).name('carry speed ×');
+    mv.add(T.move, 'carryAccel', 1, 30, 0.5).name('carry acceleration');
     mv.add(T.jump, 'velocity', 1, 9, 0.1).name('jump speed');
     mv.add(T.physics, 'gravity', 4, 25, 0.1).name('gravity');
 

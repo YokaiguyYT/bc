@@ -69,6 +69,7 @@ const _c = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _e = new THREE.Vector3();
 const _f = new THREE.Vector3();
+const _g = new THREE.Vector3();
 const _q1 = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
@@ -137,6 +138,7 @@ export class Player {
     { side: 1, grip: null, reach: null, reachVel: new THREE.Vector3() },
   ];
   /** Rotation of each held body relative to our torso at grab time (body handle -> quat). */
+  /** Held body orientation relative to our heading (yaw only — not our lean or waddle). */
   private holdRel = new Map<number, THREE.Quaternion>();
   /** Bodies we let go of that still overlap us: collisions stay off until we separate. */
   private ghosts: { body: RigidBody; t: number }[] = [];
@@ -517,6 +519,11 @@ export class Player {
     else goal.add(_c.set(v.x, 0, v.z).multiplyScalar(mlen < 0.1 ? 1 : 0)); // keep momentum in the air when not steering
 
     let accel = this.grounded ? T.move.accel : T.move.airAccel;
+    // heavy loads have momentum: speed up and slow down gently while carrying
+    if (this.isHolding()) {
+      const load = clamp(this.heldMass() / 12, 0, 1);
+      accel += (Math.min(accel, T.move.carryAccel) - accel) * load;
+    }
     if (this.grounded && this.groundFriction < T.move.slipperyFriction) accel *= T.move.slipperyAccelScale;
     const need = _c.set(goal.x - v.x, 0, goal.z - v.z).multiplyScalar(1 / dt);
     const nl = need.length();
@@ -941,7 +948,7 @@ export class Player {
       this.sim.grips.add(body, this.index);
       if (!this.holdRel.has(body.handle)) {
         const r = body.rotation();
-        this.holdRel.set(body.handle, this.bodyQInv.clone().multiply(_q2.set(r.x, r.y, r.z, r.w)));
+        this.holdRel.set(body.handle, this.headingQ(new THREE.Quaternion()).invert().multiply(_q2.set(r.x, r.y, r.z, r.w)));
       }
     }
     this.computeCarryGoals();
@@ -1023,6 +1030,12 @@ export class Player {
   }
 
   /** Damp the held object's spin relative to us and softly keep its orientation. */
+  /** Rotation about world up matching the torso's heading. */
+  private headingQ(out: THREE.Quaternion) {
+    const f = _g.set(0, 0, 1).applyQuaternion(this.bodyQ);
+    return out.setFromAxisAngle(Y_AXIS, Math.atan2(f.x, f.z));
+  }
+
   private applyHoldTorques(dt: number) {
     const T = tuning.grip;
     for (const b of this.heldBodies()) {
@@ -1031,7 +1044,9 @@ export class Player {
       if (!rel) continue;
       const r = b.rotation();
       const qb = _q1.set(r.x, r.y, r.z, r.w);
-      const goal = _q2.copy(this.bodyQ).multiply(rel);
+      // follow where we face, but not our lean or waddle: a tank of water
+      // shouldn't rock every time its carrier takes a step
+      const goal = this.headingQ(_q2).multiply(rel);
       const err = quatToRotVec(_q3.copy(goal).multiply(qb.invert()), _a);
       const wb = b.angvel();
       const wp = this.parts.body.angvel();

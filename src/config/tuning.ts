@@ -25,6 +25,8 @@ export const tuning = {
     airAccel: 7,
     /** Speed multiplier while holding something. */
     carrySpeed: 0.78,
+    /** Acceleration while carrying something heavy (m/s²) — loads have momentum. */
+    carryAccel: 4,
     /** Extra speed multiplier when the held thing is heavy (scaled by mass/40kg). */
     heavyCarrySlowdown: 0.35,
     /** Ground friction below this counts as "slippery" and cuts acceleration. */
