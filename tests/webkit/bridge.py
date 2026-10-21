@@ -56,6 +56,14 @@ class Host:
         self.load_waiters = []
         self.view.connect('load-changed', self._on_load)
         self.view.connect('web-process-terminated', self._on_crash)
+        self.view.connect('script-dialog', self._on_dialog)
+
+    def _on_dialog(self, _view, dialog):
+        # "leave this page?" when a test navigates mid-job: yes
+        if dialog.get_dialog_type() == WebKit2.ScriptDialogType.BEFORE_UNLOAD_CONFIRM:
+            dialog.confirm_set_confirmed(True)
+            return True
+        return False
 
     def _on_load(self, _view, event):
         if event == WebKit2.LoadEvent.FINISHED:

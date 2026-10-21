@@ -32,6 +32,7 @@ const page = await browser.newPage({ viewport: { width: vw, height: vh } });
 const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack}`));
+page.on('dialog', (d) => d.accept()); // "leave this page?" when a test navigates mid-job
 
 const mod = await import(`./scenarios/${scenario}.mjs`);
 try {

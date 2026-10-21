@@ -51,6 +51,12 @@ export class App {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
     });
+    // a stray trackpad swipe back or ⌘R mid-job asks first
+    window.addEventListener('beforeunload', (e) => {
+      if (this.screen !== 'playing' && this.screen !== 'paused') return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
   }
 
   // ------------------------------------------------------------ navigation
@@ -226,6 +232,7 @@ export class App {
       'levels',
       `<div class="logo" style="font-size:44px">PICK A JOB</div>
        <div class="levels">${cards}</div>
+       ${Object.values(prog).some((p) => p?.completed) ? '' : '<div class="hint-line">First time? The <b>Practice Yard</b> is a good place to learn the ropes.</div>'}
        <div class="row"><button class="btn small" data-nav id="l-back">← Back</button></div>`,
       { back: () => this.showMenu() },
     );
@@ -524,6 +531,7 @@ export class App {
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
           <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
         </table>
+        ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
         <div class="row">
           ${r.success && nextLevel ? `<button class="btn primary" data-nav data-default id="r-next">Next job →</button>` : ''}
           <button class="btn ${r.success && nextLevel ? '' : 'primary'}" data-nav ${r.success && nextLevel ? '' : 'data-default'} id="r-retry">${r.success ? 'Play again' : 'Retry'}</button>
