@@ -14,6 +14,20 @@ const STREET2: [number, number] = [-22, -14];
 const X1 = -2; // first crosswalk
 const X2 = 4; // second crosswalk + the aisle
 
+/**
+ * A cake stand: a slim column whose top is smaller than the cake board, so the
+ * board's rim sticks out where mittens can get at it (and nobody can walk onto
+ * the cake). The cake sits on it at the start and after a checkpoint respawn.
+ */
+const cakeStand = (x: number, z: number): LevelObject[] => [
+  { type: 'cylinder', pos: [x, WALK + 0.025, z], radius: 0.34, height: 0.05, color: 0xfbfaf6, segments: 28 },
+  { type: 'cylinder', pos: [x, WALK + 0.4, z], radius: 0.13, height: 0.74, color: 0xfbfaf6, segments: 20 },
+  { type: 'cylinder', pos: [x, WALK + 0.77, z], radius: 0.27, height: 0.06, color: 0xffd6e0, segments: 28 },
+];
+/** Cake respawn stands, well off to the side of the path just past each checkpoint line. */
+const CP1_STAND: [number, number] = [X1 + 3.0, 0.4];
+const CP2_STAND: [number, number] = [X2 + 3.2, -23.4];
+
 /** A gentle kerb ramp from the street up to the walk at a crosswalk. */
 const kerbRamp = (x: number, zStreet: number, zKerb: number): LevelObject =>
   ramp([x, 0, zStreet], [x, WALK, zKerb], 3.0, { surface: 'concrete', color: 0xc9c4bb, thickness: 0.3 });
@@ -62,8 +76,8 @@ const objects: LevelObject[] = [
   { type: 'box', pos: [3.75, WALK + 1.4, 19], size: [0.4, 0.06, 6.0], color: 0x8a5a36, collide: false },
   { type: 'box', pos: [3.75, WALK + 1.9, 19], size: [0.4, 0.06, 6.0], color: 0x8a5a36, collide: false },
   ...[17, 18.4, 19.8, 21.2].map((z) => ({ type: 'box' as const, pos: [3.7, WALK + 1.55, z] as Vec3, size: [0.3, 0.22, 0.5] as Vec3, color: 0xd9a05b, collide: false, radius: 0.08 })),
-  // the cake waits on its pedestal table
-  { type: 'cylinder', pos: [X1, WALK + 0.4, 19], radius: 0.5, height: 0.8, color: 0xfbfaf6, segments: 28 },
+  // the cake waits on a cake stand
+  ...cakeStand(X1, 19),
   { type: 'cylinder', pos: [1.6, WALK + 0.37, 21.8], radius: 0.4, height: 0.74, color: 0xffd6e0 },
   { type: 'cylinder', pos: [-4.8, WALK + 0.37, 22.2], radius: 0.4, height: 0.74, color: 0xffd6e0 },
   { type: 'hazard', kind: 'pedestrian', pos: [-7.55, WALK, 16.5], params: { points: [[0, 0, 0], [0, 0, 5]], speed: 0.3, color: 0xfbfaf6 } }, // the baker
@@ -89,6 +103,8 @@ const objects: LevelObject[] = [
   { type: 'sign', pos: [X1 - 3.2, WALK + 2.2, 11.6], size: [1.6, 0.5, 0.05], text: 'WAIT FOR\nRED LIGHT', color: 0x3d5a80, post: true },
 
   // ---- sidewalk 2 + the park (z -14..3)
+  ...cakeStand(...CP1_STAND),
+  ...cakeStand(...CP2_STAND),
   { type: 'hazard', kind: 'pigeons', pos: [5, WALK, 1.5], params: { count: 5, radius: 1.0 } },
   { type: 'model', model: 'mailbox', pos: [-8, WALK, 2.4], rot: [0, 180, 0] },
   { type: 'model', model: 'streetLamp', pos: [-12, WALK, 2.6], rot: [0, -90, 0] },
@@ -166,8 +182,8 @@ const level: LevelDef = {
   spawn: { p1: [X1 - 1.05, WALK, 19], p2: [X1 + 1.05, WALK, 19], cargo: [X1, WALK + 0.8 + 0.03, 19], yaw: 180 },
   goal: { pos: [X2, WALK + 1.15, -36.6], size: [1.3, 0.9, 1.3], label: 'ON THE CAKE TABLE' },
   checkpoints: [
-    { pos: [X1, WALK + 1, 0.8], size: [4.4, 2, 3.2], spawn: { p1: [X1 - 1.05, WALK, 0.4], p2: [X1 + 1.05, WALK, 0.4], cargo: [X1, WALK + 0.03, 0.4], yaw: 180 } },
-    { pos: [X2, WALK + 1, -23.8], size: [4.4, 2, 3.2], spawn: { p1: [X2 - 1.05, WALK, -24.2], p2: [X2 + 1.05, WALK, -24.2], cargo: [X2, WALK + 0.03, -24.2], yaw: 180 } },
+    { pos: [X1, WALK + 1, 0.8], size: [4.4, 2, 3.2], spawn: { p1: [CP1_STAND[0] - 1.05, WALK, CP1_STAND[1]], p2: [CP1_STAND[0] + 1.05, WALK, CP1_STAND[1]], cargo: [CP1_STAND[0], WALK + 0.8 + 0.03, CP1_STAND[1]], yaw: 180 } },
+    { pos: [X2, WALK + 1, -23.8], size: [4.4, 2, 3.2], spawn: { p1: [CP2_STAND[0] - 1.05, WALK, CP2_STAND[1]], p2: [CP2_STAND[0] + 1.05, WALK, CP2_STAND[1]], cargo: [CP2_STAND[0], WALK + 0.8 + 0.03, CP2_STAND[1]], yaw: 180 } },
   ],
   killY: -6,
   parTime: 170,

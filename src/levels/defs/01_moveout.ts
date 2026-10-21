@@ -125,7 +125,8 @@ const level: LevelDef = {
   spawn: { p1: [-0.4, F, 4.8], p2: [2.8, F, 4.8], cargo: [1.2, F + 0.92, 5.9], yaw: 0, cargoYaw: 180 },
   goal: { ...truck.goal, label: 'INTO THE TRUCK' },
   checkpoints: [
-    { pos: [5.5, F + 1, -7.45], size: [3, 2, 3.9], spawn: { p1: [4.8, F, -8.6], p2: [6.3, F, -8.6], cargo: [5.5, F + 0.45, -6.7], yaw: 0, cargoYaw: 0 } },
+    // a mover either side of the TV (both behind it made one of them reach past the other)
+    { pos: [5.5, F + 1, -7.45], size: [3, 2, 3.9], spawn: { p1: [4.6, F, -6.7], p2: [6.4, F, -6.7], cargo: [5.5, F + 0.45, -6.7], yaw: 0, cargoYaw: 0 } },
     { pos: [6.2, 1, 9.4], size: [3.6, 2, 2.6], spawn: { p1: [5.0, 0, 9.8], p2: [7.4, 0, 9.8], cargo: [6.2, 0.45, 8.9], yaw: 0, cargoYaw: 0 } },
   ],
   killY: -6,

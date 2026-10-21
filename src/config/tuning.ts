@@ -147,6 +147,8 @@ export const tuning = {
     carryHeight: 0.24,
     /** Picking something up lifts it at least this far above where you grabbed it (m). */
     liftExtra: 0.14,
+    /** …and high enough that its bottom clears the floor by this much (m). */
+    floorClearance: 0.38,
     carryForward: 0.5,
     /** Max distance between the two hands (m). */
     maxSpan: 0.78,

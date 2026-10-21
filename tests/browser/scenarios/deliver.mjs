@@ -28,12 +28,16 @@ const ROUTES = {
         [-2.4, 3.2, 'broad'],
         [2.4, 2.6, 'broad'],
         [2.4, 0.2, 'broad'],
+        // weave left round the last barrier row (z -1.2), then to the planks
+        [0, 0, 'broad'],
         [0, -2.6, 'broad'],
         [0, -8.0, 'broad'],
         [0, -16.3, 'broad'],
         [-7.8, -16.3, 'inline'],
         [-13.6, -16.3, 'inline'],
         [-15.6, -16.3, 'inline'],
+        // line up in the middle of the belt before stepping on (it has railings both sides)
+        [-15.2, -15.4, 'broad'],
         [-15.2, -6.6, 'broad'],
         [-15.3, -3.9, 'broad'],
         { wait: 'ball' },
@@ -75,7 +79,9 @@ const ROUTES = {
   // wedding cake: side by side the whole way; wait for the lights / a gap in traffic
   'city-full': {
     walk: {
-      start: true,
+      // off the cake stand, a mover either side (the walk-up pickup itself is covered by the pickup scenario)
+      cargo: [-2, 0.95, 19],
+      yaw: 180,
       path: [
         [-2, 15.4, 'broad'],
         [-2, 12.2, 'broad'],
@@ -412,6 +418,8 @@ export default async function ({ page, base, shot }) {
               tilt: +((Math.acos(Math.max(-1, Math.min(1, upY))) * 180) / Math.PI).toFixed(1),
               w: [+w.x.toFixed(1), +w.y.toFixed(1), +w.z.toFixed(1)],
               v: [+v.x.toFixed(1), +v.y.toFixed(1), +v.z.toFixed(1)],
+              c: [+cg.body.translation().x.toFixed(2), +cg.body.translation().y.toFixed(2), +cg.body.translation().z.toFixed(2)],
+              p: P.map((p) => { const b = pos(p); return [+b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), p.state[0], p.hands.map((h) => (h.grip ? h.grip.kind[0] : '-')).join('')]; }),
             });
           }
         }

@@ -24,6 +24,17 @@ const scaffoldPipes = (x0: number, x1: number, z0: number, z1: number, h: number
 
 const cone = (x: number, z: number): LevelObject => ({ type: 'model', model: 'cone', pos: [x, 0, z], dynamic: { mass: 2 } });
 
+/**
+ * A padded glazier's rack: the pane stands on the base board and leans on the
+ * bar (which hands can't grab). `lean` is the side the bar is on: +1 → +z.
+ */
+const glassRack = (x: number, y: number, z: number, lean: 1 | -1): LevelObject[] => [
+  { type: 'box', pos: [x, y + 0.06, z], size: [2.6, 0.12, 0.8], surface: 'wood', color: 0x8a5a36 },
+  { type: 'box', pos: [x, y + 0.135, z - lean * 0.14], size: [2.0, 0.03, 0.03], color: 0x2a2a30, radius: 0.01 }, // rubber stop
+  ...[-1.08, 1.08].map((dx) => ({ type: 'box' as const, pos: [x + dx, y + 0.6, z + lean * 0.12] as [number, number, number], size: [0.08, 0.96, 0.08] as [number, number, number], color: 0x8a5a36, radius: 0.035, grabbable: false })),
+  { type: 'box', pos: [x, y + 1.0, z + lean * 0.104], size: [2.3, 0.06, 0.06], color: 0x3d6fb0, radius: 0.028, grabbable: false, friction: 0.05 }, // padded bar
+];
+
 const objects: LevelObject[] = [
   // ---- ground: south slab, trench, north slab
   ...island([0, 0, 4], [26, 16], 'concrete').map((o) => (o.type === 'box' && o.surface === 'concrete' && o.pos[1] === -0.25 ? { ...o, color: DIRT } : o)),
@@ -34,10 +45,10 @@ const objects: LevelObject[] = [
   { type: 'sign', pos: [3.6, 1.6, -3.4], size: [1.8, 0.6, 0.06], text: 'ONE PLANK\nEACH!', color: 0xe9554b, post: true },
 
   // ---- start: the pane leans on a padded glazier's rack by the delivery truck
-  { type: 'box', pos: [0, 0.06, 8.5], size: [2.6, 0.12, 0.8], surface: 'wood', color: 0x8a5a36 },
-  { type: 'box', pos: [0, 0.135, 8.36], size: [2.0, 0.03, 0.03], color: 0x2a2a30, radius: 0.01 }, // rubber stop
-  ...[-1.08, 1.08].map((x) => ({ type: 'box' as const, pos: [x, 0.6, 8.62] as [number, number, number], size: [0.08, 0.96, 0.08] as [number, number, number], color: 0x8a5a36, radius: 0.035, grabbable: false })),
-  { type: 'box', pos: [0, 1.0, 8.604], size: [2.3, 0.06, 0.06], color: 0x3d6fb0, radius: 0.028, grabbable: false, friction: 0.05 }, // padded bar
+  ...glassRack(0, 0, 8.5, 1),
+  // and a spare rack where it respawns at checkpoint 1, off to the side of the ramp foot
+  // (the strip between the trench and the ramp is the way through)
+  ...glassRack(-6.2, 0, -7.6, 1),
   { type: 'model', model: 'forklift', pos: [-5.5, 0, 9], rot: [0, 120, 0] },
   { type: 'model', model: 'pallet', pos: [4.6, 0, 9.2] },
   { type: 'box', pos: [4.6, 0.45, 9.2], size: [0.9, 0.6, 0.7], surface: 'brick', color: 0xc9694e, dynamic: { mass: 30 } },
@@ -132,7 +143,8 @@ const level: LevelDef = {
   spawn: { p1: [-1.4, 0, 8.45], p2: [1.4, 0, 8.45], cargo: [0, 0.73, 8.5], cargoRot: [8, 0, 0], yaw: 180 },
   goal: { pos: [-15.2, TOP + 1.0, 13.6], size: [4.4, 2, 3.4], label: 'INSTALL HERE' },
   checkpoints: [
-    { pos: [0, 1, -10.5], size: [8, 2, 3.4], spawn: { p1: [-1.8, 0, -10.8], p2: [1.8, 0, -10.8], cargo: [0, 0.75, -10.2], yaw: 180, cargoYaw: 0 } },
+    // respawn on the flat ground just before the ramp (on the ramp, the pane was out of reach behind its side)
+    { pos: [0, 1, -10.5], size: [8, 2, 3.4], spawn: { p1: [-7.6, 0, -7.6], p2: [-4.8, 0, -7.6], cargo: [-6.2, 0.73, -7.6], cargoRot: [8, 0, 0], yaw: 180 } },
     { pos: [-15.2, S + 1, 3.4], size: [4.4, 2, 3.2], spawn: { p1: [-16.5, S, 3.6], p2: [-13.9, S, 3.6], cargo: [-15.2, S + 0.75, 3.0], yaw: 0, cargoYaw: 0 } },
   ],
   killY: -7,

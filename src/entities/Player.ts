@@ -47,6 +47,8 @@ export interface Grip {
   stretch: number;
   /** Torso-relative height where the hand closed on it (we lift from there). */
   grabY: number;
+  /** How far the load hangs below the grip point (m): tall things grabbed high hang a long way. */
+  hangBelow: number;
 }
 
 interface Hand {
@@ -785,13 +787,21 @@ export class Player {
     let lowest = 0;
     this.updateComfort();
     for (const h of this.hands) {
-      if (h.grip) {
-        this.maintainGrip(h, dt);
-        continue;
-      }
-      // a hand that slipped off only goes back to what the other hand is holding
       const other = this.hands[1 - h.side].grip;
-      const only = h.slipped ? (other && other.body && !other.isStatic ? other.body : null) : undefined;
+      const otherBody = other && other.body && !other.isStatic ? other.body : null;
+      if (h.grip) {
+        // one hand on the cargo and the other on the table, the floor or a friend is never
+        // what anyone means: that hand lets go and joins in
+        const joinCargo = other?.kind === 'cargo' && otherBody && h.grip.body !== otherBody;
+        if (!joinCargo) {
+          this.maintainGrip(h, dt);
+          continue;
+        }
+        this.release(h);
+      }
+      // once one hand holds something that moves, the other goes for the same thing
+      // (and a hand that slipped off only goes back to what the other hand is holding)
+      const only = otherBody ?? (h.slipped ? null : undefined);
       const tgt = only === null ? null : this.findTarget(h.side, only);
       if (!h.reach) h.reach = new THREE.Vector3();
       if (tgt) {
@@ -884,6 +894,7 @@ export class Player {
     );
     let best: Collider | null = null;
     let bestScore = Infinity;
+    let bestIsCargo = false;
     const bestP = new THREE.Vector3();
     for (const c of cands) {
       const proj = c.projectPoint({ x: S.x, y: S.y, z: S.z }, false);
@@ -911,9 +922,13 @@ export class Player {
       this.handWorld(side, _f);
       const dHand = _f.distanceTo(P);
       const score = d - prio + 0.35 * dHand;
-      if (score < bestScore) {
+      // cargo in reach always wins: nobody means to grab the floor or the TV cabinet
+      const isCargo = info?.kind === 'cargo';
+      if (bestIsCargo && !isCargo) continue;
+      if ((isCargo && !bestIsCargo) || score < bestScore) {
         bestScore = score;
         best = c;
+        bestIsCargo = isCargo;
         bestP.copy(P);
       }
     }
@@ -962,6 +977,7 @@ export class Player {
       kind: info?.kind ?? 'static',
       stretch: 0,
       grabY: anchorStart.y,
+      hangBelow: isStatic || !body ? 0 : Math.max(0, gp.y - this.lowestPoint(body)),
     };
     if (!isStatic && body) {
       this.sim.grips.add(body, this.index);
@@ -979,6 +995,30 @@ export class Player {
    * offset we grabbed at (so two movers on opposite ends don't squeeze the
    * load) and only lift it to carry height.
    */
+  /** World height of a body's lowest point. */
+  private lowestPoint(body: RigidBody) {
+    const t = body.translation();
+    let bottom = t.y;
+    for (let i = 0; i < body.numColliders(); i++) {
+      // the closest point to somewhere far below is the lowest point
+      const p = body.collider(i).projectPoint({ x: t.x, y: t.y - 50, z: t.z }, true);
+      if (p) bottom = Math.min(bottom, p.point.y);
+    }
+    return bottom;
+  }
+
+  /**
+   * Carry height for a grip (torso frame): up to carry height, always lifted a
+   * little from where we grabbed it, and high enough that a tall load grabbed
+   * high up (a pane of glass) doesn't scrape along the floor.
+   */
+  private carryY(g: Grip) {
+    const T = tuning.grip;
+    const y = Math.max(T.carryHeight, g.grabY + T.liftExtra);
+    const bottom = tuning.float.rideHeight + y - g.hangBelow; // above the floor when standing
+    return y + Math.max(0, T.floorClearance - bottom);
+  }
+
   private computeCarryGoals() {
     const T = tuning.grip;
     for (const g of [this.hands[0].grip, this.hands[1].grip]) {
@@ -988,7 +1028,7 @@ export class Player {
       g.anchorGoal.set(
         clamp(a.x, sx > 0 ? -0.05 : -T.maxSpan / 2, sx > 0 ? T.maxSpan / 2 : 0.05),
         // loose things: up to carry height, and always lifted a little from where we grabbed them
-        g.isStatic ? Math.max(a.y, T.carryHeight + 0.25) : Math.max(T.carryHeight, g.grabY + T.liftExtra),
+        g.isStatic ? Math.max(a.y, T.carryHeight + 0.25) : this.carryY(g),
         clamp(a.z, 0.3, T.carryForward + 0.15),
       );
       // never ask for a pose the arm can't reach
