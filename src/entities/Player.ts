@@ -45,6 +45,8 @@ export interface Grip {
   kind: string;
   /** Stretch of the grip spring last step (m). */
   stretch: number;
+  /** Torso-relative height where the hand closed on it (we lift from there). */
+  grabY: number;
 }
 
 interface Hand {
@@ -952,6 +954,7 @@ export class Player {
       owner: info?.owner,
       kind: info?.kind ?? 'static',
       stretch: 0,
+      grabY: anchorStart.y,
     };
     if (!isStatic && body) {
       this.sim.grips.add(body, this.index);
@@ -977,7 +980,8 @@ export class Player {
       const a = g.anchorStart.copy(g.anchor);
       g.anchorGoal.set(
         clamp(a.x, sx > 0 ? -0.05 : -T.maxSpan / 2, sx > 0 ? T.maxSpan / 2 : 0.05),
-        g.isStatic ? Math.max(a.y, T.carryHeight + 0.25) : T.carryHeight,
+        // loose things: up to carry height, and always lifted a little from where we grabbed them
+        g.isStatic ? Math.max(a.y, T.carryHeight + 0.25) : Math.max(T.carryHeight, g.grabY + T.liftExtra),
         clamp(a.z, 0.3, T.carryForward + 0.15),
       );
       // never ask for a pose the arm can't reach

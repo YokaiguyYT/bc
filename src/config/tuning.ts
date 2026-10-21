@@ -145,6 +145,8 @@ export const tuning = {
     liftTime: 0.45,
     /** Carry pose relative to the torso centre (m): height and forward distance. */
     carryHeight: 0.24,
+    /** Picking something up lifts it at least this far above where you grabbed it (m). */
+    liftExtra: 0.14,
     carryForward: 0.5,
     /** Max distance between the two hands (m). */
     maxSpan: 0.78,

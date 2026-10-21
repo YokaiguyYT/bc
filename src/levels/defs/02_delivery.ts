@@ -4,7 +4,7 @@ import { bush, counter, island, picture, roadLine, rug, table, windowPane } from
 import { PALETTE } from '../../render/materials';
 
 /**
- * JOB 3 — Fish Out of Water (aquarium, full of water and one very calm fish)
+ * JOB 2 — Fish Out of Water (aquarium, full of water and one very calm fish)
  * Ride in the back of the truck → unload at the dock → push through the
  * revolving door → wet lobby floor → shaky elevator → the third-floor walkway
  * (neighbour Gary, and a dog) → set it down on its stand in the apartment.
@@ -196,7 +196,7 @@ const level: LevelDef = {
   id: 'delivery',
   name: 'Fish Out of Water',
   tagline: 'A full aquarium, a bumpy truck, a wet lobby and a lift that rattles. Spill nothing.',
-  order: 3,
+  order: 2,
   cargo: 'aquarium',
   cameraYaw: 0,
   spawn: { attach: 'truck', p1: [0.6, DOCK, -2.3], p2: [-0.6, DOCK, -2.3], cargo: [0, DOCK + 0.3, -1.0], yaw: 0, cargoYaw: 0 },

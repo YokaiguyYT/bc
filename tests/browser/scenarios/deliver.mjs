@@ -16,6 +16,60 @@ const ROUTES = {
     lift: { keep: true, path: [], ride: 9.5 },
     walkway: { keep: true, path: [[13.6, -41.3, 'inline'], [3, -41.3, 'inline'], [0, -41.3, 'inline'], [-2, -41.6, 'inline'], [-2, -47.4, 'broad'], [-2, -48.42, 'broad']], place: true },
   },
+  // glass pane: edge-first through the slalom, one plank each, edge-first up ramps / see-saw / conveyor
+  'glass-full': {
+    site: {
+      start: true,
+      path: [
+        [0, 6.6, 'broad'],
+        [-2.4, 5.6, 'broad'],
+        [-2.4, 3.2, 'broad'],
+        [2.4, 2.6, 'broad'],
+        [2.4, 0.2, 'broad'],
+        [0, -2.6, 'broad'],
+        [0, -8.0, 'broad'],
+        [0, -16.3, 'broad'],
+        [-7.8, -16.3, 'inline'],
+        [-13.6, -16.3, 'inline'],
+        [-15.6, -16.3, 'inline'],
+        [-15.2, -6.6, 'broad'],
+        [-15.3, -3.9, 'broad'],
+        { wait: 'ball' },
+        [-15.3, -0.6, 'broad'],
+        [-15.2, 3.4, 'broad'],
+        [-15.2, 11.2, 'broad'],
+        [-15.2, 13.4, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // second half of the glass job, from deck 2 heading south
+  'glass-south': {
+    south: { cargo: [-15.2, 3.9, -16.0], yaw: 0, path: [[-15.6, -6.6, 'broad'], [-15.3, -3.9, 'broad'], { wait: 'ball' }, [-15.3, -0.6, 'broad'], [-15.4, 3.4, 'broad'], [-15.2, 11.2, 'broad'], [-15.2, 13.4, 'broad']], place: true },
+  },
+  // CRT TV: out of the living room, down the hall, through the tight door, down the fire escape, into the truck
+  'moveout-full': {
+    flat: {
+      start: true,
+      path: [
+        [-2.0, 3.4, 'broad'],
+        [-4.5, 1.6, 'inline'],
+        [-4.5, -1.2, 'inline'],
+        [-4.5, -8.1, 'inline'],
+        [3.2, -8.1, 'inline'],
+        [5.2, -8.0, 'inline'],
+        [5.2, -6.0, 'inline'],
+        [5.0, -0.3, 'inline'],
+        [5.5, 1.2, 'inline'],
+        [5.0, 3.0, 'inline'],
+        [5.0, 8.6, 'inline'],
+        [9.5, 12.4, 'inline'],
+        [12, 12.4, 'inline'],
+        [12, 4.0, 'inline'],
+      ],
+      place: true,
+    },
+  },
   // wedding cake: side by side the whole way; wait for the lights / a gap in traffic
   'city-full': {
     walk: {
@@ -352,6 +406,23 @@ export default async function ({ page, base, shot }) {
         while (t < 30 && s.sim.signals.get(w.signal) !== 'red') {
           g.advance(0.1, 60, false);
           t += 0.1;
+        }
+        return t;
+      }
+      if (w.wait === 'ball') {
+        // go right after the wrecking ball swings through (it is away the longest then)
+        const ball = s.hazards.find((h) => typeof h.period === 'number' && typeof h.amp === 'number' && typeof h.L === 'number');
+        const frac = () => {
+          const f = (s.physics.time / ball.period + ball.phase) % 1;
+          return f < 0 ? f + 1 : f;
+        };
+        const ok = () => {
+          const f = frac();
+          return (f > 0.05 && f < 0.09) || (f > 0.55 && f < 0.59);
+        };
+        while (t < 20 && !ok()) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
         }
         return t;
       }

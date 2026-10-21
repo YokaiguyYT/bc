@@ -4,7 +4,7 @@ import { bush, counter, island, movingTruck, picture, rug, table } from '../prop
 import { PALETTE } from '../../render/materials';
 
 /**
- * JOB 4 — Time to Go (grandfather clock, laid on its back)
+ * JOB 3 — Time to Go (grandfather clock, laid on its back)
  * Upstairs study → the long gallery (suits of armour, a low chandelier) →
  * the grand staircase → across the great hall (piano, butler) → out of the
  * front doors → up the ramp into the antiques van.
@@ -149,7 +149,7 @@ const level: LevelDef = {
   id: 'mansion',
   name: 'Time to Go',
   tagline: 'Grandad’s clock is going to the antiques dealer. It is long, heavy and very, very old.',
-  order: 4,
+  order: 3,
   cargo: 'clock',
   cameraYaw: 0,
   spawn: { p1: [-11.85, F, -8.8], p2: [-8.55, F, -8.8], cargo: [-10.2, CLOCK_Y, -8.8], cargoRot: LYING, yaw: 90 },
