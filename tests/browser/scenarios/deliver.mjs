@@ -127,6 +127,63 @@ const ROUTES = {
     },
     summit: { keep: true, path: [[0, -44.6, 'broad'], [0, -50.4, 'broad'], [0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
   },
+  // dinosaur egg: out of the lab, past the T-Rex, behind the pendulum as it swings away,
+  // through the laser gates when they blink off, down the ramp and into the incubator
+  'museum-full': {
+    broad: [0.62, 0.72],
+    lab: {
+      start: true,
+      path: [
+        [0, 15.4, 'broad'],
+        [0, 12.0, 'broad'],
+        [1.0, 5.0, 'broad'],
+        [1.0, -1.6, 'broad'],
+        { wait: 'ball' },
+        [1.0, -8.6, 'broad'],
+        [0, -12.2, 'broad'],
+        // wait right in front of each gate, go the moment it blinks off
+        [0, -16.8, 'broad'],
+        { wait: 'laser', z: -18.2 },
+        [0, -19.5, 'broad'],
+        [0, -21.2, 'broad'],
+        { wait: 'laser', z: -22.6 },
+        [0, -23.9, 'broad'],
+        [0, -25.6, 'broad'],
+        { wait: 'laser', z: -27.0 },
+        [0, -28.4, 'broad'],
+        [0, -29.6, 'broad'],
+        [0, -33.0, 'broad'],
+        [0, -35.6, 'broad'],
+        [0, -44.4, 'broad'],
+        [0, -49.2, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // just the start: off the pedestal and out of the lab
+  'museum-start': {
+    broad: [0.62, 0.72],
+    lab: { start: true, path: [[0, 15.4, 'broad'], [0, 12.0, 'broad']] },
+  },
+  // the short way: straight past the T-Rex and behind the pendulum as it swings away
+  // just the laser gates, from checkpoint 1
+  // just the incubator, from the foot of the ramp
+  'museum-nursery': {
+    broad: [0.62, 0.72],
+    nursery: { cargo: [0, -1.1, -45.0], yaw: 180, path: [[0, -49.2, 'broad']], place: true },
+  },
+  'museum-lasers': {
+    broad: [0.62, 0.72],
+    gallery: {
+      cargo: [0, 1.1, -15.6],
+      yaw: 180,
+      path: [[0, -16.8, 'broad'], { wait: 'laser', z: -18.2 }, [0, -19.5, 'broad'], [0, -21.2, 'broad'], { wait: 'laser', z: -22.6 }, [0, -23.9, 'broad'], [0, -25.6, 'broad'], { wait: 'laser', z: -27.0 }, [0, -28.4, 'broad'], [0, -29.6, 'broad']],
+    },
+  },
+  'museum-pendulum': {
+    broad: [0.62, 0.72],
+    hall: { cargo: [1.0, 1.0, 5.0], yaw: 180, path: [[1.0, -1.6, 'broad'], { wait: 'ball' }, [1.0, -8.6, 'broad'], [0, -12.2, 'broad']] },
+  },
   // just the lodge: through the swing doors to the buffet
   'cold-lodge': {
     lodge: { cargo: [0, 10.0, -49.6], yaw: 180, path: [[0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
@@ -170,7 +227,7 @@ export default async function ({ page, base, shot }) {
   await page.goto(base + `?level=${id}&manual=1`);
   await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
-  await page.evaluate((digital) => {
+  await page.evaluate(([digital, gripsDebug]) => {
     window.__FF.game.session.scriptedInput = true;
     window.__digital = digital;
     // TIPS=1: log every message the hint line shows
@@ -182,7 +239,8 @@ export default async function ({ page, base, shot }) {
         const c = s.cargo.body.translation();
         window.__tips.push(`${s.physics.time.toFixed(1)}s @[${c.x.toFixed(1)}, ${c.y.toFixed(1)}, ${c.z.toFixed(1)}] ${hint.textContent}`);
       }).observe(hint, { childList: true, characterData: true, subtree: true });
-  }, !!process.env.DIGITAL);
+    window.__gripsDebug = gripsDebug;
+  }, [!!process.env.DIGITAL, !!process.env.GRIPS]);
   const st = () =>
     page.evaluate(() => {
       const s = window.__FF.game.session;
@@ -194,6 +252,22 @@ export default async function ({ page, base, shot }) {
         grips: s.players.map((p) => p.hands.map((h) => (h.grip ? (h.grip.kind === 'cargo' ? 'c' : h.grip.kind === 'static' ? 's' : h.grip.kind === 'prop' ? 'p' : 'n') : '-')).join('')),
         // how far the grip springs are stretched (the HUD says "slipping!" past 0.35, hands let go past 0.7)
         stretch: s.players.map((p) => +p.maxGripStretch().toFixed(2)),
+        // GRIPS=1: per hand, where it holds (torso frame) vs where it wants the grip to be
+        ...(window.__gripsDebug
+          ? {
+              hands: s.players.map((p) =>
+                p.hands.map((h) => {
+                  if (!h.grip) return '-';
+                  const g = h.grip;
+                  const w = p.gripWorld(g, new (s.cargo.lastHitPos.constructor)());
+                  const inv = p.bodyQ.clone().invert();
+                  const l = w.sub(p.bodyPos).applyQuaternion(inv);
+                  const f = (v) => [v.x, v.y, v.z].map((n) => n.toFixed(2)).join(',');
+                  return `at(${f(l)}) want(${f(g.anchorGoal)})`;
+                }),
+              ),
+            }
+          : {}),
         players: s.players.map((p) => [...r(p.body.translation()), p.state]),
         state: s.state,
         cp: s.checkpoint,
@@ -426,7 +500,7 @@ export default async function ({ page, base, shot }) {
                 const az = ux;
                 const rx = pp.x - c.x;
                 const rz = pp.z - c.z;
-                const r = Math.min(1.8, Math.max(0.8, Math.hypot(rx, rz)));
+                const r = Math.min(window.__broad?.[1] ?? 1.8, Math.max(window.__broad?.[0] ?? 0.8, Math.hypot(rx, rz)));
                 const sg = Math.sign(rx * ax + rz * az) || (i === 0 ? -1 : 1);
                 sx = c.x + ax * sg * r;
                 sz = c.z + az * sg * r;
@@ -480,6 +554,19 @@ export default async function ({ page, base, shot }) {
         while (t < 30 && s.sim.signals.get(w.signal) !== 'red') {
           g.advance(0.1, 60, false);
           t += 0.1;
+        }
+        return t;
+      }
+      if (w.wait === 'laser') {
+        // go as a laser gate blinks off (wait for it to come on first, so we get the whole gap)
+        const gate = s.hazards.find((h) => h.pos && typeof h.live === 'boolean' && Math.abs(h.pos.z - w.z) < 0.5);
+        while (t < 20 && !gate.live) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
+        }
+        while (t < 20 && gate.live) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
         }
         return t;
       }
@@ -546,9 +633,12 @@ export default async function ({ page, base, shot }) {
   };
 
   for (const [name, seg] of Object.entries(route)) {
+    if (Array.isArray(seg)) continue; // route-wide settings (broad)
     if (only.length && !only.includes(name)) continue;
     if (seg.wait) await adv(seg.wait);
     if (!seg.keep) await page.evaluate(() => { window.__snake = null; });
+    // broad: how close either side of the load the movers stay [min, max] (small loads want them close)
+    await page.evaluate((b) => { window.__broad = b; }, seg.broad ?? route.broad ?? null);
     if (seg.start) {
       await adv(1.2);
       await grab();

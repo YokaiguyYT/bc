@@ -16,7 +16,8 @@ import { models } from '../../render/models';
 
 /**
  * A wrecking ball on a pendulum arc. params: length, amp (deg), period (s),
- * phase (0..1), yaw (deg: swing direction), radius.
+ * phase (0..1), yaw (deg: swing direction), radius, style 'pendulum' for a
+ * brass bob on a wire hung from the ceiling instead of a crane.
  */
 class WreckingBall implements Hazard {
   private body: RigidBody;
@@ -51,23 +52,40 @@ class WreckingBall implements Hazard {
     this.body = kinematicBody(sim, start);
     this.col = hazardCollider(sim, this.body, RAPIER.ColliderDesc.ball(r).setRestitution(0.3));
     this.prev.copy(start);
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), glossy(0x3b3f4a, 0.35, 0.6));
+    const brass = p?.style === 'pendulum';
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), brass ? glossy(0xd9a93f, 0.25, 0.85) : glossy(0x3b3f4a, 0.35, 0.6));
     ball.castShadow = true;
+    if (brass) {
+      // a pointed bob, like the real thing
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(r * 0.45, r * 0.9, 18), ball.material);
+      tip.rotation.x = Math.PI;
+      tip.position.y = -r * 1.1;
+      this.mesh.add(tip);
+    }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.05, 8, 16), glossy(0x2b2e36, 0.4, 0.6));
     ring.position.y = r + 0.08;
     this.mesh.add(ball, ring);
     sim.scene.add(this.mesh);
     sim.physics.link(this.body, this.mesh);
-    this.chain = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 6), glossy(0x5a5f69, 0.5, 0.7));
+    this.chain = new THREE.Mesh(new THREE.CylinderGeometry(brass ? 0.012 : 0.04, brass ? 0.012 : 0.04, 1, 6), glossy(0x5a5f69, 0.5, 0.7));
     this.chain.castShadow = true;
     sim.scene.add(this.chain);
+    if (brass) {
+      const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.25, 20), glossy(0xd9a93f, 0.3, 0.8));
+      mount.position.copy(this.pivot).add(new THREE.Vector3(0, 0.12, 0));
+      sim.scene.add(mount);
+      this.extras.push(mount);
+      return;
+    }
     // the crane arm it hangs from
     const arm = new THREE.Mesh(roundedBox([0.5, 0.5, 4], 0.05, 1), matte(0xf2b134));
     arm.position.copy(this.pivot).add(new THREE.Vector3(0, 0.25, 0));
     arm.rotation.y = yaw + Math.PI / 2;
     arm.castShadow = true;
     sim.scene.add(arm);
+    this.extras.push(arm);
   }
+  private extras: THREE.Object3D[] = [];
 
   private posAt(t: number) {
     const a = this.amp * Math.sin(((t / this.period + this.phase) * Math.PI * 2));
@@ -102,6 +120,7 @@ class WreckingBall implements Hazard {
   dispose() {
     this.chain.removeFromParent();
     this.mesh.removeFromParent();
+    for (const e of this.extras) e.removeFromParent();
   }
 }
 registerHazard('wreckingBall', (o, sim) => new WreckingBall(o, sim));

@@ -51,6 +51,13 @@ export abstract class Cargo {
    * slowing down gently) whatever it weighs. Light but delicate things want 1.
    */
   readonly care: number = 0;
+  /**
+   * Hands hold it exactly where they grip it, re-settling each time a hand
+   * latches. Round loads need it: a hand that latched while still swinging out
+   * wide, or before its mover turned to face the load, would keep pulling it
+   * sideways. (Older cargo is tuned without it.)
+   */
+  readonly snug: boolean = false;
   /** false: it rolls on its own wheels; movers push and pull it but never try to lift it. */
   readonly liftable: boolean = true;
   /** A line about the cargo's state for the HUD ("💧 melting!"), or null. */

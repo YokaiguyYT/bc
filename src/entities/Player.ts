@@ -27,6 +27,11 @@ export interface Intent {
   grab: boolean;
 }
 
+/** Cargo that wants hands anchored where they actually grip it (see Cargo.snug). */
+function snugGrip(info: { kind?: string; owner?: unknown } | undefined) {
+  return info?.kind === 'cargo' && !!(info.owner as { snug?: boolean }).snug;
+}
+
 export interface Grip {
   side: 0 | 1;
   collider: Collider;
@@ -961,7 +966,10 @@ export class Player {
         .sub(_d.set(bt.x, bt.y, bt.z))
         .applyQuaternion(_qg.set(br.x, br.y, br.z, br.w).invert());
     }
-    const anchorStart = H.clone().sub(this.bodyPos).applyQuaternion(this.bodyQInv);
+    // snug cargo: anchor where the hand will actually hold, not where it happened
+    // to be when it latched (up to ~0.2 m off the surface): on a narrow round
+    // load a hand still swinging out wide would otherwise keep pulling outward
+    const anchorStart = (snugGrip(info) ? gp : H).clone().sub(this.bodyPos).applyQuaternion(this.bodyQInv);
     h.grip = {
       side: h.side,
       collider,
@@ -1027,6 +1035,13 @@ export class Player {
       if (!g) continue;
       const sx = g.side === 0 ? 1 : -1;
       const a = g.anchorStart.copy(g.anchor);
+      // snug cargo: hold it where the hand really is now (a hand that latched
+      // before we turned to face the load would otherwise keep pulling sideways)
+      if (!g.isStatic && g.body && g.kind === 'cargo' && (g.owner as { snug?: boolean }).snug) {
+        const w = this.gripWorld(g, _c).sub(this.bodyPos).applyQuaternion(this.bodyQInv);
+        a.x = w.x;
+        a.z = w.z;
+      }
       g.anchorGoal.set(
         clamp(a.x, sx > 0 ? -0.05 : -T.maxSpan / 2, sx > 0 ? T.maxSpan / 2 : 0.05),
         // loose things: up to carry height, and always lifted a little from where we grabbed them

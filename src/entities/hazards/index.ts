@@ -5,3 +5,4 @@ import './creatures';
 import './traffic';
 import './heat';
 import './winter';
+import './museum';
