@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { BoxObj, CylinderObj, LevelObject, SignObj, TriggerZone, Vec3 } from './types';
-import { ramp } from './helpers';
+import { railing, ramp } from './helpers';
 import { PALETTE } from '../render/materials';
 
 /**
@@ -25,12 +25,16 @@ function frame(origin: Vec3, yawDeg: number) {
  * foot on the street; the truck points along `yawDeg` (0 = +Z).
  * Returns the objects plus the goal zone inside the cargo box.
  */
-export function movingTruck(back: Vec3, yawDeg: number, opts: { color?: number; ramp?: boolean; logo?: string } = {}) {
+export function movingTruck(
+  back: Vec3,
+  yawDeg: number,
+  opts: { color?: number; ramp?: boolean; rampWidth?: number; rampLength?: number; rampRails?: boolean; logo?: string } = {},
+) {
   const f = frame(back, yawDeg);
   const y = yawDeg;
   const white = 0xf6f3ec;
   const color = opts.color ?? 0xff7a3d;
-  const rampLen = 3.4;
+  const rampLen = opts.rampLength ?? 3.4;
   const z0 = rampLen; // back edge of the cargo floor
   const L = 5;
   const floorY = 1.1;
@@ -67,7 +71,10 @@ export function movingTruck(back: Vec3, yawDeg: number, opts: { color?: number; 
       color: white,
       textColor: '#ff6b2c',
     } as SignObj);
-  if (opts.ramp !== false) objs.push(ramp(f.p(0, 0, 0.05), f.p(0, floorY, z0 + 0.05), 1.7, { surface: 'metal', thickness: 0.12 }));
+  const rw = opts.rampWidth ?? 1.7;
+  if (opts.ramp !== false) objs.push(ramp(f.p(0, 0, 0.05), f.p(0, floorY, z0 + 0.05), rw, { surface: 'metal', thickness: 0.12 }));
+  if (opts.ramp !== false && opts.rampRails)
+    for (const sx of [-1, 1]) objs.push(...railing(f.p(sx * (rw / 2 - 0.04), 0, 0.3), f.p(sx * (rw / 2 - 0.04), floorY * ((z0 - 0.2) / z0), z0 - 0.2), { height: 0.95, color: 0xd8d8d8, spacing: 1.1 }));
   const c = f.p(0, floorY + 1.0, z0 + L / 2);
   const goal: TriggerZone = { pos: c, size: yawDeg % 180 === 0 ? [2.1, 2, L - 0.4] : [L - 0.4, 2, 2.1] };
   return { objs, goal };

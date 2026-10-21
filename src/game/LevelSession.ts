@@ -336,8 +336,9 @@ export class LevelSession {
     }
     const yawOff = new THREE.Euler().setFromQuaternion(rot, 'YXZ').y;
     const world = (a: Vec3) => v3(a).applyQuaternion(rot).add(pos);
+    // cargoRot: tilt (X) and roll (Z) first, then turn (Y) — reads like "lay it down, then face it"
     const local = s.cargoRot
-      ? new THREE.Quaternion().setFromEuler(new THREE.Euler(s.cargoRot[0] * DEG, s.cargoRot[1] * DEG, s.cargoRot[2] * DEG))
+      ? new THREE.Quaternion().setFromEuler(new THREE.Euler(s.cargoRot[0] * DEG, s.cargoRot[1] * DEG, s.cargoRot[2] * DEG, 'YXZ'))
       : new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (s.cargoYaw ?? 0) * DEG);
     return {
       p: [world(s.p1), world(s.p2)],

@@ -119,6 +119,8 @@ class Npc implements Hazard {
       if (this.pause > 0) {
         this.pause -= dt;
         intent.moveX = intent.moveZ = 0;
+      } else if (this.giveWay(pos)) {
+        intent.moveX = intent.moveZ = 0;
       } else {
         const tgt = this.pts[this.ptIdx];
         const to = tgt.clone().sub(pos).setY(0);
@@ -142,6 +144,24 @@ class Npc implements Hazard {
       this.lastPos.copy(pos);
     }
     p.preStep(dt);
+  }
+
+  /** Walkers are polite: they stop for a mover or the load right in their path. */
+  private giveWay(pos: THREE.Vector3) {
+    const tgt = this.pts[this.ptIdx];
+    const dir = tgt.clone().sub(pos).setY(0);
+    if (dir.lengthSq() < 1e-4) return false;
+    dir.normalize();
+    const blocked = (p: THREE.Vector3) => {
+      const rel = p.clone().sub(pos).setY(0);
+      const ahead = rel.dot(dir);
+      const side = Math.abs(rel.x * dir.z - rel.z * dir.x);
+      return ahead > 0.2 && ahead < 1.9 && side < 0.9;
+    };
+    const others = (this.sim.players ?? []).map((p) => p.bodyPos);
+    const cargo = this.sim.cargo?.body.translation();
+    if (cargo) others.push(new THREE.Vector3(cargo.x, cargo.y, cargo.z));
+    return others.some(blocked);
   }
 
   postStep(dt: number) {

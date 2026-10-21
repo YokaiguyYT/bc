@@ -675,7 +675,10 @@ registerHazard('spinner', (o, sim) => new Spinner(o, sim));
 
 // ------------------------------------------------------------------ swinging door
 
-/** A door on a spring hinge you push through. params: width, height, side (hinge side ±1). */
+/**
+ * A door on a spring hinge you push through. params: width, height, side
+ * (hinge side ±1), open (deg it rests at — propped open), spring (stiffness).
+ */
 class SwingDoor implements Hazard {
   private door: RigidBody;
   private visual: THREE.Mesh;
@@ -702,8 +705,14 @@ class SwingDoor implements Hazard {
     sim.physics.setInfo(c, { kind: 'prop', material: 'wood', grabbable: true });
     const j = world.createImpulseJoint(RAPIER.JointData.revolute({ x: 0, y: H / 2, z: 0 }, { x: -side * W / 2, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }), anchor, this.door, true);
     const uj = j as unknown as { configureMotorPosition(t: number, k: number, d: number): void; setLimits(a: number, b: number): void };
-    uj.configureMotorPosition(0, 6, 2); // springs back shut
+    const rest = num(p, 'open', 0) * DEG * side;
+    uj.configureMotorPosition(rest, num(p, 'spring', 6), 2); // springs back to its resting angle
     uj.setLimits(-1.7, 1.7);
+    if (rest) this.door.setRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw + rest), true);
+    if (rest) {
+      const c = new THREE.Vector3(side * W / 2, H / 2, 0).applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw + rest)).add(hinge);
+      this.door.setTranslation({ x: c.x, y: c.y, z: c.z }, true);
+    }
     void this.joint;
     this.visual = new THREE.Mesh(roundedBox([W - 0.04, H, 0.07], 0.02, 1), matte((p?.color as number) ?? 0xc98f5a, { map: surfaceTexture('planks'), key: 'door' }));
     this.visual.castShadow = true;

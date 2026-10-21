@@ -143,7 +143,11 @@ export interface SpawnSet {
   /** Facing yaw for the players (degrees). */
   yaw: number;
   cargoYaw?: number;
-  /** Full cargo rotation (deg, XYZ) — e.g. lay the clock down. Overrides cargoYaw. */
+  /**
+   * Full cargo rotation in degrees [tilt X, turn Y, roll Z]; the tilt/roll is
+   * applied first, then the turn. [-90, 90, 0] = on its back, top pointing -X.
+   * Overrides cargoYaw.
+   */
   cargoRot?: Vec3;
   /** Positions are relative to this moving hazard (tag), e.g. riding in a truck. */
   attach?: string;

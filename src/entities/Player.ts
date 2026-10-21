@@ -50,6 +50,8 @@ export interface Grip {
 interface Hand {
   side: 0 | 1;
   grip: Grip | null;
+  /** Slipped off while grab was held: only re-grabs what the other hand holds until grab is pressed again. */
+  slipped: boolean;
   /** World point the hand is reaching for (null = not reaching). */
   reach: THREE.Vector3 | null;
   reachVel: THREE.Vector3;
@@ -134,8 +136,8 @@ export class Player {
   private flail = 0;
 
   hands: [Hand, Hand] = [
-    { side: 0, grip: null, reach: null, reachVel: new THREE.Vector3() },
-    { side: 1, grip: null, reach: null, reachVel: new THREE.Vector3() },
+    { side: 0, grip: null, slipped: false, reach: null, reachVel: new THREE.Vector3() },
+    { side: 1, grip: null, slipped: false, reach: null, reachVel: new THREE.Vector3() },
   ];
   /** Rotation of each held body relative to our torso at grab time (body handle -> quat). */
   /** Held body orientation relative to our heading (yaw only — not our lean or waddle). */
@@ -758,8 +760,10 @@ export class Player {
       }
       this.setDownT = -1;
       if (this.isHolding()) this.releaseAll();
-      this.hands[0].reach = null;
-      this.hands[1].reach = null;
+      for (const h of this.hands) {
+        h.reach = null;
+        h.slipped = false;
+      }
       this.reachLow = 0;
       return;
     }
@@ -775,7 +779,10 @@ export class Player {
         this.maintainGrip(h, dt);
         continue;
       }
-      const tgt = this.findTarget(h.side);
+      // a hand that slipped off only goes back to what the other hand is holding
+      const other = this.hands[1 - h.side].grip;
+      const only = h.slipped ? (other && other.body && !other.isStatic ? other.body : null) : undefined;
+      const tgt = only === null ? null : this.findTarget(h.side, only);
       if (!h.reach) h.reach = new THREE.Vector3();
       if (tgt) {
         h.reach.copy(tgt.point);
@@ -834,7 +841,7 @@ export class Player {
   }
 
   /** Auto-aim: the nearest grabbable point within reach of this shoulder. */
-  private findTarget(side: 0 | 1): { collider: Collider; point: THREE.Vector3 } | null {
+  private findTarget(side: 0 | 1, only?: RigidBody): { collider: Collider; point: THREE.Vector3 } | null {
     const T = tuning.grip;
     const world = this.sim.physics.world;
     const phys = this.sim.physics;
@@ -858,6 +865,7 @@ export class Player {
       undefined,
       (c) => {
         if (this.ownColliders.has(c.handle)) return false;
+        if (only && c.parent()?.handle !== only.handle) return false;
         const info = phys.info(c);
         if (!info) return true;
         if (info.grabbable === false) return false;
@@ -1026,16 +1034,17 @@ export class Player {
     if (g.slip > T.slipTime) {
       this.sim.events.emit('slip', { player: this.index, pos: Gp.clone() });
       this.release(h);
+      h.slipped = true;
     }
   }
 
-  /** Damp the held object's spin relative to us and softly keep its orientation. */
   /** Rotation about world up matching the torso's heading. */
   private headingQ(out: THREE.Quaternion) {
     const f = _g.set(0, 0, 1).applyQuaternion(this.bodyQ);
     return out.setFromAxisAngle(Y_AXIS, Math.atan2(f.x, f.z));
   }
 
+  /** Damp the held object's spin relative to us and softly keep its orientation. */
   private applyHoldTorques(dt: number) {
     const T = tuning.grip;
     for (const b of this.heldBodies()) {

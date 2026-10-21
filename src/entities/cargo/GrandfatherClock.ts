@@ -68,7 +68,7 @@ export class GrandfatherClock extends Cargo {
   readonly kind = 'clock' as const;
   readonly displayName = 'Grandfather Clock';
   readonly value = 1500;
-  readonly tip = 'Too tall for doorways: tip it over GENTLY and carry it lying down.';
+  readonly tip = 'It is long and heavy: carry it end to end, and swing wide round corners.';
   readonly fragility: Fragility = { safeShock: 1.9, perShock: 0.085, maxPerHit: 0.28, spinLimit: 3.5, spinDamage: 0.05 };
 
   private pendulum!: THREE.Group;
@@ -91,10 +91,11 @@ export class GrandfatherClock extends Cargo {
   }
 
   protected buildColliders() {
-    const m = 32;
+    // heavy, and heavier at the base end — but one mover can still lift either end
+    const m = 26;
     const inertia = { x: (m / 12) * (H * H + D * D), y: (m / 12) * (W * W + D * D), z: (m / 12) * (W * W + H * H) };
     this.addCollider(
-      RAPIER.ColliderDesc.cuboid(W / 2, H / 2, D / 2).setMassProperties(m, { x: 0, y: -0.28, z: 0 }, inertia, { x: 0, y: 0, z: 0, w: 1 }),
+      RAPIER.ColliderDesc.cuboid(W / 2, H / 2, D / 2).setMassProperties(m, { x: 0, y: -0.2, z: 0 }, inertia, { x: 0, y: 0, z: 0, w: 1 }),
       0.7,
     );
   }

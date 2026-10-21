@@ -135,10 +135,12 @@ export function railing(a: Vec3, b: Vec3, opts: { height?: number; color?: numbe
     out.push({ type: 'cylinder', pos: [p.x, p.y + height / 2, p.z], radius: 0.045, height, color, segments: 10 } satisfies CylinderObj);
   }
   const d = B.clone().sub(A);
-  const yaw = Math.atan2(d.x, d.z) * DEG;
   const mid = A.clone().add(B).multiplyScalar(0.5);
-  const elev = Math.atan2(d.y, Math.hypot(d.x, d.z)) * DEG;
-  out.push({ type: 'box', pos: [mid.x, mid.y + height, mid.z], size: [0.09, 0.09, L + 0.09], rot: [-elev, yaw, 0], color, radius: 0.04 });
+  // turn to face along the rail, then tilt with the slope (as one rotation, so it works in any direction)
+  const q = new THREE.Quaternion()
+    .setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(d.x, d.z))
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.atan2(d.y, Math.hypot(d.x, d.z))));
+  out.push({ type: 'box', pos: [mid.x, mid.y + height, mid.z], size: [0.09, 0.09, L + 0.09], rot: eulerDeg(q), color, radius: 0.04 });
   return out;
 }
 
