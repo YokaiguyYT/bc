@@ -101,15 +101,17 @@ Every number below lives in `src/config/tuning.ts` and has a slider in the dev p
 - **Camera framing when the movers split up:** `camera.minDistance`, `camera.padding`.
 - **Par times:** set per level in its file. They're rough guesses from the bot's runs.
 
-For reference, this is the cargo condition the bot delivered with:
+For reference, this is the cargo condition the bot delivered with (same in Chromium and WebKit):
 
 | Job | Bot result |
 | --- | --- |
 | TV | 100% |
-| Aquarium | 39–83% (the neighbour and his dog move randomly) |
-| Clock | 95–100% down to the hall; 100% for the van ramp on its own |
+| Aquarium | 62–80% (the neighbour and his dog move randomly) |
+| Clock | 100% down to the hall; 100% for the van ramp on its own |
 | Glass | ~99% (each half run separately) |
-| Cake | ~77% |
+| Cake | 80–89% |
+
+The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop precisely or re-grab a dropped corner. It delivers the clock at ~87% but often stalls or drops things elsewhere, so treat its numbers as a worst case.
 
 ## Known limitations
 
