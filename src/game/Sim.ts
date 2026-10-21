@@ -4,6 +4,8 @@ import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { EventBus } from './events';
 import { playerBodyBit } from '../physics/groups';
 import type { Effects } from '../render/Effects';
+import type { Player } from '../entities/Player';
+import type { Cargo } from '../entities/cargo/Cargo';
 
 /**
  * Tracks who is holding what. When a player grabs a dynamic body, that body
@@ -104,4 +106,9 @@ export interface Sim {
   time(): number;
   /** Particle effects (absent in headless tests). */
   fx?: Effects;
+  /** The two movers (for hazards that react to them). */
+  players?: Player[];
+  cargo?: Cargo;
+  /** Traffic light states by tag: 'green' | 'yellow' | 'red' (for cars). */
+  signals?: Map<string, 'green' | 'yellow' | 'red'>;
 }

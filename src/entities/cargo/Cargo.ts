@@ -23,6 +23,10 @@ export interface Fragility {
 export interface CargoOptions {
   pos: THREE.Vector3;
   yaw: number;
+  /** Full rotation; overrides yaw (e.g. a clock laid on its back). */
+  rot?: THREE.Quaternion;
+  /** Starting velocity (spawning on something that moves). */
+  vel?: THREE.Vector3;
 }
 
 const _v = new THREE.Vector3();
@@ -72,7 +76,8 @@ export abstract class Cargo {
 
   /** Subclasses call this from their constructor. */
   protected init(opts: CargoOptions) {
-    this.createBody(opts.pos, opts.yaw);
+    this.createBody(opts.pos, opts.rot ?? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), opts.yaw));
+    if (opts.vel) this.body.setLinvel({ x: opts.vel.x, y: opts.vel.y, z: opts.vel.z }, true);
     this.buildColliders();
     this.buildVisual();
     this.sim.physics.link(this.body, this.visual);
@@ -81,8 +86,8 @@ export abstract class Cargo {
     this.snapshotVelocity();
   }
 
-  private createBody(pos: THREE.Vector3, yaw: number) {
-    _q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+  private createBody(pos: THREE.Vector3, rot: THREE.Quaternion) {
+    _q.copy(rot);
     this.body = this.sim.physics.world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(pos.x, pos.y, pos.z)
@@ -212,12 +217,13 @@ export abstract class Cargo {
     return out.set(t.x, t.y, t.z);
   }
 
-  /** Teleport (respawn at checkpoint). */
-  reset(pos: THREE.Vector3, yaw: number) {
-    _q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+  /** Teleport (respawn at checkpoint). `rot` is a yaw (radians) or a full rotation. */
+  reset(pos: THREE.Vector3, rot: number | THREE.Quaternion, vel?: THREE.Vector3) {
+    if (typeof rot === 'number') _q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+    else _q.copy(rot);
     this.body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
     this.body.setRotation({ x: _q.x, y: _q.y, z: _q.z, w: _q.w }, true);
-    this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    this.body.setLinvel({ x: vel?.x ?? 0, y: vel?.y ?? 0, z: vel?.z ?? 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this.snapshotVelocity();
     this.grace = tuning.damage.spawnGrace;

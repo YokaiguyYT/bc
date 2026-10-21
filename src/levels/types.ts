@@ -53,6 +53,8 @@ export interface BoxObj extends Base {
   castShadow?: boolean;
   /** Texture metres-per-repeat override. */
   tile?: number;
+  /** Fade out when it blocks the camera's view of the movers (walls). */
+  fade?: boolean;
 }
 
 export interface CylinderObj extends Base {
@@ -85,6 +87,8 @@ export interface ModelObj extends Base {
   collider?: 'box' | 'none' | { size: Vec3; offset?: Vec3 };
   dynamic?: { mass: number };
   grabbable?: boolean;
+  /** 'bottom' (default): pos is where the model sits on the floor. 'center': pos is its bounding-box centre. */
+  align?: 'bottom' | 'center';
 }
 
 /** Billboard text / signs painted on a plane. */
@@ -113,9 +117,13 @@ export interface HazardObj {
     | 'pigeons'
     | 'fan'
     | 'swingDoor'
+    | 'revolvingDoor'
     | 'truck'
     | 'crusher'
-    | 'sprinkler';
+    | 'sprinkler'
+    | 'conveyor'
+    | 'trafficLight'
+    | 'chandelier';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */
@@ -135,6 +143,10 @@ export interface SpawnSet {
   /** Facing yaw for the players (degrees). */
   yaw: number;
   cargoYaw?: number;
+  /** Full cargo rotation (deg, XYZ) — e.g. lay the clock down. Overrides cargoYaw. */
+  cargoRot?: Vec3;
+  /** Positions are relative to this moving hazard (tag), e.g. riding in a truck. */
+  attach?: string;
 }
 
 export type LevelObject = BoxObj | CylinderObj | BallObj | ModelObj | SignObj | HazardObj;

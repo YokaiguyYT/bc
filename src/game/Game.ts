@@ -85,15 +85,15 @@ export class Game {
     if (this.frameTimes.length > 120) this.frameTimes.shift();
   }
 
-  /** Test hook: advance the game by `seconds` in fixed frames, then render once. */
-  advance(seconds: number, fps = 60) {
+  /** Test hook: advance the game by `seconds` in fixed frames, then render once (unless told not to). */
+  advance(seconds: number, fps = 60, render = true) {
     const n = Math.max(1, Math.round(seconds * fps));
     for (let i = 0; i < n; i++) {
       this.keyboard.beginFrame();
       this.onFrame?.(1 / fps);
       this.session?.update(1 / fps);
     }
-    this.renderer.render();
+    if (render) this.renderer.render();
   }
 
   get levels() {

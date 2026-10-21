@@ -674,14 +674,92 @@ export class Player {
     return out.copy(g.local).applyQuaternion(_q3.set(r.x, r.y, r.z, r.w)).add(_d.set(t.x, t.y, t.z));
   }
 
+  /** Seconds into a gentle put-down (grab released while carrying something), or -1. */
+  private setDownT = -1;
+
+  /** Is any hand carrying a loose object (cargo / prop) we'd rather not drop? */
+  private carryingLoad() {
+    return this.hands.some((h) => h.grip && h.grip.body && !h.grip.isStatic && (h.grip.kind === 'cargo' || h.grip.kind === 'prop'));
+  }
+
+  /** Lower held things toward the floor instead of letting go mid-air. */
+  private beginSetDown() {
+    this.setDownT = 0;
+    for (const h of this.hands) {
+      const g = h.grip;
+      if (!g) continue;
+      g.anchorStart.copy(g.anchor);
+      g.anchorGoal.copy(g.anchor);
+      g.t = 1;
+    }
+  }
+
+  /** Held things are sitting on something (not just hanging from our hands). */
+  private loadResting() {
+    const world = this.sim.physics.world;
+    for (const b of this.heldBodies()) {
+      const v = b.linvel();
+      if (Math.abs(v.y) > 0.3) return false;
+      let supported = false;
+      for (let i = 0; i < b.numColliders() && !supported; i++) {
+        const c = b.collider(i);
+        world.contactPairsWith(c, (o) => {
+          if (supported) return;
+          const kind = this.sim.physics.info(o)?.kind;
+          if (kind === 'player' || kind === 'npc') return;
+          world.contactPair(c, o, (m) => {
+            if (m.numSolverContacts() > 0 && Math.abs(m.normal().y) > 0.5) supported = true;
+          });
+        });
+      }
+      if (!supported) return false;
+    }
+    return true;
+  }
+
+  private updateSetDown(dt: number) {
+    const T = tuning.grip;
+    this.setDownT += dt;
+    // squat and lower the hands at a gentle, steady pace
+    this.reachLow = Math.min(1, this.reachLow + dt * T.setDownSquat);
+    for (const h of this.hands) {
+      const g = h.grip;
+      if (!g) continue;
+      g.anchorGoal.y = Math.max(T.setDownLow, g.anchorGoal.y - T.setDownSpeed * dt);
+      const sx = g.side === 0 ? 1 : -1;
+      const sh = _a.set(sx * RIG.shoulder.x, RIG.shoulder.y, 0);
+      const d = _b.copy(g.anchorGoal).sub(sh);
+      if (d.length() > ARM_REACH * 0.95) g.anchorGoal.copy(sh).add(d.setLength(ARM_REACH * 0.95));
+      g.anchorStart.copy(g.anchorGoal);
+      this.maintainGrip(h, dt);
+    }
+    this.applyHoldTorques(dt);
+    const done = this.setDownT > T.setDownMax || (this.setDownT > 0.2 && this.loadResting()) || this.intent.jumpPressed;
+    if (done || !this.isHolding()) {
+      this.setDownT = -1;
+      if (this.isHolding()) this.releaseAll();
+    }
+  }
+
   private updateGrab(dt: number) {
     const want = this.intent.grab && this.state === 'active';
     if (!want) {
+      if (this.state === 'active' && this.setDownT < 0 && this.carryingLoad()) this.beginSetDown();
+      if (this.setDownT >= 0 && this.state === 'active') {
+        this.updateSetDown(dt);
+        return;
+      }
+      this.setDownT = -1;
       if (this.isHolding()) this.releaseAll();
       this.hands[0].reach = null;
       this.hands[1].reach = null;
       this.reachLow = 0;
       return;
+    }
+    if (this.setDownT >= 0) {
+      // grabbed again mid put-down: lift it back up
+      this.setDownT = -1;
+      this.computeCarryGoals();
     }
     let lowest = 0;
     this.updateComfort();
@@ -1167,7 +1245,7 @@ export class Player {
   // ---------------------------------------------------------------- utils
 
   /** Teleport the whole ragdoll, standing, feet at `feet`. */
-  teleport(feet: THREE.Vector3, yaw: number) {
+  teleport(feet: THREE.Vector3, yaw: number, vel?: THREE.Vector3) {
     this.releaseAll();
     const yq = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, yaw);
     const origin = feet.clone().add(new THREE.Vector3(0, tuning.float.rideHeight + 0.05, 0));
@@ -1176,7 +1254,7 @@ export class Player {
       const b = this.parts[name];
       b.setTranslation({ x: p.x, y: p.y, z: p.z }, true);
       b.setRotation({ x: yq.x, y: yq.y, z: yq.z, w: yq.w }, true);
-      b.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      b.setLinvel({ x: vel?.x ?? 0, y: vel?.y ?? 0, z: vel?.z ?? 0 }, true);
       b.setAngvel({ x: 0, y: 0, z: 0 }, true);
     }
     this.facingYaw = yaw;

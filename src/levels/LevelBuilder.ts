@@ -187,10 +187,11 @@ export class LevelBuilder {
       if (o.grabbable === false) this.sim.physics.info(c)!.grabbable = false;
     }
     if (o.visible !== false) {
-      const mesh = new THREE.Mesh(roundedBox(o.size, o.radius, o.tile ?? s.tile), surfaceMaterial(surface, o.color));
+      const mat: THREE.Material = o.fade ? surfaceMaterial(surface, o.color).clone() : surfaceMaterial(surface, o.color);
+      const mesh = new THREE.Mesh(roundedBox(o.size, o.radius, o.tile ?? s.tile), mat);
       mesh.position.set(...o.pos);
       mesh.quaternion.copy(q);
-      this.addMesh(mesh, built, { fade: (o as BoxObj & { fade?: boolean }).fade, tag: o.tag, castShadow: o.castShadow });
+      this.addMesh(mesh, built, { fade: o.fade, tag: o.tag, castShadow: o.castShadow });
     }
   }
 
@@ -240,7 +241,8 @@ export class LevelBuilder {
   private addModel(o: ModelObj, built: BuiltLevel) {
     const q = quatFrom(o.rot);
     const inst = models.instance(o.model, o.size);
-    const size: Vec3 = o.size ?? inst.size;
+    const size: Vec3 = inst.size;
+    if ((o.align ?? 'bottom') === 'bottom') o = { ...o, pos: [o.pos[0], o.pos[1] + size[1] / 2, o.pos[2]] };
     const surface = o.surface ?? 'wood';
     let colSize: Vec3 | null = size;
     let colOffset: Vec3 = [0, 0, 0];

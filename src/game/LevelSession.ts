@@ -38,6 +38,16 @@ export interface SessionResult {
 
 const v3 = (a: Vec3) => new THREE.Vector3(a[0], a[1], a[2]);
 const _a = new THREE.Vector3();
+const DEG = Math.PI / 180;
+
+/** A spawn set resolved to world space (it may ride on a moving hazard). */
+interface SpawnPose {
+  p: [THREE.Vector3, THREE.Vector3];
+  yaw: number;
+  cargo: THREE.Vector3;
+  cargoRot: THREE.Quaternion;
+  vel: THREE.Vector3;
+}
 
 /** One attempt at one level. */
 export class LevelSession {
@@ -82,6 +92,7 @@ export class LevelSession {
       events: this.events,
       grips: new GripRegistry(),
       time: () => this.physics.time,
+      signals: new Map(),
     };
     renderer.scene.add(this.root);
     renderer.applyTheme({ ...DEFAULT_THEME, ...(def.theme ?? {}) });
@@ -111,21 +122,23 @@ export class LevelSession {
 
     // movers
     this.spawn = def.spawn;
-    const s = def.spawn;
+    const s = this.spawnPose(def.spawn);
     for (let i = 0; i < 2; i++) {
       const p = new Player(this.sim, {
         index: i,
         name: PLAYER_NAMES[i],
         color: PLAYER_COLORS[i],
-        position: v3(i === 0 ? s.p1 : s.p2),
-        yaw: (s.yaw * Math.PI) / 180,
+        position: s.p[i],
+        yaw: s.yaw,
       });
       this.players.push(p);
       const rig = new PlayerRig(p, this.physics);
       this.rigs.push(rig);
       this.root.add(rig.root);
     }
-    this.cargo = createCargo(def.cargo, this.sim, { pos: v3(s.cargo), yaw: ((s.cargoYaw ?? 0) * Math.PI) / 180 });
+    this.cargo = createCargo(def.cargo, this.sim, { pos: s.cargo, yaw: 0, rot: s.cargoRot, vel: s.vel });
+    this.sim.players = this.players;
+    this.sim.cargo = this.cargo;
 
     // physics hooks
     this.physics.preStep.push((dt) => {
@@ -210,7 +223,37 @@ export class LevelSession {
     }
     const pts = this.focusPoints();
     this.cameraRig.update(frameDt, pts.length ? pts : [this.cameraRig.focusPoint.clone()], rot);
+    this.fadeOccluders(frameDt, pts);
     this.renderer.setShadowFocus(this.cameraRig.focusPoint, this.cameraRig.currentDistance * 0.9 + 6);
+  }
+
+  private ray = new THREE.Raycaster();
+  /** Walls marked `fade` go see-through when they hide a mover or the cargo. */
+  private fadeOccluders(dt: number, pts: THREE.Vector3[]) {
+    const faders = this.level.faders;
+    if (!faders.length) return;
+    const cam = this.renderer.camera.position;
+    const hidden = new Set<THREE.Object3D>();
+    for (const p of pts) {
+      const dir = p.clone().sub(cam);
+      const dist = dir.length();
+      this.ray.set(cam, dir.normalize());
+      this.ray.far = dist - 0.3;
+      for (const hit of this.ray.intersectObjects(faders, false)) hidden.add(hit.object);
+    }
+    for (const m of faders) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      const target = hidden.has(m) ? 0.18 : 1;
+      const o = mat.opacity + (target - mat.opacity) * Math.min(1, dt * 8);
+      mat.opacity = o;
+      const fading = o < 0.98;
+      if (mat.transparent !== fading) {
+        mat.transparent = fading;
+        mat.depthWrite = !fading;
+        mat.needsUpdate = true;
+      }
+      m.castShadow = true;
+    }
   }
 
   private inZone(p: THREE.Vector3, pos: Vec3, size: Vec3, pad = 0) {
@@ -273,10 +316,38 @@ export class LevelSession {
     }
   }
 
+  /**
+   * Resolve a spawn set to world space. Attached spawns are relative to a
+   * moving hazard's current pose and inherit its velocity.
+   */
+  private spawnPose(s: SpawnSet): SpawnPose {
+    const carrier = s.attach ? this.hazards.find((h) => h.tag === s.attach && h.bodyRef) : undefined;
+    const pos = new THREE.Vector3();
+    const rot = new THREE.Quaternion();
+    if (carrier?.bodyRef) {
+      const t = carrier.bodyRef.translation();
+      const r = carrier.bodyRef.rotation();
+      pos.set(t.x, t.y, t.z);
+      rot.set(r.x, r.y, r.z, r.w);
+    }
+    const yawOff = new THREE.Euler().setFromQuaternion(rot, 'YXZ').y;
+    const world = (a: Vec3) => v3(a).applyQuaternion(rot).add(pos);
+    const local = s.cargoRot
+      ? new THREE.Quaternion().setFromEuler(new THREE.Euler(s.cargoRot[0] * DEG, s.cargoRot[1] * DEG, s.cargoRot[2] * DEG))
+      : new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (s.cargoYaw ?? 0) * DEG);
+    return {
+      p: [world(s.p1), world(s.p2)],
+      yaw: s.yaw * DEG + yawOff,
+      cargo: world(s.cargo),
+      cargoRot: rot.clone().multiply(local),
+      vel: carrier?.bodyVel?.clone() ?? new THREE.Vector3(),
+    };
+  }
+
   respawnPlayer(p: Player) {
-    const s = this.spawn;
-    const pos = v3(p.index === 0 ? s.p1 : s.p2);
-    p.teleport(pos.add(_a.set(0, 0.3, 0)), (s.yaw * Math.PI) / 180);
+    const s = this.spawnPose(this.spawn);
+    const pos = s.p[p.index];
+    p.teleport(pos.clone().add(_a.set(0, 0.3, 0)), s.yaw, s.vel);
     this.physics.snapLinks();
     this.falls++;
     this.events.emit('respawn', { pos: pos.clone() });
@@ -284,15 +355,12 @@ export class LevelSession {
 
   /** Put players and cargo back at the last checkpoint. */
   respawnAll(cargoFell: boolean) {
-    const s = this.spawn;
-    for (const p of this.players) {
-      const pos = v3(p.index === 0 ? s.p1 : s.p2);
-      p.teleport(pos.add(_a.set(0, 0.3, 0)), (s.yaw * Math.PI) / 180);
-    }
-    this.cargo.reset(v3(s.cargo).add(_a.set(0, 0.25, 0)), ((s.cargoYaw ?? 0) * Math.PI) / 180);
+    const s = this.spawnPose(this.spawn);
+    for (const p of this.players) p.teleport(s.p[p.index].clone().add(_a.set(0, 0.3, 0)), s.yaw, s.vel);
+    this.cargo.reset(s.cargo.clone().add(_a.set(0, 0.25, 0)), s.cargoRot, s.vel);
     this.physics.snapLinks();
     if (cargoFell) this.falls += 2;
-    this.events.emit('respawn', { pos: v3(s.cargo) });
+    this.events.emit('respawn', { pos: s.cargo.clone() });
   }
 
   private finish(success: boolean) {

@@ -155,6 +155,11 @@ export const tuning = {
     /** Soft orientation hold per player (1/s²) and its torque cap (N·m). */
     holdRotK: 18,
     holdRotMax: 60,
+    /** Letting go of a load lowers it first: hand speed (m/s), squat rate (1/s), lowest hand height (torso-relative m), max time (s). */
+    setDownSpeed: 0.45,
+    setDownSquat: 1.2,
+    setDownLow: -0.32,
+    setDownMax: 1.6,
   },
 
   knock: {

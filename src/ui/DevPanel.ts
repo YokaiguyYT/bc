@@ -39,6 +39,7 @@ export class DevPanel {
     grip.add(T.grip, 'carryHeight', -0.3, 0.5, 0.01).name('carry height');
     grip.add(T.grip, 'spinDamping', 0, 20, 0.1).name('held spin damping');
     grip.add(T.grip, 'holdRotK', 0, 80, 0.5).name('held orientation hold');
+    grip.add(T.grip, 'setDownSpeed', 0.1, 2, 0.01).name('put-down speed (m/s)');
     grip.add(T.grip, 'reach', 0.3, 1.2, 0.01).name('reach');
 
     const mv = f('Movement');
