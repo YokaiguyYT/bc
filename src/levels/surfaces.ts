@@ -33,6 +33,7 @@ export const SURFACES: Record<Surface, SurfaceDef> = {
   ice: { tex: 'plaster', tile: 3, color: 0xd7f3ff, friction: 0.03, sound: 'concrete', roughness: 0.25 },
   hazard: { tex: 'hazard', tile: 1, color: 0xffffff, friction: 0.8, sound: 'metal' },
   cardboard: { tex: 'cardboard', tile: 0.8, color: 0xd9b07a, friction: 0.7, sound: 'cardboard' },
+  snow: { tex: 'snow', tile: 3, color: 0xf4f8fc, friction: 0.75, sound: 'soft', roughness: 0.95 },
 };
 
 export function surfaceMaterial(surface: Surface, color?: number): THREE.MeshStandardMaterial {

@@ -421,11 +421,16 @@ export { Mover };
  * called — both movers waiting at the other floor's landing.
  * params: size [w, d], height, speed, wall (height), walls: sides with a wall
  * (default ['+x', '-z', '+z']; the rest are open), landing (call radius m).
+ * travel [x, y, z] (world) instead of height makes it ride a slope, and
+ * style 'gondola' hangs it from a cable instead of running it up a shaft.
  */
 class Elevator implements Hazard {
   private body: RigidBody;
   private visual = new THREE.Group();
   private base: THREE.Vector3;
+  /** Unit direction of travel from the bottom stop to the top stop. */
+  private along: THREE.Vector3;
+  /** Distance travelled from the bottom stop (m). */
   private y = 0;
   private state: 'bottom' | 'up' | 'top' | 'down' = 'bottom';
   private timer = 0;
@@ -461,10 +466,13 @@ class Elevator implements Hazard {
     const size = (p?.size as [number, number] | undefined) ?? [2.6, 2.6];
     this.w = size[0];
     this.d = size[1];
-    this.height = num(p, 'height', 6);
+    const travel = v3(vec(p, 'travel', [0, num(p, 'height', 6), 0]));
+    this.height = travel.length();
+    this.along = travel.clone().normalize();
     this.speed = num(p, 'speed', 1.0);
     this.landing = num(p, 'landing', 4.5);
     this.yaw = (o.rot?.[1] ?? 0) * DEG;
+    const gondola = p?.style === 'gondola';
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
     this.body = kinematicBody(sim, this.base, q);
     const wallH = num(p, 'wall', 1.1);
@@ -503,18 +511,46 @@ class Elevator implements Hazard {
     const lampSide = sides.includes('+x') ? wallDefs['+x'].off : [0, wallH, 0];
     lamp.position.set(lampSide[0], wallH + 0.1, lampSide[2]);
     this.visual.add(lamp);
+    if (gondola) {
+      // hanger: two posts up from the corners to a yoke, and a cable overhead
+      const steel = glossy(0x5a5f69, 0.5, 0.6);
+      const top = 3.1;
+      for (const sx of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, top, 0.09), steel);
+        post.position.set(sx * (this.w / 2 - 0.06), top / 2, 0);
+        post.castShadow = true;
+        this.visual.add(post);
+      }
+      const yoke = new THREE.Mesh(new THREE.BoxGeometry(this.w, 0.12, 0.12), steel);
+      yoke.position.y = top;
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), steel);
+      grip.position.y = top + 0.3;
+      const roof = new THREE.Mesh(roundedBox([this.w + 0.2, 0.08, this.d * 0.5], 0.03, 1.5), matte(0xd94a3d));
+      roof.position.y = top - 0.25;
+      roof.castShadow = true;
+      this.visual.add(yoke, grip, roof);
+      const a = this.base.clone().setY(this.base.y + top + 0.55);
+      const b = a.clone().addScaledVector(this.along, this.height);
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 6), matte(0x2b2b33));
+      cable.position.copy(a).add(b).multiplyScalar(0.5);
+      cable.scale.y = this.height + 8; // runs on past both stations
+      cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), this.along);
+      sim.scene.add(cable);
+      this.rails.push(cable);
+    }
     sim.scene.add(this.visual);
     sim.physics.link(this.body, this.visual);
     // shaft rails
-    for (const sx of [-1, 1])
-      for (const sz of [-1, 1]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, this.height + 2.6, 0.12), glossy(0x5a5f69, 0.5, 0.6));
-        const off = new THREE.Vector3(sx * (this.w / 2 + 0.1), (this.height + 2.6) / 2 - 0.2, sz * (this.d / 2 + 0.1)).applyQuaternion(q);
-        rail.position.copy(this.base).add(off);
-        rail.castShadow = true;
-        sim.scene.add(rail);
-        this.rails.push(rail);
-      }
+    if (!gondola)
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1]) {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, this.height + 2.6, 0.12), glossy(0x5a5f69, 0.5, 0.6));
+          const off = new THREE.Vector3(sx * (this.w / 2 + 0.1), (this.height + 2.6) / 2 - 0.2, sz * (this.d / 2 + 0.1)).applyQuaternion(q);
+          rail.position.copy(this.base).add(off);
+          rail.castShadow = true;
+          sim.scene.add(rail);
+          this.rails.push(rail);
+        }
   }
   private lamp: THREE.MeshStandardMaterial;
   private rails: THREE.Mesh[] = [];
@@ -524,14 +560,14 @@ class Elevator implements Hazard {
     const players = this.sim.players ?? [];
     const t = this.body.translation();
     const inv = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw);
-    const otherY = this.base.y + (this.state === 'bottom' ? this.height : 0);
+    const other = this.base.clone().addScaledVector(this.along, this.state === 'bottom' ? this.height : 0);
     let aboard = 0;
     let waiting = 0;
     for (const pl of players) {
       const lp = pl.bodyPos.clone().sub(new THREE.Vector3(t.x, t.y, t.z)).applyQuaternion(inv);
       if (Math.abs(lp.x) < this.w / 2 + 0.1 && Math.abs(lp.z) < this.d / 2 + 0.1 && lp.y > -0.3 && lp.y < 2.5) aboard++;
-      const dy = pl.bodyPos.y - otherY;
-      const dh = Math.hypot(pl.bodyPos.x - this.base.x, pl.bodyPos.z - this.base.z);
+      const dy = pl.bodyPos.y - other.y;
+      const dh = Math.hypot(pl.bodyPos.x - other.x, pl.bodyPos.z - other.z);
       if (dy > -0.3 && dy < 2.5 && dh < this.landing) waiting++;
     }
     return { aboard, waiting, total: players.length };
@@ -543,7 +579,7 @@ class Elevator implements Hazard {
     this.armed = false;
     this.timer = 0;
     this.callTimer = 0;
-    this.sim.events.emit('hazard', { pos: this.base.clone().setY(this.base.y + this.y), kind: 'ding' });
+    this.sim.events.emit('hazard', { pos: this.base.clone().addScaledVector(this.along, this.y), kind: 'ding' });
   }
 
   preStep(dt: number) {
@@ -563,7 +599,7 @@ class Elevator implements Hazard {
         this.y = this.state === 'up' ? this.height : 0;
         this.state = this.state === 'up' ? 'top' : 'bottom';
         this.timer = 0;
-        this.sim.events.emit('hazard', { pos: this.base.clone().setY(this.base.y + this.y), kind: 'ding' });
+        this.sim.events.emit('hazard', { pos: this.base.clone().addScaledVector(this.along, this.y), kind: 'ding' });
       }
     }
     const moving = this.state === 'up' || this.state === 'down';
@@ -579,7 +615,7 @@ class Elevator implements Hazard {
       if (this.jolt <= 0) {
         this.jolt = 1.4 + Math.random() * 1.8;
         this.joltV = -0.55;
-        this.sim.events.emit('hazard', { pos: this.base.clone().setY(this.base.y + this.y), kind: 'clunk' });
+        this.sim.events.emit('hazard', { pos: this.base.clone().addScaledVector(this.along, this.y), kind: 'clunk' });
       }
     }
     // jolts are a sprung dip, so cargo feels a clunk instead of a hammer blow
@@ -587,9 +623,10 @@ class Elevator implements Hazard {
     this.joltY += this.joltV * dt;
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, this.yaw, rz));
     const cur = this.body.translation();
-    const ny = this.base.y + this.y + shakeY + this.joltY;
-    this.vel.set(0, (ny - cur.y) / dt, 0);
-    this.body.setNextKinematicTranslation({ x: this.base.x, y: ny, z: this.base.z });
+    const np = this.base.clone().addScaledVector(this.along, this.y);
+    np.y += shakeY + this.joltY;
+    this.vel.set((np.x - cur.x) / dt, (np.y - cur.y) / dt, (np.z - cur.z) / dt);
+    this.body.setNextKinematicTranslation({ x: np.x, y: np.y, z: np.z });
     this.body.setNextKinematicRotation({ x: q.x, y: q.y, z: q.z, w: q.w });
     this.lamp.emissiveIntensity = moving ? 2 + Math.sin(this.sim.time() * 12) : 0.1;
   }
@@ -677,23 +714,31 @@ registerHazard('spinner', (o, sim) => new Spinner(o, sim));
 
 /**
  * A door on a spring hinge you push through. params: width, height, side
- * (hinge side ±1), open (deg it rests at — propped open), spring (stiffness).
+ * (hinge side ±1), open (deg it rests at, + swings it away from the camera
+ * side, i.e. toward the rotation's -Z), spring (1/s², how hard it swings back).
  */
 class SwingDoor implements Hazard {
   private door: RigidBody;
   private visual: THREE.Mesh;
-  private joint: ReturnType<typeof RAPIER.JointData.revolute> | null = null;
+  private yaw: number;
+  private rest: number;
+  private k: number;
+  private inertia: number;
   constructor(o: HazardObj, sim: Sim) {
     const p = o.params;
     const W = num(p, 'width', 1.2);
     const H = num(p, 'height', 2.1);
     const side = num(p, 'side', 1);
-    const yaw = (o.rot?.[1] ?? 0) * DEG;
-    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    this.yaw = (o.rot?.[1] ?? 0) * DEG;
+    // a door hinged on the left (+1) opening away from us turns +Y; hinged on the right, -Y
+    this.rest = num(p, 'open', 0) * DEG * side;
+    this.k = num(p, 'spring', 6);
     const hinge = v3(o.pos);
     const world = sim.physics.world;
-    const anchor = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(hinge.x, hinge.y, hinge.z).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }));
-    const center = new THREE.Vector3(side * W / 2, H / 2, 0).applyQuaternion(q).add(hinge);
+    const qHinge = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+    const anchor = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(hinge.x, hinge.y, hinge.z).setRotation({ x: qHinge.x, y: qHinge.y, z: qHinge.z, w: qHinge.w }));
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw + this.rest);
+    const center = new THREE.Vector3((side * W) / 2, H / 2, 0).applyQuaternion(q).add(hinge);
     this.door = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(center.x, center.y, center.z)
@@ -701,28 +746,34 @@ class SwingDoor implements Hazard {
         .setAngularDamping(2.5)
         .setCanSleep(false),
     );
-    const c = world.createCollider(RAPIER.ColliderDesc.cuboid(W / 2 - 0.02, H / 2, 0.035).setMass(18).setCollisionGroups(groups(G.PROP, SOLID)), this.door);
+    const mass = 18;
+    const c = world.createCollider(RAPIER.ColliderDesc.cuboid(W / 2 - 0.02, H / 2, 0.035).setMass(mass).setCollisionGroups(groups(G.PROP, SOLID)), this.door);
     sim.physics.setInfo(c, { kind: 'prop', material: 'wood', grabbable: true });
-    const j = world.createImpulseJoint(RAPIER.JointData.revolute({ x: 0, y: H / 2, z: 0 }, { x: -side * W / 2, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }), anchor, this.door, true);
-    const uj = j as unknown as { configureMotorPosition(t: number, k: number, d: number): void; setLimits(a: number, b: number): void };
-    const rest = num(p, 'open', 0) * DEG * side;
-    uj.configureMotorPosition(rest, num(p, 'spring', 6), 2); // springs back to its resting angle
-    uj.setLimits(-1.7, 1.7);
-    if (rest) this.door.setRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw + rest), true);
-    if (rest) {
-      const c = new THREE.Vector3(side * W / 2, H / 2, 0).applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw + rest)).add(hinge);
-      this.door.setTranslation({ x: c.x, y: c.y, z: c.z }, true);
-    }
-    void this.joint;
+    // hinge pin; the spring is ours (see preStep), so the rest angle is exactly what we asked for
+    world.createImpulseJoint(
+      RAPIER.JointData.revolute({ x: 0, y: H / 2, z: 0 }, { x: (-side * W) / 2, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }),
+      anchor,
+      this.door,
+      true,
+    );
+    this.inertia = (mass * W * W) / 3; // a slab turning about its edge
     this.visual = new THREE.Mesh(roundedBox([W - 0.04, H, 0.07], 0.02, 1), matte((p?.color as number) ?? 0xc98f5a, { map: surfaceTexture('planks'), key: 'door' }));
     this.visual.castShadow = true;
     sim.scene.add(this.visual);
     sim.physics.link(this.door, this.visual);
     const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), glossy(0xd9a93f, 0.3, 0.8));
-    knob.position.set(side * (W / 2 - 0.15) * -1 + side * 0, 0, 0.06);
+    knob.position.set(side * (W / 2 - 0.15), 0, 0.06);
     this.visual.add(knob);
   }
-  preStep() {}
+  preStep(dt: number) {
+    const r = this.door.rotation();
+    let a = Math.atan2(2 * (r.w * r.y + r.x * r.z), 1 - 2 * (r.y * r.y + r.z * r.z)) - this.yaw - this.rest;
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    const w = this.door.angvel().y;
+    const tau = this.inertia * (-this.k * a - 2 * Math.sqrt(this.k) * 0.6 * w);
+    this.door.applyTorqueImpulse({ x: 0, y: tau * dt, z: 0 }, true);
+  }
   update() {}
   dispose() {
     this.visual.removeFromParent();
@@ -852,14 +903,24 @@ registerHazard('revolvingDoor', (o, sim) => new RevolvingDoor(o, sim));
 
 // ------------------------------------------------------------------ fan (wind zone)
 
-/** Blows dynamic things in a box zone. params: size, force (m/s² accel), dir (Vec3). */
+/**
+ * Blows dynamic things in a box zone. params: size, force (m/s² accel), dir (Vec3),
+ * gust: [on, off] seconds to blow in bursts instead of steadily, phase (s) to
+ * offset the bursts, housing: false for wind with no fan (a sea breeze).
+ * Cargo can catch more or less wind than its mass suggests (Cargo.windScale).
+ */
 class Fan implements Hazard {
   private zone: THREE.Box3;
   private dir: THREE.Vector3;
   private accel: number;
+  private gust: [number, number] | null;
+  private phase: number;
   private blades = new THREE.Group();
   private streaks: THREE.InstancedMesh;
+  private streakMat: THREE.MeshBasicMaterial;
   private streakT: Float32Array;
+  /** 0..1: how hard it is blowing right now. */
+  strength = 1;
   constructor(
     o: HazardObj,
     private sim: Sim,
@@ -870,35 +931,56 @@ class Fan implements Hazard {
     this.zone = new THREE.Box3(pos.clone().sub(size.clone().multiplyScalar(0.5)), pos.clone().add(size.clone().multiplyScalar(0.5)));
     this.dir = v3(vec(p, 'dir', [1, 0, 0])).normalize();
     this.accel = num(p, 'force', 9);
-    // fan housing at the upwind end
-    const fanPos = pos.clone().addScaledVector(this.dir, -size.dot(new THREE.Vector3(Math.abs(this.dir.x), Math.abs(this.dir.y), Math.abs(this.dir.z))) / 2 - 0.3);
-    const housing = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.12, 10, 32), glossy(0x5b8def, 0.4, 0.3));
-    housing.position.copy(fanPos);
-    housing.lookAt(fanPos.clone().add(this.dir));
-    housing.castShadow = true;
-    sim.scene.add(housing);
-    this.blades.position.copy(fanPos);
-    this.blades.lookAt(fanPos.clone().add(this.dir));
-    for (let i = 0; i < 4; i++) {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.0, 0.04), matte(0xf2f2ee));
-      b.position.y = 0.5;
-      const pivot = new THREE.Group();
-      pivot.rotation.z = (i / 4) * Math.PI * 2;
-      pivot.add(b);
-      this.blades.add(pivot);
+    const g = p?.gust as [number, number] | undefined;
+    this.gust = g ? [g[0], g[1]] : null;
+    this.phase = num(p, 'phase', 0);
+    if (p?.housing !== false) {
+      // fan housing at the upwind end
+      const fanPos = pos.clone().addScaledVector(this.dir, -size.dot(new THREE.Vector3(Math.abs(this.dir.x), Math.abs(this.dir.y), Math.abs(this.dir.z))) / 2 - 0.3);
+      const housing = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.12, 10, 32), glossy(0x5b8def, 0.4, 0.3));
+      housing.position.copy(fanPos);
+      housing.lookAt(fanPos.clone().add(this.dir));
+      housing.castShadow = true;
+      sim.scene.add(housing);
+      this.blades.position.copy(fanPos);
+      this.blades.lookAt(fanPos.clone().add(this.dir));
+      for (let i = 0; i < 4; i++) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.0, 0.04), matte(0xf2f2ee));
+        b.position.y = 0.5;
+        const pivot = new THREE.Group();
+        pivot.rotation.z = (i / 4) * Math.PI * 2;
+        pivot.add(b);
+        this.blades.add(pivot);
+      }
+      sim.scene.add(this.blades);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, fanPos.y - this.zone.min.y + 0.1, 10), glossy(0x5b8def, 0.4, 0.3));
+      stand.position.set(fanPos.x, (fanPos.y + this.zone.min.y) / 2, fanPos.z);
+      sim.scene.add(stand);
+      this.extras.push(housing, stand);
     }
-    sim.scene.add(this.blades);
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, fanPos.y - this.zone.min.y + 0.1, 10), glossy(0x5b8def, 0.4, 0.3));
-    stand.position.set(fanPos.x, (fanPos.y + this.zone.min.y) / 2, fanPos.z);
-    sim.scene.add(stand);
-    this.extras.push(housing, stand);
     // wind streaks
-    this.streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.6, 0.02, 0.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }), 30);
+    this.streakMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
+    this.streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.6, 0.02, 0.02), this.streakMat, 30);
     this.streakT = new Float32Array(30).map(() => Math.random());
     sim.scene.add(this.streaks);
   }
   private extras: THREE.Object3D[] = [];
+
+  /** 0..1 at time t: bursts ease in and out so nothing gets slammed. */
+  private level(t: number) {
+    if (!this.gust) return 1;
+    const [on, off] = this.gust;
+    const T = on + off;
+    const x = (((t + this.phase) % T) + T) % T;
+    if (x >= on) return 0;
+    const ramp = Math.min(0.8, on / 2);
+    const k = Math.min(1, x / ramp, (on - x) / ramp);
+    return k * k * (3 - 2 * k);
+  }
+
   preStep(dt: number) {
+    this.strength = this.level(this.sim.time());
+    if (this.strength < 0.001) return;
     const world = this.sim.physics.world;
     const c = this.zone.getCenter(new THREE.Vector3());
     const h = this.zone.getSize(new THREE.Vector3()).multiplyScalar(0.5);
@@ -907,23 +989,31 @@ class Fan implements Hazard {
       const b = col.parent();
       if (!b || !b.isDynamic() || seen.has(b.handle)) return true;
       seen.add(b.handle);
-      const m = b.mass();
-      const f = this.dir.clone().multiplyScalar(this.accel * m * dt);
+      const info = this.sim.physics.info(col);
+      const scale = info?.kind === 'cargo' ? (info.owner as { windScale(d: THREE.Vector3): number }).windScale(this.dir) : 1;
+      const f = this.dir.clone().multiplyScalar(this.accel * b.mass() * dt * this.strength * scale);
       b.applyImpulse({ x: f.x, y: f.y, z: f.z }, true);
       return true;
     });
   }
   update(dt: number) {
-    this.blades.rotateZ(dt * 14);
+    // the blades spool up a second before a gust arrives: that's the warning
+    const t = this.sim.time();
+    const spin = this.gust ? Math.max(this.strength, this.level(t + 1.0)) : 1;
+    this.blades.rotateZ(dt * (1.5 + 13 * spin));
+    this.streakMat.opacity = 0.55 * this.strength;
+    this.streaks.visible = this.strength > 0.02;
+    if (!this.streaks.visible) return;
     const m = new THREE.Matrix4();
     const size = this.zone.getSize(new THREE.Vector3());
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), this.dir);
     for (let i = 0; i < 30; i++) {
       this.streakT[i] = (this.streakT[i] + dt * 0.8) % 1;
       const t = this.streakT[i];
-      const r = (i * 7919) % 1000 / 1000;
-      const r2 = (i * 104729) % 1000 / 1000;
-      const p = new THREE.Vector3(this.zone.min.x + size.x * (this.dir.x !== 0 ? t : r), this.zone.min.y + size.y * r2 * 0.8 + 0.2, this.zone.min.z + size.z * (this.dir.z !== 0 ? t : r));
+      const r = ((i * 7919) % 1000) / 1000;
+      const r2 = ((i * 104729) % 1000) / 1000;
+      const along = this.dir.x < 0 || this.dir.z < 0 ? 1 - t : t;
+      const p = new THREE.Vector3(this.zone.min.x + size.x * (this.dir.x !== 0 ? along : r), this.zone.min.y + size.y * r2 * 0.8 + 0.2, this.zone.min.z + size.z * (this.dir.z !== 0 ? along : r));
       m.compose(p, q, new THREE.Vector3(1, 1, 1));
       this.streaks.setMatrixAt(i, m);
     }

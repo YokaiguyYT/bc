@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RAPIER } from '../physics/rapier';
-import type { RigidBody } from '../physics/rapier';
+import type { Collider, RigidBody } from '../physics/rapier';
 import { G, groups, SOLID } from '../physics/groups';
 import type { Sim } from '../game/Sim';
 import type { BallObj, BoxObj, CylinderObj, LevelDef, LevelObject, ModelObj, SignObj, Vec3 } from './types';
@@ -58,6 +58,8 @@ function quatFrom(rot?: Vec3) {
 /** Turns level data into meshes + colliders. Hazards are created separately. */
 export class LevelBuilder {
   private staticBatches = new Map<THREE.Material, THREE.BufferGeometry[]>();
+  /** Colliders made for the object being added (to tag them afterwards). */
+  private made: Collider[] = [];
 
   constructor(private sim: Sim) {}
 
@@ -79,20 +81,27 @@ export class LevelBuilder {
   }
 
   addObject(o: LevelObject, built: BuiltLevel) {
+    this.made = [];
     switch (o.type) {
       case 'box':
-        return this.addBox(o, built);
+        this.addBox(o, built);
+        break;
       case 'cylinder':
-        return this.addCylinder(o, built);
+        this.addCylinder(o, built);
+        break;
       case 'ball':
-        return this.addBall(o, built);
+        this.addBall(o, built);
+        break;
       case 'model':
-        return this.addModel(o, built);
+        this.addModel(o, built);
+        break;
       case 'sign':
-        return this.addSign(o, built);
+        this.addSign(o, built);
+        break;
       case 'hazard':
         return; // handled by the session
     }
+    if (o.sharp) for (const c of this.made) this.sim.physics.info(c)!.sharp = true;
   }
 
   private staticCollider(desc: InstanceType<typeof RAPIER.ColliderDesc>, pos: Vec3, q: THREE.Quaternion, surface: keyof typeof SURFACES, friction?: number, surfaceVel?: Vec3) {
@@ -103,6 +112,7 @@ export class LevelBuilder {
       .setFriction(friction ?? s.friction)
       .setCollisionGroups(groups(G.STATIC, 0xffff));
     const c = this.sim.physics.world.createCollider(desc);
+    this.made.push(c);
     this.sim.physics.setInfo(c, {
       kind: 'static',
       material: s.sound,
@@ -129,6 +139,7 @@ export class LevelBuilder {
       .setCollisionGroups(groups(G.PROP, SOLID | G.DEBRIS))
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     const c = world.createCollider(desc, body);
+    this.made.push(c);
     this.sim.physics.setInfo(c, { kind: 'prop', material: s.sound, grabbable, owner: body });
     return body;
   }

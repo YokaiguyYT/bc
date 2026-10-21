@@ -15,7 +15,9 @@ export interface ColliderInfo {
   /** Can a hand latch onto it? (defaults to true for solid things) */
   grabbable?: boolean;
   /** Sound material for impacts. */
-  material?: 'wood' | 'metal' | 'glass' | 'soft' | 'concrete' | 'body' | 'cardboard' | 'cake' | 'water';
+  material?: 'wood' | 'metal' | 'glass' | 'soft' | 'concrete' | 'body' | 'cardboard' | 'cake' | 'water' | 'ice' | 'shell' | 'rubber';
+  /** Pointy: pops balloons. */
+  sharp?: boolean;
   /** Friction used for "slippery" checks. */
   friction?: number;
 }

@@ -8,4 +8,9 @@ export const CARGO_INFO: Record<CargoKind, { name: string; icon: string; value: 
   aquarium: { name: 'Aquarium', icon: '🐠', value: 900, blurb: 'Sloshes. Spilled water is lost money.' },
   clock: { name: 'Grandfather Clock', icon: '🕰️', value: 1500, blurb: 'Long and heavy. Carry it end to end.' },
   cake: { name: 'Wedding Cake', icon: '🎂', value: 1200, blurb: 'Breathe on it wrong and it squishes.' },
+  swan: { name: 'Ice Swan', icon: '🦢', value: 1100, blurb: 'Melts while you dawdle, faster near anything warm.' },
+  egg: { name: 'Dinosaur Egg', icon: '🥚', value: 2000, blurb: 'Priceless, paper-thin, and it rolls.' },
+  piano: { name: 'Upright Piano', icon: '🎹', value: 1800, blurb: 'Rolls on its castors. On a hill it wants to run.' },
+  painting: { name: 'Masterpiece', icon: '🖼️', value: 1600, blurb: 'Big, light, and catches the wind like a sail.' },
+  balloons: { name: 'Balloon Bouquet', icon: '🎈', value: 500, blurb: 'Floats off if you let go. Pointy things pop it.' },
 };

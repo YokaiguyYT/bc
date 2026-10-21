@@ -3,3 +3,5 @@ export * from './registry';
 import './mechanical';
 import './creatures';
 import './traffic';
+import './heat';
+import './winter';

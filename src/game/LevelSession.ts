@@ -96,6 +96,7 @@ export class LevelSession {
       grips: new GripRegistry(),
       time: () => this.physics.time,
       signals: new Map(),
+      heat: [],
     };
     renderer.scene.add(this.root);
     renderer.applyTheme({ ...DEFAULT_THEME, ...(def.theme ?? {}) });
@@ -200,7 +201,8 @@ export class LevelSession {
       if (v.y > this.def.killY + 2) pts.push(v);
     }
     const c = this.physics.interpolatedPosition(this.cargo.body, new THREE.Vector3());
-    if (c.y > this.def.killY + 2) pts.push(c, c.clone());
+    // …or cargo floating away into the sky
+    if (c.y > this.def.killY + 2 && c.y < (this.def.ceilingY ?? Infinity) - 4) pts.push(c, c.clone());
     return pts;
   }
 
@@ -304,9 +306,11 @@ export class LevelSession {
       }
     });
 
+    // cargo that floats off into the sky is as lost as cargo that falls
+    const lost = cargoPos.y < def.killY || (def.ceilingY !== undefined && cargoPos.y > def.ceilingY);
     if (this.attractMode) {
       for (const p of this.players) if (p.body.translation().y < def.killY) this.respawnPlayer(p);
-      if (cargoPos.y < def.killY) this.respawnAll(false);
+      if (lost) this.respawnAll(false);
       this.cargo.health = 1;
       return;
     }
@@ -315,7 +319,7 @@ export class LevelSession {
       for (const p of this.players) {
         if (p.body.translation().y < def.killY) this.respawnPlayer(p);
       }
-      if (cargoPos.y < def.killY && !this.cargo.destroyed) this.respawnAll(true);
+      if (lost && !this.cargo.destroyed) this.respawnAll(true);
 
       // fail
       if (this.cargo.destroyed) {

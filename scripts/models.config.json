@@ -616,6 +616,95 @@
       ],
       "style": "keep",
       "maxTexture": 256
+    },
+    "snowman": {
+      "uid": "1390c6cae6b34933a06a88502e284236",
+      "name": "Snowman - Low Poly",
+      "size": [
+        1.0,
+        1.7,
+        1.6
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "snowyPine": {
+      "uid": "7c97aea203b34df6bb615d0d3567d984",
+      "name": "Low Poly Pine Tree",
+      "size": [
+        2.6,
+        5.0,
+        2.6
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "gondola": {
+      "uid": "c30acff14d3141d18daaa8d1a771da79",
+      "name": "Cartoon Cable Car",
+      "size": [
+        2.6,
+        2.8,
+        2.6
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "lighthouse": {
+      "uid": "8cbfa6920c8e45a9a9abf37adb74dbf8",
+      "name": "Lighthouse, Low Poly",
+      "size": [
+        3.5,
+        10,
+        3.5
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "trawler": {
+      "uid": "421f3239115c44539686fcb62835f115",
+      "name": "Trawler",
+      "size": [
+        3.6,
+        4.5,
+        11
+      ],
+      "style": "keep",
+      "maxTexture": 512
+    },
+    "seagull": {
+      "uid": "985024328902444c8270c0f09acc897e",
+      "name": "Low-Poly Seagull (with Animation & Rigged)",
+      "size": [
+        0.9,
+        0.3,
+        0.6
+      ],
+      "style": "keep",
+      "maxTexture": 256,
+      "animated": true
+    },
+    "ferrisWheel": {
+      "uid": "09cc7c3403f9487ca0af0978f4e1274e",
+      "name": "Ferris wheel",
+      "size": [
+        4,
+        12,
+        12
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "circusTent": {
+      "uid": "367ad4b7004240f2a4df1351b1ce50f2",
+      "name": "Circus Tent",
+      "size": [
+        14,
+        8,
+        14
+      ],
+      "style": "keep",
+      "maxTexture": 256
     }
   }
 }

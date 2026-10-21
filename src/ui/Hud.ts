@@ -116,9 +116,10 @@ export class Hud {
     setText(this.payout, formatMoney(s.currentPayout()));
     setText(this.time, formatTime(s.time));
     const cps = s.def.checkpoints.length;
-    const status = `${cps ? `🚩 ${Math.max(0, s.checkpoint + 1)}/${cps}<br>` : ''}${s.falls ? `☁️ falls: ${s.falls}` : ''}`;
+    const cargoLine = s.cargo.status ? `${s.cargo.status}<br>` : '';
+    const status = `${cargoLine}${cps ? `🚩 ${Math.max(0, s.checkpoint + 1)}/${cps}<br>` : ''}${s.falls ? `☁️ falls: ${s.falls}` : ''}`;
     if (this.status.innerHTML !== status) this.status.innerHTML = status;
-    this.status.style.display = cps || s.falls ? '' : 'none';
+    this.status.style.display = cargoLine || cps || s.falls ? '' : 'none';
     this.updateObjective();
     this.updateTips();
 
@@ -265,6 +266,16 @@ function breakLine(kind: string) {
       return 'TIME’S UP!';
     case 'cake':
       return 'SPLAT!';
+    case 'swan':
+      return 'JUST A PUDDLE!';
+    case 'egg':
+      return 'OMELETTE!';
+    case 'piano':
+      return 'KER-PLUNK!';
+    case 'painting':
+      return 'RUINED!';
+    case 'balloons':
+      return 'POP POP POP!';
     default:
       return 'SMASHED!';
   }

@@ -811,6 +811,127 @@
       "url": "https://sketchfab.com/3d-models/flower-pot-38f4084af88a4b23a125046dc04912f4",
       "license": "CC Attribution",
       "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "snowman": {
+      "file": "snowman.glb",
+      "size": [
+        1,
+        1.7,
+        1.6
+      ],
+      "style": "keep",
+      "title": "Snowman - Low Poly",
+      "author": "Bharad",
+      "authorUrl": "https://sketchfab.com/Bharad",
+      "url": "https://sketchfab.com/3d-models/snowman-low-poly-1390c6cae6b34933a06a88502e284236",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "snowyPine": {
+      "file": "snowyPine.glb",
+      "size": [
+        2.6,
+        5,
+        2.6
+      ],
+      "style": "keep",
+      "title": "Low Poly Pine Tree",
+      "author": "Matthew Johnson",
+      "authorUrl": "https://sketchfab.com/MattJohno2",
+      "url": "https://sketchfab.com/3d-models/low-poly-pine-tree-7c97aea203b34df6bb615d0d3567d984",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "gondola": {
+      "file": "gondola.glb",
+      "size": [
+        2.6,
+        2.8,
+        2.6
+      ],
+      "style": "keep",
+      "title": "Cartoon Cable Car",
+      "author": "Turkapp",
+      "authorUrl": "https://sketchfab.com/canturk974",
+      "url": "https://sketchfab.com/3d-models/cartoon-cable-car-c30acff14d3141d18daaa8d1a771da79",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "lighthouse": {
+      "file": "lighthouse.glb",
+      "size": [
+        3.5,
+        10,
+        3.5
+      ],
+      "style": "keep",
+      "title": "Lighthouse, Low Poly",
+      "author": "FLAREMEDIA",
+      "authorUrl": "https://sketchfab.com/flaremedia",
+      "url": "https://sketchfab.com/3d-models/lighthouse-low-poly-8cbfa6920c8e45a9a9abf37adb74dbf8",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "trawler": {
+      "file": "trawler.glb",
+      "size": [
+        3.6,
+        4.5,
+        11
+      ],
+      "style": "keep",
+      "title": "Trawler",
+      "author": "JasperTobias",
+      "authorUrl": "https://sketchfab.com/JasperTobias",
+      "url": "https://sketchfab.com/3d-models/trawler-421f3239115c44539686fcb62835f115",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "seagull": {
+      "file": "seagull.glb",
+      "size": [
+        0.9,
+        0.3,
+        0.6
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Low-Poly Seagull (with Animation & Rigged)",
+      "author": "simonaskLDE",
+      "authorUrl": "https://sketchfab.com/simonaskLDE",
+      "url": "https://sketchfab.com/3d-models/low-poly-seagull-with-animation-rigged-985024328902444c8270c0f09acc897e",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "ferrisWheel": {
+      "file": "ferrisWheel.glb",
+      "size": [
+        4,
+        12,
+        12
+      ],
+      "style": "keep",
+      "title": "Ferris wheel",
+      "author": "n0stardust",
+      "authorUrl": "https://sketchfab.com/n0stardust",
+      "url": "https://sketchfab.com/3d-models/ferris-wheel-09cc7c3403f9487ca0af0978f4e1274e",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "circusTent": {
+      "file": "circusTent.glb",
+      "size": [
+        14,
+        8,
+        14
+      ],
+      "style": "keep",
+      "title": "Circus Tent",
+      "author": "BeaBea",
+      "authorUrl": "https://sketchfab.com/beabea.",
+      "url": "https://sketchfab.com/3d-models/circus-tent-367ad4b7004240f2a4df1351b1ce50f2",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
     }
   }
 }

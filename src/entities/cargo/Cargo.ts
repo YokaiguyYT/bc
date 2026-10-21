@@ -51,6 +51,10 @@ export abstract class Cargo {
    * slowing down gently) whatever it weighs. Light but delicate things want 1.
    */
   readonly care: number = 0;
+  /** false: it rolls on its own wheels; movers push and pull it but never try to lift it. */
+  readonly liftable: boolean = true;
+  /** A line about the cargo's state for the HUD ("💧 melting!"), or null. */
+  status: string | null = null;
 
   body!: RigidBody;
   colliders: Collider[] = [];
@@ -119,6 +123,15 @@ export abstract class Cargo {
 
   protected abstract buildColliders(): void;
   protected abstract buildVisual(): void;
+
+  /**
+   * How hard wind blowing along `dir` (world, unit) pushes this, as a multiple
+   * of the push it gives anything else of the same mass. Big light flat things
+   * catch the wind (sails); the default is plain.
+   */
+  windScale(_dir: THREE.Vector3) {
+    return 1;
+  }
 
   /** Called when health drops; `amount` is 0..1 health lost. */
   protected onDamage(_amount: number, _point: THREE.Vector3, _shock: number) {}

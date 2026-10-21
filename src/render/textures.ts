@@ -21,7 +21,8 @@ export type SurfaceTex =
   | 'dots'
   | 'plaster'
   | 'cardboard'
-  | 'hazard';
+  | 'hazard'
+  | 'snow';
 
 const cache = new Map<string, THREE.Texture>();
 
@@ -240,6 +241,17 @@ function draw(kind: SurfaceTex): HTMLCanvasElement {
       ctx.fillStyle = 'rgba(200,150,80,0.35)';
       ctx.fillRect(S * 0.42, 0, S * 0.16, S);
       noise(ctx, S, 0.04, 71);
+      break;
+    }
+    case 'snow': {
+      // soft drifts with a few cold-blue shadows and glints
+      blotches(ctx, S, 30, 0.05, 41);
+      blotches(ctx, S, 24, 0.08, 42, false);
+      for (let i = 0; i < 90; i++) {
+        ctx.fillStyle = r() < 0.5 ? 'rgba(170,200,235,0.35)' : 'rgba(255,255,255,0.9)';
+        ctx.fillRect(r() * S, r() * S, 2, 2);
+      }
+      noise(ctx, S, 0.025, 43);
       break;
     }
     case 'hazard': {

@@ -1014,6 +1014,8 @@ export class Player {
    */
   private carryY(g: Grip) {
     const T = tuning.grip;
+    // things on wheels get pushed and pulled at the height we grabbed them, never lifted
+    if (g.kind === 'cargo' && (g.owner as { liftable?: boolean }).liftable === false) return g.grabY;
     const y = Math.max(T.carryHeight, g.grabY + T.liftExtra);
     const bottom = tuning.float.rideHeight + y - g.hangBelow; // above the floor when standing
     return y + Math.max(0, T.floorClearance - bottom);

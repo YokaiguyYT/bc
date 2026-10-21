@@ -1,6 +1,13 @@
 // CPU cost of simulating each level (no rendering): ms per 60 Hz frame.
+// env LEVELS (comma list; default every job).
 export default async function ({ page, base }) {
-  for (const id of ['moveout', 'delivery', 'mansion', 'glass', 'city']) {
+  let ids = process.env.LEVELS?.split(',');
+  if (!ids) {
+    await page.goto(base + '?manual=1');
+    await page.waitForFunction(() => window.__FF && window.__FF.app, null, { timeout: 90000 });
+    ids = await page.evaluate(() => window.__FF.game.levels.filter((l) => !l.hidden).map((l) => l.id));
+  }
+  for (const id of ids) {
     await page.goto(base + `?level=${id}&manual=1`);
     await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
     const r = await page.evaluate(() => {

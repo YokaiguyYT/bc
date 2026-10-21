@@ -111,4 +111,26 @@ export interface Sim {
   cargo?: Cargo;
   /** Traffic light states by tag: 'green' | 'yellow' | 'red' (for cars). */
   signals?: Map<string, 'green' | 'yellow' | 'red'>;
+  /** Warm (power > 0) and cold (power < 0) spots: heaters, fires, freezers. */
+  heat?: HeatSource[];
+}
+
+export interface HeatSource {
+  pos: THREE.Vector3;
+  radius: number;
+  /** Strength at the centre, fading to 0 at the radius. */
+  power: number;
+}
+
+/** How warm it is at p: the sum of every heat source's falloff (negative = colder than outdoors). */
+export function warmthAt(sim: Sim, p: THREE.Vector3) {
+  let w = 0;
+  for (const h of sim.heat ?? []) {
+    const d = h.pos.distanceTo(p);
+    if (d < h.radius) {
+      const k = 1 - d / h.radius;
+      w += h.power * k * k;
+    }
+  }
+  return w;
 }

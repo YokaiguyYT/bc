@@ -21,9 +21,10 @@ export type Surface =
   | 'ice'
   | 'hazard'
   | 'cardboard'
-  | 'paint';
+  | 'paint'
+  | 'snow';
 
-export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake';
+export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake' | 'swan' | 'egg' | 'piano' | 'painting' | 'balloons';
 
 interface Base {
   pos: Vec3;
@@ -33,6 +34,8 @@ interface Base {
   surface?: Surface;
   /** Optional tag so hazards / scripts can find objects. */
   tag?: string;
+  /** Pointy (cactus, pins…): pops balloons that touch it. */
+  sharp?: boolean;
 }
 
 export interface BoxObj extends Base {
@@ -123,7 +126,9 @@ export interface HazardObj {
     | 'sprinkler'
     | 'conveyor'
     | 'trafficLight'
-    | 'chandelier';
+    | 'chandelier'
+    | 'heater'
+    | 'skiers';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */
@@ -170,6 +175,8 @@ export interface LevelDef {
   checkpoints: (TriggerZone & { spawn: SpawnSet })[];
   /** Falling below this height = out of bounds. */
   killY: number;
+  /** Cargo floating above this height is lost too (things that float). */
+  ceilingY?: number;
   /** "Par" time in seconds (for the time bonus). */
   parTime: number;
   objects: LevelObject[];

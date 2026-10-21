@@ -104,6 +104,37 @@ const ROUTES = {
       place: true,
     },
   },
+  // ice swan: out of the shed, between the sledges, the long way round the pond (past the
+  // cocoa heater), between the skiers, up in the gondola, through the lodge to the buffet
+  'cold-full': {
+    shed: {
+      start: true,
+      path: [
+        [0, 17.0, 'broad'],
+        [0, 11.2, 'broad'],
+        { wait: 'gap', x: 0, z: [6, 10], ahead: 12 },
+        [0, 4.8, 'broad'],
+        [-3.0, 2.2, 'broad'],
+        [-8.8, 0.4, 'broad'],
+        [-8.8, -10.5, 'broad'],
+        [-3.5, -12.6, 'broad'],
+        [0, -14.6, 'broad'],
+        { wait: 'gap', x: 0, z: [-21, -16], ahead: 20 },
+        [0, -21.6, 'broad'],
+        [0, -24.9, 'broad'],
+      ],
+      ride: 18,
+    },
+    summit: { keep: true, path: [[0, -44.6, 'broad'], [0, -50.4, 'broad'], [0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
+  },
+  // just the lodge: through the swing doors to the buffet
+  'cold-lodge': {
+    lodge: { cargo: [0, 10.0, -49.6], yaw: 180, path: [[0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
+  },
+  // just the run across the ice, straight over the pond
+  'cold-ice': {
+    ice: { cargo: [0, 1.0, 3.2], yaw: 180, path: [[0, 0.5, 'broad'], [0, -10.5, 'broad'], [0, -14.6, 'broad']] },
+  },
   // just the van ramp: clock lying along Z at the foot of the ramp, both press forward
   'mansion-van': {
     van: { cargo: [6, 0.4, 10.6], yaw: 0, lying: true, path: [[6, 22.6, 'inline']], place: true },
@@ -161,6 +192,8 @@ export default async function ({ page, base, shot }) {
         health: +s.cargo.health.toFixed(3),
         // per hand: c = cargo, s = static, p = prop, n = npc/player, - = empty
         grips: s.players.map((p) => p.hands.map((h) => (h.grip ? (h.grip.kind === 'cargo' ? 'c' : h.grip.kind === 'static' ? 's' : h.grip.kind === 'prop' ? 'p' : 'n') : '-')).join('')),
+        // how far the grip springs are stretched (the HUD says "slipping!" past 0.35, hands let go past 0.7)
+        stretch: s.players.map((p) => +p.maxGripStretch().toFixed(2)),
         players: s.players.map((p) => [...r(p.body.translation()), p.state]),
         state: s.state,
         cp: s.checkpoint,
