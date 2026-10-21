@@ -23,6 +23,9 @@ export class Hud {
   private goalMeter: HTMLElement;
   private goalFill: HTMLElement;
   private goalLabel: HTMLElement;
+  private objective: HTMLElement;
+  private objArrow: SVGElement;
+  private objText: HTMLElement;
   private lastHealth = 1;
   private hintIdx = -1;
   private hintTimer = 0.6;
@@ -59,6 +62,7 @@ export class Hud {
       ${pcard(0)}${pcard(1)}
       <div class="tags"><div class="tag">P1</div><div class="tag">P2</div></div>
       <div class="hint" style="opacity:0"></div>
+      <div class="objective"><svg class="arrow" viewBox="0 0 24 24" width="22" height="22"><path d="M4 12h13M12 6l6 6-6 6" stroke="currentColor" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></div>
       <div class="card goal-meter" style="display:none"><div class="goal-label" style="font-size:14px;text-align:center">DELIVERING…</div><div class="bar"><div class="fill" style="background:var(--good)"></div></div></div>
     `;
     parent.appendChild(this.el);
@@ -73,6 +77,9 @@ export class Hud {
     this.goalMeter = q('.goal-meter');
     this.goalFill = q('.goal-meter .fill');
     this.goalLabel = q('.goal-meter .goal-label');
+    this.objective = q('.objective');
+    this.objArrow = this.objective.querySelector('.arrow') as SVGElement;
+    this.objText = q('.objective span');
     this.el.querySelectorAll('.player-card').forEach((pc) => {
       this.hands.push([...pc.querySelectorAll<HTMLElement>('.hand')]);
       this.states.push(pc.querySelector('.state') as HTMLElement);
@@ -109,11 +116,13 @@ export class Hud {
       this.cargoCard.classList.add('hit');
     }
     this.lastHealth = h;
-    this.payout.textContent = formatMoney(s.currentPayout());
-    this.time.textContent = formatTime(s.time);
+    setText(this.payout, formatMoney(s.currentPayout()));
+    setText(this.time, formatTime(s.time));
     const cps = s.def.checkpoints.length;
-    this.status.innerHTML = `${cps ? `🚩 ${Math.max(0, s.checkpoint + 1)}/${cps}<br>` : ''}${s.falls ? `☁️ falls: ${s.falls}` : ''}`;
+    const status = `${cps ? `🚩 ${Math.max(0, s.checkpoint + 1)}/${cps}<br>` : ''}${s.falls ? `☁️ falls: ${s.falls}` : ''}`;
+    if (this.status.innerHTML !== status) this.status.innerHTML = status;
     this.status.style.display = cps || s.falls ? '' : 'none';
+    this.updateObjective();
 
     s.players.forEach((p, i) => {
       p.hands.forEach((hand, j) => {
@@ -159,6 +168,49 @@ export class Hud {
     }
   }
 
+  /** Where to next: while the next checkpoint (or the drop-off) is off screen, an arrow at the edge points to it. */
+  private updateObjective() {
+    const s = this.s;
+    const el = this.objective;
+    const next = s.state === 'playing' ? (s.def.checkpoints[s.checkpoint + 1] ?? s.def.goal) : null;
+    if (!next) {
+      el.style.opacity = '0';
+      return;
+    }
+    const c = s.cargo.body.translation();
+    const dist = Math.hypot(next.pos[0] - c.x, next.pos[2] - c.z);
+    _v.set(next.pos[0], next.pos[1], next.pos[2]).project(this.game.renderer.camera);
+    // behind the camera the projection comes out mirrored
+    const behind = _v.z > 1;
+    const nx = behind ? -_v.x : _v.x;
+    const ny = behind ? -_v.y : _v.y;
+    if (!behind && Math.abs(nx) < 0.9 && Math.abs(ny) < 0.85) {
+      el.style.opacity = '0';
+      return;
+    }
+    // walk from the screen centre toward it until we hit the free band inside the HUD cards
+    const w = this.el.clientWidth;
+    const h = this.el.clientHeight;
+    const cx = w / 2;
+    const cy = h / 2;
+    const dx = (nx * w) / 2;
+    const dy = (-ny * h) / 2;
+    const L = 70;
+    const R = w - 70;
+    const T = 120;
+    const B = h - 120;
+    let t = Infinity;
+    if (dx > 0) t = Math.min(t, (R - cx) / dx);
+    if (dx < 0) t = Math.min(t, (L - cx) / dx);
+    if (dy > 0) t = Math.min(t, (B - cy) / dy);
+    if (dy < 0) t = Math.min(t, (T - cy) / dy);
+    if (!isFinite(t)) t = 0;
+    el.style.opacity = '1';
+    el.style.transform = `translate(${(cx + dx * t).toFixed(1)}px, ${(cy + dy * t).toFixed(1)}px) translate(-50%, -50%)`;
+    this.objArrow.style.transform = `rotate(${Math.atan2(dy, dx).toFixed(3)}rad)`;
+    setText(this.objText, `${next === s.def.goal ? '🏁' : '🚩'} ${Math.round(dist)} m`);
+  }
+
   /** A one-off message on the hint line; the regular hints carry on after it. */
   say(text: string, seconds = 6) {
     this.hint.textContent = text;
@@ -187,4 +239,9 @@ function breakLine(kind: string) {
     default:
       return 'SMASHED!';
   }
+}
+
+/** Write text only when it changed (no DOM churn every frame). */
+function setText(el: HTMLElement, text: string) {
+  if (el.textContent !== text) el.textContent = text;
 }
