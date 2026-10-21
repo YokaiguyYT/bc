@@ -194,7 +194,8 @@ export class App {
       .map((l, i) => {
         const b = prog[l.id];
         const info = CARGO_INFO[l.cargo];
-        const stars = b ? '★'.repeat(b.stars) + '☆'.repeat(3 - b.stars) : '☆☆☆';
+        const earned = b?.stars ?? 0;
+        const stars = [0, 1, 2].map((i) => `<span class="${i < earned ? '' : 'off'}">★</span>`).join('');
         return `<button class="level-card" data-nav ${i === 0 ? 'data-default' : ''} data-level="${l.id}">
           <div class="num">${l.hidden ? 'PRACTICE' : `JOB ${l.order}`}</div>
           <div class="name">${esc(l.name)}</div>
@@ -223,8 +224,9 @@ export class App {
         <h2>How to move stuff (badly)</h2>
         <p>You and a friend run <b>Fragile Freight</b>. Each job: carry one very breakable, very expensive thing from the start to the <b style="color:#1f9d63">green drop-off zone</b>.</p>
         <h3>🧤 Grabbing</h3>
-        <p>Hold <b>GRAB</b> (${keys(b.p1.grab, 'p1')} / ${keys(b.p2.grab, 'p2')}) near something: your arms reach out and your mittens latch on. Let go of the key to drop it.</p>
-        <p>Heavy cargo needs <b>both</b> of you to lift it. Grab it from opposite sides, then walk together.</p>
+        <p>Hold <b>GRAB</b> (${keys(b.p1.grab, 'p1')} / ${keys(b.p2.grab, 'p2')}) near something: your arms reach out and your mittens latch on. Let go of the key and you set it down gently (jump to just drop it).</p>
+        <p>Heavy cargo needs <b>both</b> of you to lift it. Grab it from opposite sides, then walk together. Loads have weight: they speed up and stop slowly.</p>
+        <p>To deliver, <b>set the cargo down</b> inside the green zone and let go.</p>
         <h3>💥 Damage</h3>
         <p>Slow bumps are fine. Drops, slams, and wild swings crack, smash, or squish your cargo. The more condition you keep, the more you get paid.</p>
         <h3>☁️ Falling off</h3>
@@ -345,7 +347,6 @@ export class App {
       `<div class="panel" style="max-width:760px">
         <h2>Credits</h2>
         <p><b>Fragile Freight</b> — made with three.js, Rapier physics and a lot of dropped TVs.</p>
-        <p>All sounds and music are synthesized live in your browser with the Web Audio API.</p>
         <p>Font: <b>Fredoka</b> by the Fredoka Project Authors (SIL Open Font License 1.1).</p>
         <h3>3D models (Sketchfab)</h3>
         ${list ? `<ul class="credits-list">${list}</ul>` : '<p>No downloaded models yet — everything is built from primitive shapes.</p>'}

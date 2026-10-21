@@ -27,7 +27,8 @@ const browser = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium',
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'],
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const [vw, vh] = (process.env.VIEWPORT ?? '1280x720').split('x').map(Number);
+const page = await browser.newPage({ viewport: { width: vw, height: vh } });
 const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack}`));

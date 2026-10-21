@@ -159,6 +159,28 @@ export class LevelSession {
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
     this.events.on('cargoBreak', () => this.cameraRig.addShake(0.5));
+    // a little celebration: confetti for a delivery, a puff of stars for a checkpoint
+    const confetti = [0xff7a3d, 0x3d9bff, 0xffd23f, 0x52d39a, 0xff8fab, 0xffffff];
+    this.events.on('goal', () => {
+      const g = v3(def.goal.pos);
+      const top = g.y + def.goal.size[1] / 2;
+      for (const dx of [-0.6, 0, 0.6])
+        this.effects.burst('confetti', g.clone().setY(top + 0.3).add(_a.set(dx * def.goal.size[0] * 0.5, 0, 0)), {
+          count: 40,
+          speed: 3.2,
+          up: 4.5,
+          size: 0.07,
+          sizeVar: 0.4,
+          life: 2.6,
+          gravity: 4,
+          drag: 1.2,
+          colors: confetti,
+          ground: g.y - def.goal.size[1] / 2,
+        });
+    });
+    this.events.on('checkpoint', (e) =>
+      this.effects.burst('star', e.pos.clone().setY(e.pos.y + 0.6), { count: 10, speed: 2.2, up: 3, size: 0.1, life: 1.1, gravity: 6, colors: [0xffd84d, 0xffffff, 0xffe9a0] }),
+    );
     this.events.on('cargoDamage', (e) => {
       this.cameraRig.addShake(Math.min(0.35, e.amount * 3));
       for (const r of this.rigs) r.worriedTime = 1.4;

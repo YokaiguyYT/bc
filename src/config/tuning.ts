@@ -181,7 +181,7 @@ export const tuning = {
     /** Degrees above horizontal. */
     pitch: 46,
     fov: 38,
-    minDistance: 8.5,
+    minDistance: 9.5,
     maxDistance: 26,
     /** Extra framing margin around players and cargo (m). */
     padding: 2.6,

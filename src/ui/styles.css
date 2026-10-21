@@ -347,7 +347,11 @@ kbd.p2 {
 .level-card .stars {
   color: #ffbd2e;
   -webkit-text-stroke: 1px var(--ink);
+  paint-order: stroke fill;
   letter-spacing: 2px;
+}
+.level-card .stars span.off {
+  color: #e7dccb;
 }
 
 /* ---------- HUD ---------- */
