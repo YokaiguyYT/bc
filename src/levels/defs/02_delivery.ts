@@ -207,7 +207,14 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 200,
-  hints: ['Hold on during the ride — start and stop gently', 'Revolving door: push it round together', 'Wet floor! Or take the long way round', 'Let go of grab to set it down gently on the stand'],
+  hints: ['Hold on during the ride — start and stop gently'],
+  tips: [
+    { pos: [6.2, DOCK, -35], radius: 1.8, text: 'Push the revolving door round together, nice and slow' },
+    { pos: [10.8, DOCK, -35], radius: 1.4, text: 'Wet floor! Slippery. Or go round it' },
+    { pos: [15.7, DOCK, -38.5], radius: 2.0, text: 'The lift goes up once you are BOTH inside' },
+    { pos: [12, TOP, -41.3], radius: 2.0, text: 'The neighbour and his dog wander about. Let them pass' },
+    { pos: [-2, TOP, -46], radius: 1.8, text: 'Set it on the stand, then let go of grab' },
+  ],
   theme: { sunDir: [0.55, 0.8, 0.3], skyHorizon: 0xf3e6d6, fog: 0xefe2d2, hemiGround: 0xcfae8c },
   objects,
 };

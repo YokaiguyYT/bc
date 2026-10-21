@@ -130,6 +130,15 @@ export default async function ({ page, base, shot }) {
   await page.evaluate((digital) => {
     window.__FF.game.session.scriptedInput = true;
     window.__digital = digital;
+    // TIPS=1: log every message the hint line shows
+    window.__tips = [];
+    const hint = document.querySelector('.hud .hint');
+    if (hint)
+      new MutationObserver(() => {
+        const s = window.__FF.game.session;
+        const c = s.cargo.body.translation();
+        window.__tips.push(`${s.physics.time.toFixed(1)}s @[${c.x.toFixed(1)}, ${c.y.toFixed(1)}, ${c.z.toFixed(1)}] ${hint.textContent}`);
+      }).observe(hint, { childList: true, characterData: true, subtree: true });
   }, !!process.env.DIGITAL);
   const st = () =>
     page.evaluate(() => {
@@ -561,4 +570,5 @@ export default async function ({ page, base, shot }) {
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));
   }
+  if (process.env.TIPS) for (const t of await page.evaluate(() => window.__tips)) console.log('   hint', t);
 }

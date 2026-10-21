@@ -27,6 +27,7 @@ export class Hud {
   private objArrow: SVGElement;
   private objText: HTMLElement;
   private lastHealth = 1;
+  private tipsShown = new Set<number>();
   private hintIdx = -1;
   private hintTimer = 0.6;
   private offs: (() => void)[] = [];
@@ -119,6 +120,7 @@ export class Hud {
     if (this.status.innerHTML !== status) this.status.innerHTML = status;
     this.status.style.display = cps || s.falls ? '' : 'none';
     this.updateObjective();
+    this.updateTips();
 
     s.players.forEach((p, i) => {
       p.hands.forEach((hand, j) => {
@@ -221,6 +223,21 @@ export class Hud {
     el.style.transform = `translate(${(cx + dx * t).toFixed(1)}px, ${(cy + dy * t).toFixed(1)}px) translate(-50%, -50%)`;
     this.objArrow.style.transform = `rotate(${Math.atan2(dy, dx).toFixed(3)}rad)`;
     setText(this.objText, `${next === s.def.goal ? '🏁' : '🚩'} ${Math.round(dist)} m`);
+  }
+
+  /** Location tips: the first time the cargo or a mover gets near a tricky spot. */
+  private updateTips() {
+    const s = this.s;
+    const tips = s.def.tips;
+    if (!tips || s.state !== 'playing') return;
+    const near = (p: { x: number; y: number; z: number }, t: (typeof tips)[number]) =>
+      Math.hypot(p.x - t.pos[0], p.z - t.pos[2]) < t.radius && Math.abs(p.y - t.pos[1]) < 3;
+    tips.forEach((t, i) => {
+      if (this.tipsShown.has(i)) return;
+      if (!near(s.cargo.body.translation(), t) && !s.players.some((p) => near(p.body.translation(), t))) return;
+      this.tipsShown.add(i);
+      this.say(t.text, 6);
+    });
   }
 
   /** A one-off message on the hint line; the regular hints carry on after it. */

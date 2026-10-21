@@ -131,7 +131,12 @@ const level: LevelDef = {
   killY: -6,
   parTime: 150,
   objects,
-  hints: ['Grab the TV from both sides and lift together', 'Doors are tight — one of you go through first', 'The fire escape has no walls. Careful!'],
+  hints: ['Grab the TV from both sides and lift together'],
+  tips: [
+    { pos: [1.5, F, -8.1], radius: 2.0, text: 'Tight door: one of you goes through first, the TV follows' },
+    { pos: [5.2, F, -6.6], radius: 1.4, text: 'No walls on the fire escape. Small steps!' },
+    { pos: [12, 0, 13], radius: 2.4, text: 'Up the ramp, all the way in, then let go' },
+  ],
   theme: { sunDir: [0.5, 0.9, 0.25] },
 };
 

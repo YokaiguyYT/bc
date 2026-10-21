@@ -171,7 +171,11 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 170,
-  hints: ['Keep the cake LEVEL. Bumps hurt it.', 'Cross when the cars have a RED light', 'No lights on the second street: look both ways', 'Pigeons scatter. Dogs do not.'],
+  tips: [
+    { pos: [X1, WALK, 13.6], radius: 1.8, text: 'Wait until the cars have a RED light, then cross' },
+    { pos: [X1 - 1.6, WALK, -1.8], radius: 1.8, text: 'Pigeons scatter. Dogs do not.' },
+    { pos: [X2, WALK, -11.0], radius: 1.8, text: 'No lights here: look both ways and wait for a gap' },
+  ],
   theme: { sunDir: [0.3, 0.9, 0.4], skyTop: 0x62a8f0, skyHorizon: 0xe3f0fa },
   objects,
 };

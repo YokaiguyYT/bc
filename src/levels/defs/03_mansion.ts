@@ -160,7 +160,13 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 210,
-  hints: ['Pick it up: an end each', 'Suits of armour fall over. Onto clocks.', 'The stairs are long. Slow and steady', 'At the bottom, one of you swings wide'],
+  hints: ['Pick it up: an end each'],
+  tips: [
+    { pos: [-5.5, F, -8.8], radius: 2.0, text: 'Mind the suits of armour: they fall over. Onto clocks.' },
+    { pos: [3.2, F, -8.8], radius: 2.0, text: 'Long stairs: slow and steady' },
+    { pos: [12.2, 0, -8.0], radius: 1.6, text: 'Tight turn at the bottom: one of you swings wide' },
+    { pos: [6, 0, 11], radius: 2.0, text: 'Up the ramp and into the van. Straight on!' },
+  ],
   theme: { sunDir: [-0.4, 0.85, 0.35], skyTop: 0x7aa6e0, skyHorizon: 0xe8e4f0, fog: 0xe4e0ec },
   objects,
 };

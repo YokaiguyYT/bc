@@ -175,6 +175,8 @@ export interface LevelDef {
   objects: LevelObject[];
   /** Short tips shown on the HUD when the level starts. */
   hints?: string[];
+  /** Tips shown once per attempt when the cargo or a mover gets within `radius` of `pos`. */
+  tips?: { pos: Vec3; radius: number; text: string }[];
   /** Hidden from the level list (dev playground). */
   hidden?: boolean;
 }

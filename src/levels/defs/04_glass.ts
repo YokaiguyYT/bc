@@ -137,7 +137,13 @@ const level: LevelDef = {
   ],
   killY: -7,
   parTime: 180,
-  hints: ['Lift the glass off the rack together', 'Weave through the cones: sidestep, don’t turn', 'One plank each!', 'Wrecking ball! Wait for it…'],
+  hints: ['Lift the glass off the rack together', 'Weave through the cones: sidestep, don’t turn'],
+  tips: [
+    { pos: [0, 0, -2.4], radius: 1.8, text: 'One plank each! Walk side by side' },
+    { pos: [-6.2, S, -16.3], radius: 1.8, text: 'See-saw! It tips as you cross: keep going' },
+    { pos: [-15.4, S, -15.6], radius: 1.5, text: 'The belt drags you sideways: steer against it' },
+    { pos: [-15.3, S, -5.4], radius: 1.6, text: 'Wrecking ball! Wait till it swings away, then go' },
+  ],
   theme: { sunDir: [0.35, 0.85, 0.45] },
   objects,
 };
