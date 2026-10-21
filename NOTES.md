@@ -6,7 +6,8 @@ Design decisions, what still needs tuning, and known limitations.
 
 | Area | State |
 | --- | --- |
-| Five jobs and the Practice Yard | Playable start to finish |
+| Seven jobs and the Practice Yard | Playable start to finish |
+| Jobs 8–10 (piano, painting, balloons) | In progress |
 | Keyboard controls, rebinding, key tester | Done |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
@@ -43,6 +44,8 @@ This keeps walking reliable while still looking floppy.
 - Picking something up lifts it at least `grip.liftExtra` above where it was grabbed, so tall loads like the glass and the clock clear the floor.
 - Letting go of grab lowers the load gently first. Jumping drops it instead.
 - A hand that slips can only re-grab the load the other hand holds, until grab is pressed again. This stops movers latching onto walls by accident.
+- Round loads are "snug" (`Cargo.snug`, the egg): each hand holds exactly where it grips, re-settling whenever a hand latches. Normally a hand anchors where it was when it latched, which can be 0.2 m off a round surface, and the first hand often latches before its mover turns to face the load. On the narrow egg that left both hands pulling sideways for good, so the pair crawled. It's opt-in because the older cargo was tuned without it: with it, the TV jams in its hallway.
+- Whoever carries the egg keeps it upright (a righting torque while held). Mittens on a round shell grip wherever they land, and lifting from low down would tip it right over.
 
 **Damage.**
 - Each physics step, every cargo measures "shock": its sudden change in velocity, ignoring gravity. Sudden changes in spin count too, scaled by the cargo's size.
@@ -53,6 +56,8 @@ This keeps walking reliable while still looking floppy.
   - Aquarium: water sloshes and spills, and lost water is lost condition.
   - Clock: the pendulum swings.
   - Cake: it squishes.
+  - Ice swan: melts all the time (`MELT` in `IceSwan.ts`, ~0.07% a second), faster near heaters (each adds `power` × falloff), not at all in cold spots. It shrinks and drips as it goes, and a hard knock snaps its neck off.
+  - Dinosaur egg: cracks where it's hit (an eye peeks out below 60%), and something inside kicks every 7–13 s while it's carried.
 - **Cargo toughness** in Settings scales all damage (`damage.scale`).
 
 **Payout.**
@@ -67,9 +72,14 @@ This keeps walking reliable while still looking floppy.
   - Machines: movers, trucks, lifts, revolving and swing doors, conveyors, see-saws, fans, spinners, a wrecking ball and a chandelier.
   - Street: cars and traffic lights.
   - Creatures: pedestrians, a dog, a drunk and pigeons.
+  - Newer: heaters (fireplace, patio heater, heat lamp, or an invisible cold spot), skiers and sledges crossing a run, a gondola (the lift riding a slope on a cable), laser gates that knock movers flat while they're on, a brass Foucault pendulum (the wrecking ball restyled), and lamps.
 - Spawns and checkpoints can ride on a moving hazard, like the truck in job 2.
 
-**Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake.
+**Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake. The newer jobs follow in the order they were made: the ice swan, then the egg.
+
+**Swing doors** turn on their own hinge spring (`SwingDoor.preStep`), not Rapier's joint motor: the motor settled at the wrong angle. Hinges sit just behind the wall and 2 cm off the floor, because a leaf that touches either gets kicked by the solver.
+
+**Eggs and flat bases.** A convex hull with an 18-sided flat base only ever gets one contact point, so the egg rocked on its pedestal until it fell off. It has a small square foot collider under the base, and its pedestals have a solid ring of straw so a bump tips it against the ring instead of off the edge.
 
 **Player 2's keys.** P2 first had everything under the right hand: arrows to move, Right Shift or Return to jump, `/` to grab. Holding `/` (or Return) while working the arrows is a cramped claw, and playtesters found it uncomfortable. The default is now two-handed: right hand on the arrows, left hand on `K` (jump) and `L` (grab). Saved keys still on one of the old layouts move to the new default once, with a note on the menu. **Controls → Player 2 layout** switches between the layouts in one click.
 
@@ -89,7 +99,7 @@ This keeps walking reliable while still looking floppy.
 **Testing.** `tests/browser/` drives the real game in headless Chromium. A deterministic `advance()` steps the game, so tests never wait in real time.
 - `deliver` is a scripted pair of movers that carries the cargo through a whole level. Most level changes were checked with it. `DIGITAL=1` makes them move like keyboard players: full speed or stopped.
 - `monkey` has both movers mash random keys in every job, watching for page errors, NaN physics and lost movers.
-- `keys`, `pause`, `rebind`, `restart` and `restarts` cover the keyboard quirks, pausing, changing keys, restarting and memory.
+- `keys`, `pause`, `rebind`, `restart` and `restarts` cover the keyboard quirks, pausing, changing keys, restarting and memory. `p2layout` covers Player 2's layouts and the one-time move off the old keys; `levelnav` the job list (row-by-row keys, title and Back always on screen).
 - `tests/webkit/` runs the same scenarios in WebKitGTK, the engine family Safari uses, through a small Python bridge.
 
 ## Tuning still needed
@@ -102,16 +112,21 @@ Every number below lives in `src/config/tuning.ts` and has a slider in the dev p
 - **Set-down speed:** `grip.setDownSpeed`.
 - **Camera framing when the movers split up:** `camera.minDistance`, `camera.padding`.
 - **Par times:** set per level in its file. They're rough guesses from the bot's runs.
+- **Melting:** the swan's `MELT` rate and each heater's `power`/`radius`. The bot loses ~6% to melting; people will be slower.
+- **Laser gates:** `on`/`off`/`phase` in the museum level (2.2 s on, 3.2 s off, staggered).
+- **The egg's kicks:** strength and interval in `DinoEgg.preStep`.
 
 For reference, this is the cargo condition the bot delivered with (same in Chromium and WebKit):
 
 | Job | Bot result |
 | --- | --- |
 | TV | 100% |
-| Aquarium | 62–80% (the neighbour and his dog move randomly) |
+| Aquarium | 62–80% (the neighbour and his dog move randomly; 67.5% in the latest run) |
 | Clock | 100% down to the hall; 100% for the van ramp on its own |
 | Glass | ~99% (each half run separately) |
-| Cake | 80–89% |
+| Cake | 98.6% |
+| Ice swan | 93.8% (almost all of it melting; 93.7% in WebKit) |
+| Dinosaur egg | 100% (through the pendulum and all three laser gates; same in WebKit) |
 
 The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop precisely or re-grab a dropped corner. It delivers the clock at ~87% but often stalls or drops things elsewhere, so treat its numbers as a worst case.
 

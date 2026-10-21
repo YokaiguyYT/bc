@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy local **2-player** physics game for **one keyboard**. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake) through chaotic obstacle courses without breaking them.
+A goofy local **2-player** physics game for **one keyboard**. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg) through chaotic obstacle courses without breaking them.
 
 It runs in **Safari on a Mac**. There's nothing to install.
 
@@ -61,6 +61,8 @@ You can change every key under **Controls**. That screen also has a **key tester
 3. **Time to Go** (grandfather clock): carry a 2 m clock end to end along a gallery of suits of armour, down the grand staircase and out to the antiques van.
 4. **Glass Act** (pane of glass): weave through cones, one plank each over the trench, a see-saw, a sideways conveyor and a wrecking ball.
 5. **Piece of Cake** (wedding cake): cross on the green man, get through the park and the pigeons, find a gap in the traffic and set it on the cake table.
+6. **Cold Feet** (ice swan): it melts the whole way, faster near anything warm. Dodge the sledges, take the slippery shortcut over the frozen pond or the warm way round, cross between the skiers, ride the gondola up to the lodge and get it onto the buffet.
+7. **Jurassic Lark** (dinosaur egg): a museum after dark. Past the T-Rex, behind the swinging pendulum (or round past the night guard), through the laser gates when they blink off, and down to the incubator. Something inside kicks.
 
 There's also a **Practice Yard** to learn the controls.
 
@@ -110,7 +112,7 @@ src/
 
 ```sh
 npx vite --port 5199 &
-FF_URL=http://localhost:5199/ node tests/browser/run.mjs deliver   # ROUTE=moveout-full|delivery-full|mansion-full|glass-south|city-full
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs deliver   # ROUTE=moveout-full|delivery-full|mansion-full|glass-south|city-full|cold-full|museum-full
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs carryall  # every cargo: lift, carry, set down
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs menus     # screenshots of every menu
 ```
