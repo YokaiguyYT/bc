@@ -6,8 +6,8 @@ Design decisions, what still needs tuning, and known limitations.
 
 | Area | State |
 | --- | --- |
-| Seven jobs and the Practice Yard | Playable start to finish |
-| Jobs 8–10 (piano, painting, balloons) | In progress |
+| Eight jobs and the Practice Yard | Playable start to finish |
+| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Planned, not started |
 | Keyboard controls, rebinding, key tester | Done |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
@@ -58,6 +58,7 @@ This keeps walking reliable while still looking floppy.
   - Cake: it squishes.
   - Ice swan: melts all the time (`MELT` in `IceSwan.ts`, ~0.07% a second), faster near heaters (each adds `power` × falloff), not at all in cold spots. It shrinks and drips as it goes, and a hard knock snaps its neck off.
   - Dinosaur egg: cracks where it's hit (an eye peeks out below 60%), and something inside kicks every 7–13 s while it's carried.
+  - Upright piano: can't be lifted (`Cargo.liftable = false`); it rolls on low-friction castors, so it runs away down any slope nobody is holding it on. Knocks pop keys out and throw the lid open.
 - **Cargo toughness** in Settings scales all damage (`damage.scale`).
 
 **Payout.**
@@ -75,7 +76,9 @@ This keeps walking reliable while still looking floppy.
   - Newer: heaters (fireplace, patio heater, heat lamp, or an invisible cold spot), skiers and sledges crossing a run, a gondola (the lift riding a slope on a cable), laser gates that knock movers flat while they're on, a brass Foucault pendulum (the wrecking ball restyled), and lamps.
 - Spawns and checkpoints can ride on a moving hazard, like the truck in job 2.
 
-**Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake. The newer jobs follow in the order they were made: the ice swan, then the egg.
+**Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake. The newer jobs follow in the order they were made: the ice swan, the egg, then the piano.
+
+**Castors.** Rapier averages the friction of two touching surfaces unless told otherwise, so the piano's castor balls use the `Min` combine rule; with the default it barely moved. Movers push it side-on (both on one long side), not end-on.
 
 **Swing doors** turn on their own hinge spring (`SwingDoor.preStep`), not Rapier's joint motor: the motor settled at the wrong angle. Hinges sit just behind the wall and 2 cm off the floor, because a leaf that touches either gets kicked by the solver.
 
@@ -115,6 +118,7 @@ Every number below lives in `src/config/tuning.ts` and has a slider in the dev p
 - **Melting:** the swan's `MELT` rate and each heater's `power`/`radius`. The bot loses ~6% to melting; people will be slower.
 - **Laser gates:** `on`/`off`/`phase` in the museum level (2.2 s on, 3.2 s off, staggered).
 - **The egg's kicks:** strength and interval in `DinoEgg.preStep`.
+- **The piano:** castor friction and damping in `UprightPiano.ts`; the cable car's `speed`/`spacing` in the hills level.
 
 For reference, this is the cargo condition the bot delivered with (same in Chromium and WebKit):
 
@@ -127,6 +131,7 @@ For reference, this is the cargo condition the bot delivered with (same in Chrom
 | Cake | 98.6% |
 | Ice swan | 93.8% (almost all of it melting; 93.7% in WebKit) |
 | Dinosaur egg | 100% (through the pendulum and all three laser gates; same in WebKit) |
+| Upright piano | 100% (down the hill, past the cable car and the crooked street) |
 
 The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop precisely or re-grab a dropped corner. It delivers the clock at ~87% but often stalls or drops things elsewhere, so treat its numbers as a worst case.
 

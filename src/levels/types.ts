@@ -129,6 +129,7 @@ export interface HazardObj {
     | 'chandelier'
     | 'heater'
     | 'skiers'
+    | 'riders'
     | 'laser'
     | 'light';
   pos: Vec3;

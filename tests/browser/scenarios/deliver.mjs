@@ -184,6 +184,45 @@ const ROUTES = {
     broad: [0.62, 0.72],
     hall: { cargo: [1.0, 1.0, 5.0], yaw: 180, path: [[1.0, -1.6, 'broad'], { wait: 'ball' }, [1.0, -8.6, 'broad'], [0, -12.2, 'broad']] },
   },
+  // piano: out of the shop end-on, down the hill holding it back, across the cable car tracks,
+  // round the hedges of the crooked street, into the club and up onto the stage
+  'hills-full': {
+    broad: [1.15, 1.35],
+    shop: {
+      start: true,
+      path: [
+        [0, 18.0, 'broad'],
+        [0, 13.0, 'broad'],
+        [0, -26.0, 'broad'],
+        { wait: 'gap', x: 0, z: [-36, -32], ahead: 22 },
+        [0, -39.0, 'broad'],
+        [5.4, -41.5, 'broad'],
+        [5.4, -46.5, 'broad'],
+        [-5.4, -46.5, 'broad'],
+        [-5.4, -51.5, 'broad'],
+        [5.4, -51.5, 'broad'],
+        [5.4, -56.5, 'broad'],
+        [-5.4, -56.5, 'broad'],
+        [-5.4, -61.5, 'broad'],
+        [0, -64.5, 'broad'],
+        [0, -69.0, 'broad'],
+        [0, -73.0, 'broad'],
+        [0, -76.0, 'broad'],
+        [0, -81.8, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // just the start: grab and out of the shop door
+  'hills-start': {
+    broad: [1.15, 1.35],
+    shop: { start: true, path: [[0, 18.0, 'broad'], [0, 13.0, 'broad']] },
+  },
+  // just the hill: from the top, end-on, down to the crossing
+  'hills-hill': {
+    broad: [1.15, 1.35],
+    hill: { cargo: [0, 9.75, 13.5], yaw: 180, half: 1.3, path: [[0, 12.0, 'broad'], [0, -26.0, 'broad']] },
+  },
   // just the lodge: through the swing doors to the buffet
   'cold-lodge': {
     lodge: { cargo: [0, 10.0, -49.6], yaw: 180, path: [[0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
@@ -280,9 +319,9 @@ export default async function ({ page, base, shot }) {
    * Put the cargo at `c` with its long side across the travel direction `yaw`
    * (deg) and the movers either side of it ('sides') or both behind it ('front').
    */
-  async function setup(c, yaw, mode = 'sides', lying = false) {
+  async function setup(c, yaw, mode = 'sides', lying = false, halfSpan = 0.95) {
     await page.evaluate(
-      ([c, yaw, mode, lying]) => {
+      ([c, yaw, mode, lying, halfSpan]) => {
         const s = window.__FF.game.session;
         const V = s.cargo.lastHitPos.constructor;
         const y = (yaw * Math.PI) / 180;
@@ -307,14 +346,14 @@ export default async function ({ page, base, shot }) {
           s.players[0].teleport(new V(c[0] - d.x * half, foot - 0.1, c[2] - d.z * half), face);
           s.players[1].teleport(new V(c[0] + d.x * half, foot - 0.1, c[2] + d.z * half), face + Math.PI);
         } else {
-          const half = 0.45 + 0.5;
+          const half = halfSpan;
           const face = Math.atan2(side.x, side.z);
           s.players[0].teleport(new V(c[0] - side.x * half, foot, c[2] - side.z * half), face);
           s.players[1].teleport(new V(c[0] + side.x * half, foot, c[2] + side.z * half), face + Math.PI);
         }
         s.physics.snapLinks();
       },
-      [c, yaw, mode, lying],
+      [c, yaw, mode, lying, halfSpan],
     );
     await adv(0.6);
   }
@@ -643,7 +682,7 @@ export default async function ({ page, base, shot }) {
       await adv(1.2);
       await grab();
     } else if (!seg.keep) {
-      if (seg.cargo) await setup(seg.cargo, seg.yaw ?? 0, seg.setup, seg.lying);
+      if (seg.cargo) await setup(seg.cargo, seg.yaw ?? 0, seg.setup, seg.lying, seg.half);
       else {
         const c = (await st()).cargo;
         await setup([c[0], c[1] + 0.05, c[2]], 90);

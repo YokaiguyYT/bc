@@ -83,13 +83,62 @@ function sledder(color: number) {
   return g;
 }
 
+/** A San Francisco cable car with folk hanging off the running boards. Faces local +Z. */
+function cableCar() {
+  const g = new THREE.Group();
+  const red = glossy(0xc8342b, 0.4, 0.1);
+  const cream = glossy(0xeee2c4, 0.45, 0.05);
+  const dark = glossy(0x5a1f1b, 0.4, 0.1);
+  const box = (size: [number, number, number], mat: THREE.Material, x: number, y: number, z: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+  box([2.3, 0.9, 6.4], red, 0, 0.75, 0);
+  for (const x of [-1.25, 1.25]) box([0.25, 0.08, 6.2], cream, x, 0.36, 0);
+  box([2.0, 1.3, 2.6], cream, 0, 1.85, 0);
+  for (const x of [-1.01, 1.01]) for (const z of [-0.8, 0, 0.8]) box([0.02, 0.6, 0.6], glossy(0x9fd6ee, 0.1, 0.1), x, 2.0, z);
+  for (const x of [-1.08, 1.08]) for (const z of [-2.9, -2.1, -1.4, 1.4, 2.1, 2.9]) box([0.08, 1.3, 0.08], cream, x, 1.85, z);
+  box([2.4, 0.16, 6.7], dark, 0, 2.58, 0);
+  box([1.3, 0.22, 4.6], dark, 0, 2.75, 0);
+  for (const x of [-1.16, 1.16])
+    for (const z of [-2.2, 2.2]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.12, 14), matte(0x24242c));
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.32, z);
+      g.add(wheel);
+    }
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshStandardMaterial({ color: 0xfff1b0, emissive: 0xffe08a, emissiveIntensity: 1.4 }));
+  lamp.position.set(0, 1.3, 3.22);
+  g.add(lamp);
+  const bell = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.16, 12), glossy(0xd9a93f, 0.3, 0.8));
+  bell.position.set(0, 2.85, 2.9);
+  g.add(bell);
+  // riders hanging on
+  [
+    [1.3, -1.9, 0x3d9bff],
+    [1.3, 1.7, 0xffd23f],
+    [-1.3, 0.5, 0x52d39a],
+  ].forEach(([x, z, color]) => {
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.4, 4, 10), jelly(color, 0.4));
+    body.position.set(x, 0.86, z);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), jelly(0xffd9b8, 0.3));
+    head.position.set(x * 1.03, 1.32, z);
+    g.add(body, head);
+  });
+  g.traverse((o) => ((o as THREE.Mesh).castShadow = true));
+  return g;
+}
+
 /**
- * Skiers (or kids on sledges) whizzing across a run, one after another, then
- * round again from the top. They slow down for movers standing right in front
- * of them, but bowl over anyone who steps out at the wrong moment.
- * params: dirYaw (deg), length, speed, count, phase (0..1), style 'ski' | 'sled',
- * wiggle (m, side to side), spacing [fractions of the lane, one per rider] for
- * uneven gaps.
+ * Skiers (or kids on sledges, or cable cars) going across one after another,
+ * then round again from the top. They slow down for movers standing right in
+ * front of them, but bowl over anyone who steps out at the wrong moment.
+ * params: dirYaw (deg), length, speed, count, phase (0..1), style 'ski' |
+ * 'sled' | 'cablecar', wiggle (m, side to side), spacing [fractions of the
+ * lane, one per rider] for uneven gaps.
  */
 class Skiers implements Hazard {
   /** Named like the car lanes' so the test bot's "wait for a gap" works here too. */
@@ -115,15 +164,15 @@ class Skiers implements Hazard {
     this.length = num(p, 'length', 40);
     this.maxSpeed = num(p, 'speed', 7);
     this.wiggle = num(p, 'wiggle', 0.8);
-    const style = str<'ski' | 'sled'>(p, 'style', 'ski');
+    const style = str<'ski' | 'sled' | 'cablecar'>(p, 'style', 'ski');
     const count = num(p, 'count', 3);
     const spacing = p?.spacing as number[] | undefined;
     for (let i = 0; i < count; i++) {
       const s = ((spacing?.[i] ?? i / count) + num(p, 'phase', 0)) * this.length;
       const color = JACKETS[(i * 3 + (style === 'sled' ? 1 : 0)) % JACKETS.length];
       const visual = new THREE.Group();
-      visual.add(style === 'sled' ? sledder(color) : skier(color));
-      const half: [number, number, number] = style === 'sled' ? [0.3, 0.45, 0.65] : [0.35, 0.7, 0.75];
+      visual.add(style === 'cablecar' ? cableCar() : style === 'sled' ? sledder(color) : skier(color));
+      const half: [number, number, number] = style === 'cablecar' ? [1.15, 1.45, 3.2] : style === 'sled' ? [0.3, 0.45, 0.65] : [0.35, 0.7, 0.75];
       const pos = this.posAt(s % this.length);
       const body = kinematicBody(sim, pos.clone().setY(pos.y + half[1]));
       const col = hazardCollider(sim, body, RAPIER.ColliderDesc.cuboid(...half), 'hazard', 0.3);
@@ -176,3 +225,4 @@ class Skiers implements Hazard {
   }
 }
 registerHazard('skiers', (o, sim) => new Skiers(o, sim));
+registerHazard('riders', (o, sim) => new Skiers(o, sim));
