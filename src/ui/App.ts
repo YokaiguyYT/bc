@@ -31,6 +31,8 @@ export class App {
   private attract: Attract | null = null;
   private keytestTimer = 0;
   private perf = { from: 0, frames: 0, hinted: false };
+  /** Seconds the results card has been up. */
+  private resultsFor = 0;
 
   constructor(
     private game: Game,
@@ -104,6 +106,8 @@ export class App {
       return;
     }
     if (this.screen === 'results' && this.game.session?.result && !this.focusables.length) return;
+    // jump keys double as "select": don't let a last mashed jump skip the results card
+    if (this.screen === 'results' && this.resultsFor < 1.2) return;
     // menu navigation
     const prev = ['ArrowUp', 'KeyW', 'ArrowLeft', 'KeyA'];
     const next = ['ArrowDown', 'KeyS', 'ArrowRight', 'KeyD'];
@@ -131,6 +135,7 @@ export class App {
 
   private frame(dt: number) {
     this.watchFrameRate();
+    if (this.screen === 'results') this.resultsFor += dt;
     this.attract?.update(dt);
     const s = this.game.session;
     if (s && this.hud && (this.screen === 'playing' || this.screen === 'paused')) this.hud.update(dt);
@@ -489,6 +494,7 @@ export class App {
 
   private showResults(r: SessionResult) {
     const s = this.game.session!;
+    this.resultsFor = 0;
     const beat = recordResult(r);
     const stars = starsFor(r);
     const def = s.def;

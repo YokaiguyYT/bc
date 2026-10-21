@@ -26,4 +26,23 @@ export default async function ({ page, base, shot }) {
   await shot('restart_hud');
   console.log('HUDs: first', one, 'after 3 restarts', afterRestarts, 'after retry', afterRetry);
   if (one !== 1 || afterRestarts !== 1 || afterRetry !== 1) throw new Error('HUDs pile up on restart');
+
+  // a jump mashed as the job ends must not skip the results card
+  await page.evaluate(() => {
+    const s = window.__FF.game.session;
+    s.time = 90;
+    s.finish(true);
+  });
+  await adv(0.1);
+  await page.keyboard.press('Space');
+  await page.keyboard.press('Enter');
+  await adv(0.1);
+  const screenAfterMash = await page.evaluate(() => window.__FF.app.screen);
+  await adv(1.3);
+  await page.keyboard.press('Space');
+  await adv(0.5);
+  const screenLater = await page.evaluate(() => window.__FF.app.screen);
+  console.log('results after a mashed jump:', screenAfterMash, '→ a deliberate press later:', screenLater);
+  if (screenAfterMash !== 'results') throw new Error('a mashed jump skipped the results card');
+  if (screenLater !== 'playing') throw new Error('the results card ignores keys for good');
 }

@@ -1,7 +1,9 @@
 // Two "monkeys" mash the real keyboard in every job: random walking, jumping and
 // grabbing, half the time heading for the cargo. Fails on page errors, NaN
 // physics, movers lost below the world, or very slow simulation steps.
-// env SECONDS (per job, default 120), LEVELS (comma list), SEED.
+// env SECONDS (per job, default 120), LEVELS (comma list), SEED,
+// CARRY=1 (every 10 s both movers are put either side of the cargo and mostly
+// hold grab: chaotic carrying instead of wandering).
 export default async function ({ page, base }) {
   const seconds = Number(process.env.SECONDS ?? 120);
   await page.goto(base + '?manual=1');
@@ -12,8 +14,17 @@ export default async function ({ page, base }) {
     await page.evaluate((id) => window.__FF.app.playLevel(id), id);
     const report = { id, steps: 0, slowest: 0, respawns: 0, grabs: 0, states: {}, health: 1 };
     for (let chunk = 0; chunk < seconds / 10; chunk++) {
+      if (process.env.CARRY)
+        await page.evaluate(() => {
+          const s = window.__FF.game.session;
+          const c = s.cargo.body.translation();
+          const V = s.cargo.lastHitPos.constructor;
+          s.players.forEach((p, i) => p.teleport(new V(c.x + (i ? 0.95 : -0.95), c.y - 0.3, c.z), i ? -Math.PI / 2 : Math.PI / 2));
+          s.physics.snapLinks();
+          window.__monkey = [0, 1].map(() => ({ next: 0, grabUntil: s.physics.time + 8, dir: [] }));
+        });
       const r = await page.evaluate(
-        ([seed, chunk]) => {
+        ([seed, chunk, carry]) => {
           const g = window.__FF.game;
           const s = g.session;
           const kb = g.keyboard;
@@ -32,6 +43,7 @@ export default async function ({ page, base }) {
             window.dispatchEvent(new KeyboardEvent(type, { code, key: code, shiftKey: shift, bubbles: true, cancelable: true }));
           };
           const st = (window.__monkey ??= [0, 1].map(() => ({ next: 0, grabUntil: 0, dir: [] })));
+          window.__carry = carry;
           const out = { steps: 0, slowest: 0, nan: null, lost: 0 };
           const camF = s.cameraRig.forward(new (s.cargo.lastHitPos.constructor)());
           const camR = s.cameraRig.right(new (s.cargo.lastHitPos.constructor)());
@@ -72,6 +84,7 @@ export default async function ({ page, base }) {
                   m.jumpUp = now + 0.1 + rand() * 0.3;
                 }
                 if (rand() < 0.35) m.grabUntil = now + rand() * 4;
+                if (window.__carry && rand() < 0.8) m.grabUntil = Math.max(m.grabUntil, now + 2);
               }
               if (m.jumpUp && now >= m.jumpUp) {
                 key('keyup', k.jump);
@@ -92,6 +105,8 @@ export default async function ({ page, base }) {
             }
             if (bad(s.cargo.body.translation())) out.nan = 'cargo';
             if (out.nan) break;
+            // the job ended: stop mashing before the results card takes the keys
+            if (s.state !== 'playing') break;
           }
           out.state = s.state;
           out.health = +s.cargo.health.toFixed(3);
@@ -99,7 +114,7 @@ export default async function ({ page, base }) {
           out.grips = s.players.map((p) => p.hands.filter((h) => h.grip).length).join('');
           return out;
         },
-        [Number(process.env.SEED ?? 1) + levels.indexOf(id) * 17, chunk],
+        [Number(process.env.SEED ?? 1) + levels.indexOf(id) * 17, chunk, !!process.env.CARRY],
       );
       report.steps += r.steps;
       report.slowest = Math.max(report.slowest, r.slowest);
@@ -110,7 +125,14 @@ export default async function ({ page, base }) {
       if (r.lost) problems.push(`${id}: a mover fell far below the world without respawning (chunk ${chunk})`);
       if (r.nan) break;
       // a broken or delivered job just restarts, like players would
-      if (r.state !== 'playing') await page.evaluate((id) => window.__FF.app.playLevel(id), id);
+      if (r.state !== 'playing') {
+        await page.evaluate(() => {
+          for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftRight', 'Slash'])
+            window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
+          window.__monkey = null;
+        });
+        await page.evaluate((id) => window.__FF.app.playLevel(id), id);
+      }
     }
     report.slowest = Math.round(report.slowest);
     console.log(id.padEnd(10), JSON.stringify(report));

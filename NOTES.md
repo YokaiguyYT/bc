@@ -38,7 +38,7 @@ This keeps walking reliable while still looking floppy.
 **Grabbing.** Hands latch onto whatever they touch. The hold is a spring with a force limit, not a rigid joint: one hand can pull at most `grip.handForce` (118 N). As a result, one mover can't carry the heavy cargo alone, loads sag and swing, and an over-stretched grip slips. These details made carrying feel right:
 
 - A held load follows only the carrier's heading, not their lean or waddle. Otherwise the aquarium copied every wobble and spilled.
-- Loads have momentum. As the held mass grows, acceleration drops toward `move.carryAccel`, so slamming to a stop sloshes water and tips clocks.
+- Loads have momentum. As the held mass grows, acceleration drops toward `move.carryAccel`, so slamming to a stop sloshes water and tips clocks. Light but delicate cargo can ask for the same gentle handling with `Cargo.care`. The cake does: two movers sharing its 7.8 kg used to start and stop at about 20 m/s², and a keyboard can't do anything gentler, so every start slid the frosting.
 - Picking something up lifts it at least `grip.liftExtra` above where it was grabbed, so tall loads like the glass and the clock clear the floor.
 - Letting go of grab lowers the load gently first. Jumping drops it instead.
 - A hand that slips can only re-grab the load the other hand holds, until grab is pressed again. This stops movers latching onto walls by accident.
@@ -70,7 +70,18 @@ This keeps walking reliable while still looking floppy.
 
 **Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake.
 
-**Testing.** `tests/browser/` drives the real game in headless Chromium. A deterministic `advance()` steps the game, so tests never wait in real time. The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level. Most level changes were checked with it.
+**Keyboard on a Mac.** Keys are tracked by `KeyboardEvent.code`, so layouts and Shift don't change them. Three macOS quirks are handled in `src/input/Keyboard.ts`:
+- Keys released while ⌘ is held never send a keyup, so letting go of ⌘ clears them.
+- Safari reports letting go of one Shift key while the other is held as another *keydown*. P1 grabs with Left Shift and P2 jumps with Right Shift, so this used to cause phantom jumps and stuck grips. A second keydown of a held modifier now counts as its release.
+- A modifier the event says isn't held can't be down, whatever events went missing.
+
+**Pausing.** Switching to another app or tab pauses the job, so nobody comes back to a broken cake.
+
+**Testing.** `tests/browser/` drives the real game in headless Chromium. A deterministic `advance()` steps the game, so tests never wait in real time.
+- `deliver` is a scripted pair of movers that carries the cargo through a whole level. Most level changes were checked with it. `DIGITAL=1` makes them move like keyboard players: full speed or stopped.
+- `monkey` has both movers mash random keys in every job, watching for page errors, NaN physics and lost movers.
+- `keys`, `pause`, `rebind`, `restart` and `restarts` cover the keyboard quirks, pausing, changing keys, restarting and memory.
+- `tests/webkit/` runs the same scenarios in WebKitGTK, the engine family Safari uses, through a small Python bridge.
 
 ## Tuning still needed
 
@@ -95,7 +106,7 @@ For reference, this is the cargo condition the bot delivered with:
 
 ## Known limitations
 
-- **Not yet tested in Safari on a real Mac.** Development and tests used headless Chromium on Linux. The build targets Safari 15+, and the bundle was checked for APIs Safari lacks. If it stutters, try **Graphics: Fast**.
+- **Not yet tested in Safari on a real Mac.** Every job, every menu and the double-clickable file were run in WebKitGTK 2.52 (Safari's engine family) on Linux with no errors, and the build targets Safari 15+. The graphics drivers and the keyboard on a real Mac are the parts still untested. If it stutters, try **Graphics: Fast**; the game suggests it once if play stays under 40 fps.
 - **Mac keyboards ghost.** Some key combinations don't register when both players hold many keys at once. That's why the Controls screen has a key tester and lets you change every key.
 - **No gamepad support**, by request.
 - **Randomness.** Pedestrians, the dog and the drunk wander, so the aquarium job plays out differently each run.
