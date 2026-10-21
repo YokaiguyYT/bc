@@ -37,16 +37,12 @@ export class Hud {
     private s: LevelSession,
   ) {
     const info = CARGO_INFO[s.def.cargo];
-    const b = game.keyboard.bindings;
-    const k = (codes: string[], cls: string) => codes.slice(0, 1).map((c) => `<kbd class="${cls}">${keyLabel(c)}</kbd>`).join('');
     const pcard = (i: number) => {
-      const pb = i === 0 ? b.p1 : b.p2;
       const cls = i === 0 ? 'p1' : 'p2';
-      const moveKeys = i === 0 ? `${k(pb.up, cls)}${k(pb.left, cls)}${k(pb.down, cls)}${k(pb.right, cls)}` : `${k(pb.up, cls)}${k(pb.left, cls)}${k(pb.down, cls)}${k(pb.right, cls)}`;
       return `<div class="card player-card ${cls}">
         <div class="badge" style="background:${i === 0 ? 'var(--p1)' : 'var(--p2)'}">P${i + 1}</div>
         <div class="hands"><div class="hand"></div><div class="hand"></div></div>
-        <div><div class="keys">move ${moveKeys}<br>jump ${k(pb.jump, cls)} grab ${k(pb.grab, cls)}</div><div class="state"></div></div>
+        <div><div class="keys">${this.keysHtml(i)}</div><div class="state"></div></div>
       </div>`;
     };
     this.el = document.createElement('div');
@@ -166,6 +162,22 @@ export class Hud {
         this.hintTimer = 9999;
       }
     }
+  }
+
+  private keysHtml(i: number) {
+    const b = this.game.keyboard.bindings;
+    const pb = i === 0 ? b.p1 : b.p2;
+    const cls = i === 0 ? 'p1' : 'p2';
+    const k = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="${cls}">${keyLabel(c)}</kbd>`).join('');
+    return `move ${k(pb.up)}${k(pb.left)}${k(pb.down)}${k(pb.right)}<br>jump ${k(pb.jump)} grab ${k(pb.grab)}`;
+  }
+
+  /** Show the current key bindings on the player cards. */
+  refreshKeys() {
+    this.el.querySelectorAll<HTMLElement>('.player-card .keys').forEach((el, i) => {
+      const html = this.keysHtml(i);
+      if (el.innerHTML !== html) el.innerHTML = html;
+    });
   }
 
   /** Where to next: while the next checkpoint (or the drop-off) is off screen, an arrow at the edge points to it. */

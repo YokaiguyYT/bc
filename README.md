@@ -15,6 +15,7 @@ It runs in **Safari on a Mac**. There's nothing to install.
 3. Find `FragileFreight.html` in your Downloads and **double-click it**. It opens in Safari. That's it.
    - If it opens in a different browser, right-click it → **Open With → Safari**.
    - You can move the file anywhere (the Desktop is fine). Your best payouts are remembered by Safari.
+   - For a bigger view, use Safari's **View → Enter Full Screen**.
 
 ### Option 2: play from a link (one-time setup)
 
@@ -48,6 +49,8 @@ You can change every key under **Controls**. That screen also has a **key tester
 - **Deliver:** set the cargo down inside the **green zone** and let go.
 - **Damage:** bumps, drops, slams and wild swings all cost condition. You're paid the cargo's value × its condition, minus a little for every fall, plus a bonus for beating par time.
 - **Checkpoints** (yellow zones) save your progress. Fall off the world and you respawn at the last one.
+- **Lost?** When the next checkpoint (🚩) or the drop-off (🏁) is off screen, an arrow at the edge of the screen points to it.
+- **Switching apps** pauses the game. `Esc` or `P` carries on.
 
 ## The jobs
 

@@ -240,6 +240,8 @@ export class App {
         <p>To deliver, <b>set the cargo down</b> inside the green zone and let go.</p>
         <h3>💥 Damage</h3>
         <p>Slow bumps are fine. Drops, slams, and wild swings crack, smash, or squish your cargo. The more condition you keep, the more you get paid.</p>
+        <h3>🧭 Finding the way</h3>
+        <p>When the next checkpoint (🚩) or the drop-off (🏁) is off screen, an arrow at the edge of the screen points to it.</p>
         <h3>☁️ Falling off</h3>
         <p>Fall off the world and you respawn at the last checkpoint (flags), minus a small payout penalty. Get the cargo to a checkpoint to save progress.</p>
         <h3>🎥 Camera</h3>
@@ -291,8 +293,25 @@ export class App {
     this.listening = null;
     const kb = this.game.keyboard;
     if (code !== 'Escape') {
-      if (l.player === 'cam') (kb.bindings as unknown as Record<string, string[]>)[l.action] = [code];
-      else kb.bindings[l.player][l.action as keyof PlayerBindings] = [code];
+      const b = kb.bindings as unknown as Record<string, string[] | Record<string, string[]>>;
+      const lists = (b: typeof kb.bindings) => {
+        const out: { owner: Record<string, string[]>; action: string }[] = [];
+        for (const [k, v] of Object.entries(b)) {
+          if (Array.isArray(v)) out.push({ owner: b as unknown as Record<string, string[]>, action: k });
+          else for (const a of Object.keys(v)) out.push({ owner: v as unknown as Record<string, string[]>, action: a });
+        }
+        return out;
+      };
+      const target = (l.player === 'cam' ? b : b[l.player]) as Record<string, string[]>;
+      const old = target[l.action] ?? [];
+      // a key does one thing: take it from whatever had it, and swap if that leaves it with none
+      for (const { owner, action } of lists(kb.bindings)) {
+        if (owner === target && action === l.action) continue;
+        if (!owner[action].includes(code)) continue;
+        owner[action] = owner[action].filter((c) => c !== code);
+        if (!owner[action].length) owner[action] = old.filter((c) => c !== code).slice(0, 1);
+      }
+      target[l.action] = [code];
       kb.saveBindings();
     }
     const back = this.back ?? (() => this.showMenu());
@@ -313,7 +332,7 @@ export class App {
         <div class="setting"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" value="${st.master}" data-vol="master"></div>
         <div class="setting"><span>Music</span><input type="range" min="0" max="1" step="0.05" value="${st.music}" data-vol="music"></div>
         <div class="setting"><span>Sound effects</span><input type="range" min="0" max="1" step="0.05" value="${st.sfx}" data-vol="sfx"></div>
-        <p style="margin-top:12px">Running slow in Safari? Pick <b>Fast</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
+        <p style="margin-top:12px">Running slow in Safari? Pick <b>Fast</b>. Want it bigger? In Safari: <b>View → Enter Full Screen</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
        </div>
        <div class="row"><button class="btn" data-nav data-default id="s-back">Done</button></div>`,
       { back, dim: true },
@@ -457,6 +476,7 @@ export class App {
     if (!s) return;
     s.paused = false;
     this.game.keyboard.clear();
+    this.hud?.refreshKeys(); // in case keys were changed from the pause menu
     this.setScreen('playing', '');
   }
 
