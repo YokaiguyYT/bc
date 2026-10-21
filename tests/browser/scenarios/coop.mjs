@@ -17,7 +17,7 @@ export default async function ({ page, base, shot }) {
   await walkTo('ArrowUp', 1, 2, 2.05);
   await log('at depth');
   // face the crate and grab: P1 presses D (+x), P2 presses Left
-  await K.down('ShiftLeft'); await K.down('Slash');
+  await K.down('ShiftLeft'); await K.down('KeyL');
   await K.down('KeyD'); await K.down('ArrowLeft');
   for (let i = 0; i < 12; i++) { await adv(0.1); const s = await st(); if (s.players.every(p => p.grips.some(Boolean))) break; }
   await K.up('KeyD'); await K.up('ArrowLeft');
@@ -36,7 +36,7 @@ export default async function ({ page, base, shot }) {
   }
   await K.up('KeyW'); await K.up('ArrowUp');
   await adv(0.5);
-  await K.up('ShiftLeft'); await K.up('Slash');
+  await K.up('ShiftLeft'); await K.up('KeyL');
   await log('released');
   await adv(2.5);
   await log('end');

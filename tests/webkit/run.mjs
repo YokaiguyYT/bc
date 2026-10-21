@@ -38,6 +38,9 @@ function key(type, code) {
 // The subset of Playwright's Page the scenarios use.
 const page = {
   goto: (url) => call('goto', { url }),
+  async reload() {
+    return call('goto', { url: await page.evaluate(() => location.href) });
+  },
   evaluate(fn, arg) {
     const body = typeof fn === 'function' ? `return (${fn})(${arg === undefined ? '' : JSON.stringify(arg)});` : `return (${fn});`;
     return call('eval', { body });

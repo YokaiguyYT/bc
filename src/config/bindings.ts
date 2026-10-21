@@ -30,19 +30,38 @@ export const DEFAULT_BINDINGS: Bindings = {
     jump: ['Space'],
     grab: ['ShiftLeft'],
   },
+  // right hand on the arrows, left hand on K and L: two hands, nothing cramped
   p2: {
     up: ['ArrowUp'],
     down: ['ArrowDown'],
     left: ['ArrowLeft'],
     right: ['ArrowRight'],
-    jump: ['ShiftRight', 'Enter'],
-    grab: ['Slash'],
+    jump: ['KeyK'],
+    grab: ['KeyL'],
   },
   camLeft: ['KeyQ'],
   camRight: ['KeyE'],
   pause: ['Escape', 'KeyP'],
   dev: ['Backquote'],
 };
+
+/** One-click layouts for Player 2 (always moving with the arrows). */
+export const P2_LAYOUTS: { id: string; name: string; hint: string; jump: string[]; grab: string[] }[] = [
+  { id: 'kl', name: 'Arrows + K L', hint: 'Right hand on the arrows, left hand on K (jump) and L (grab).', jump: ['KeyK'], grab: ['KeyL'] },
+  { id: 'return', name: 'Arrows + Return', hint: 'Right ⇧ to jump, Return to grab.', jump: ['ShiftRight'], grab: ['Enter'] },
+  { id: 'slash', name: 'Arrows + /', hint: 'Right ⇧ or Return to jump, / to grab (the first layout).', jump: ['ShiftRight', 'Enter'], grab: ['Slash'] },
+];
+
+/**
+ * Player 2's keys from before the K / L layout: everything sat under the right
+ * hand next to the arrows. Saved bindings like these move to the new default once.
+ */
+export function isOldP2Layout(p: PlayerBindings) {
+  const arrows = p.up?.[0] === 'ArrowUp' && p.down?.[0] === 'ArrowDown' && p.left?.[0] === 'ArrowLeft' && p.right?.[0] === 'ArrowRight';
+  const grabOld = p.grab?.length === 1 && (p.grab[0] === 'Slash' || p.grab[0] === 'Enter');
+  const jumpOld = !!p.jump?.length && p.jump.every((c) => c === 'ShiftRight' || c === 'Enter');
+  return arrows && grabOld && jumpOld;
+}
 
 /** Pretty names for codes shown in the UI (Mac keyboard flavoured). */
 export function keyLabel(code: string): string {

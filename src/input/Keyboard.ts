@@ -1,4 +1,4 @@
-import { Bindings, DEFAULT_BINDINGS, PlayerBindings } from '../config/bindings';
+import { Bindings, DEFAULT_BINDINGS, PlayerBindings, isOldP2Layout } from '../config/bindings';
 import { loadJSON, saveJSON } from '../util/storage';
 
 /** Keys we swallow so Safari doesn't scroll the page or do anything else with them. */
@@ -54,9 +54,13 @@ export class Keyboard {
   onKey: ((code: string, e: KeyboardEvent) => void) | null = null;
   /** While true, the game ignores keys (e.g. a text field has focus). */
   suspended = false;
+  /** Player 2's saved keys were the old layout and just moved to the new default (show a note once). */
+  movedP2 = false;
 
   constructor() {
-    this.bindings = loadBindings();
+    const loaded = loadBindings();
+    this.bindings = loaded.bindings;
+    this.movedP2 = loaded.movedP2;
     window.addEventListener('keydown', this.handleDown, { passive: false });
     window.addEventListener('keyup', this.handleUp, { passive: false });
     window.addEventListener('blur', () => this.clear());
@@ -150,7 +154,7 @@ export class Keyboard {
   }
 }
 
-function loadBindings(): Bindings {
+function loadBindings(): { bindings: Bindings; movedP2: boolean } {
   const saved = loadJSON<Partial<Bindings>>('ff.bindings');
   const b: Bindings = JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
   if (saved) {
@@ -161,5 +165,36 @@ function loadBindings(): Bindings {
       else if (typeof v === 'object') Object.assign(b[k] as object, v);
     }
   }
-  return b;
+  // once: Player 2's old right-hand-only keys move to the new two-handed default
+  let movedP2 = false;
+  if (saved && (loadJSON<number>('ff.bindingsVersion') ?? 1) < 2 && isOldP2Layout(b.p2)) {
+    b.p2 = JSON.parse(JSON.stringify(DEFAULT_BINDINGS.p2));
+    takeKeys(b, b.p2, [...b.p2.jump, ...b.p2.grab]);
+    movedP2 = true;
+    saveJSON('ff.bindings', b);
+  }
+  saveJSON('ff.bindingsVersion', 2);
+  return { bindings: b, movedP2 };
+}
+
+/**
+ * Make `codes` belong only to `owner`: take them off every other action, and
+ * give an action left with no keys its default back.
+ */
+export function takeKeys(b: Bindings, owner: PlayerBindings, codes: string[]) {
+  const defaults = DEFAULT_BINDINGS as unknown as Record<string, string[] | Record<string, string[]>>;
+  const all = b as unknown as Record<string, string[] | Record<string, string[]>>;
+  for (const [k, v] of Object.entries(all)) {
+    const lists = Array.isArray(v) ? [[all, k] as const] : Object.keys(v).map((a) => [v, a] as const);
+    for (const [obj, key] of lists) {
+      const o = obj as Record<string, string[]>;
+      if (o === (owner as unknown as Record<string, string[]>)) continue;
+      if (!o[key].some((c) => codes.includes(c))) continue;
+      o[key] = o[key].filter((c) => !codes.includes(c));
+      if (!o[key].length) {
+        const d = Array.isArray(defaults[k]) ? (defaults[k] as string[]) : (defaults[k] as Record<string, string[]>)[key];
+        o[key] = (d ?? []).filter((c) => !codes.includes(c));
+      }
+    }
+  }
 }

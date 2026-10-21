@@ -32,7 +32,7 @@ export default async function ({ page, base }) {
           const rand = () => (rnd = (rnd * 9301 + 49297) % 233280) / 233280;
           const KEYS = [
             { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space', grab: 'ShiftLeft' },
-            { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'ShiftRight', grab: 'Slash' },
+            { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'KeyK', grab: 'KeyL' },
           ];
           const shiftHeld = () => kb.down.has('ShiftLeft') || kb.down.has('ShiftRight');
           const key = (type, code) => {
@@ -127,7 +127,7 @@ export default async function ({ page, base }) {
       // a broken or delivered job just restarts, like players would
       if (r.state !== 'playing') {
         await page.evaluate(() => {
-          for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftRight', 'Slash'])
+          for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyK', 'KeyL'])
             window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
           window.__monkey = null;
         });
@@ -139,7 +139,7 @@ export default async function ({ page, base }) {
     if (report.slowest > 400) problems.push(`${id}: a 0.1 s step took ${report.slowest} ms`);
   }
   await page.evaluate(() => {
-    for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftRight', 'Slash'])
+    for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyK', 'KeyL'])
       window.dispatchEvent(new KeyboardEvent('keyup', { code, key: code, bubbles: true }));
   });
   if (problems.length) throw new Error('monkey found problems:\n' + problems.join('\n'));

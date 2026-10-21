@@ -32,8 +32,10 @@ Once the game is on the `main` branch:
 | | Player 1 (orange) | Player 2 (blue) |
 |---|---|---|
 | Move | `W` `A` `S` `D` | `↑` `←` `↓` `→` |
-| Jump | `Space` | `Right Shift` or `Return` |
-| Grab (hold) | `Left Shift` | `/` |
+| Jump | `Space` | `K` |
+| Grab (hold) | `Left Shift` | `L` |
+
+Player 2 keeps their right hand on the arrows and their left hand on `K` and `L`. If you'd rather keep everything under the right hand, **Controls → Player 2 layout** has **Arrows + Return** (`Right Shift` jump, `Return` grab) and the original **Arrows + /** (`Right Shift` or `Return` jump, `/` grab).
 
 - `Q` / `E`: spin the camera (movement follows the camera)
 - `Esc` or `P`: pause

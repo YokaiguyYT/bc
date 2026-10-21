@@ -2,7 +2,8 @@ import type { Game } from '../game/Game';
 import { LevelSession, SessionResult, PLAYER_COLORS } from '../game/LevelSession';
 import { LEVELS, PLAYABLE_LEVELS, levelById } from '../levels';
 import { Hud } from './Hud';
-import { keyLabel, PlayerBindings } from '../config/bindings';
+import { keyLabel, PlayerBindings, P2_LAYOUTS } from '../config/bindings';
+import { takeKeys } from '../input/Keyboard';
 import { loadProgress, recordResult, starsFor, totalEarnings } from '../game/progress';
 import { formatMoney, formatTime } from '../util/math';
 import { models } from '../render/models';
@@ -197,6 +198,7 @@ export class App {
          <button class="btn" data-nav id="m-settings">Settings</button>
          <button class="btn" data-nav id="m-credits">Credits</button>
        </div>
+       ${this.game.keyboard.movedP2 ? '<div class="hint-line" style="color:var(--ink)"><b>New for Player 2:</b> arrows to move, <b>K</b> to jump, <b>L</b> to grab. Other layouts are under Controls.</div>' : ''}
        <div class="hint-line">${earned > 0 ? `Company earnings so far: <b>${formatMoney(earned)}</b> · ` : ''}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showLevels());
@@ -277,6 +279,8 @@ export class App {
       `<div class="panel">
         <h2>Controls</h2>
         <div class="controls-grid">${col('p1', 'Player 1 · Orange')}${col('p2', 'Player 2 · Blue')}</div>
+        <div class="setting" style="margin-top:10px"><span>Player 2 layout</span><div class="seg" data-p2layouts>${P2_LAYOUTS.map((l) => `<button data-nav data-layout="${l.id}" title="${esc(l.hint)}" class="${same(b.p2.jump, l.jump) && same(b.p2.grab, l.grab) ? 'on' : ''}">${esc(l.name)}</button>`).join('')}</div></div>
+        <p style="font-size:14px;margin-top:4px">${esc((P2_LAYOUTS.find((l) => same(b.p2.jump, l.jump) && same(b.p2.grab, l.grab)) ?? { hint: 'Custom keys.' }).hint)}</p>
         <div class="bind-row" style="margin-top:10px"><span>Spin camera</span><span class="keys">${keys(b.camLeft, '')}${keys(b.camRight, '')}<button class="rebind" data-nav data-p="cam" data-a="camLeft">change ⟲</button><button class="rebind" data-nav data-p="cam" data-a="camRight">change ⟳</button></span></div>
         <div class="bind-row"><span>Pause</span><span class="keys">${keys(b.pause, '')}</span></div>
         <h3>Key tester</h3>
@@ -298,6 +302,19 @@ export class App {
       this.game.keyboard.resetBindings();
       this.showControls(back);
     });
+    this.layer.querySelectorAll<HTMLButtonElement>('[data-layout]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const l = P2_LAYOUTS.find((x) => x.id === btn.dataset.layout)!;
+        const kb = this.game.keyboard;
+        const p2 = kb.bindings.p2;
+        Object.assign(p2, { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], jump: [...l.jump], grab: [...l.grab] });
+        takeKeys(kb.bindings, p2, [...p2.up, ...p2.down, ...p2.left, ...p2.right, ...p2.jump, ...p2.grab]);
+        kb.saveBindings();
+        kb.movedP2 = false;
+        this.showControls(back);
+      }),
+    );
+    this.game.keyboard.movedP2 = false;
     this.bind('c-back', back);
   }
 
@@ -561,3 +578,7 @@ function keys(codes: string[], cls: string) {
 }
 
 export { PLAYER_COLORS };
+
+function same(a: string[], b: string[]) {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}

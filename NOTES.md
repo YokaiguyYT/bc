@@ -71,9 +71,11 @@ This keeps walking reliable while still looking floppy.
 
 **Job order** goes from easiest to hardest, as measured with the delivery bot: TV, aquarium, clock, glass, cake.
 
+**Player 2's keys.** P2 first had everything under the right hand: arrows to move, Right Shift or Return to jump, `/` to grab. Holding `/` (or Return) while working the arrows is a cramped claw, and playtesters found it uncomfortable. The default is now two-handed: right hand on the arrows, left hand on `K` (jump) and `L` (grab). Saved keys still on one of the old layouts move to the new default once, with a note on the menu. **Controls → Player 2 layout** switches between the layouts in one click.
+
 **Keyboard on a Mac.** Keys are tracked by `KeyboardEvent.code`, so layouts and Shift don't change them. Three macOS quirks are handled in `src/input/Keyboard.ts`:
 - Keys released while ⌘ is held never send a keyup, so letting go of ⌘ clears them.
-- Safari reports letting go of one Shift key while the other is held as another *keydown*. P1 grabs with Left Shift and P2 jumps with Right Shift, so this used to cause phantom jumps and stuck grips. A second keydown of a held modifier now counts as its release.
+- Safari reports letting go of one Shift key while the other is held as another *keydown*. P1 grabs with Left Shift and, in the Return and / layouts, P2 jumps with Right Shift, so this used to cause phantom jumps and stuck grips. A second keydown of a held modifier now counts as its release.
 - A modifier the event says isn't held can't be down, whatever events went missing.
 
 **Helping first-timers.**

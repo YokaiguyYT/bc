@@ -17,11 +17,11 @@ export default async function ({ page, base }) {
   await rebind('p2', 'grab', 'Space'); // P1's jump
   let b = await binds();
   check('P2 grab takes Space', b.p2.grab, ['Space']);
-  check('P1 jump gets P2’s old grab key', b.p1.jump, ['Slash']);
-  await rebind('p1', 'up', 'Enter'); // one of P2's two jump keys
+  check('P1 jump gets P2’s old grab key', b.p1.jump, ['KeyL']);
+  await rebind('p1', 'up', 'KeyP'); // one of the two pause keys
   b = await binds();
-  check('P1 up takes Return', b.p1.up, ['Enter']);
-  check('P2 jump keeps Right Shift', b.p2.jump, ['ShiftRight']);
+  check('P1 up takes P', b.p1.up, ['KeyP']);
+  check('pause keeps Escape', b.pause, ['Escape']);
   await rebind('p1', 'grab', 'Escape'); // Escape cancels
   b = await binds();
   check('Escape cancels a rebind', b.p1.grab, ['ShiftLeft']);
@@ -29,7 +29,7 @@ export default async function ({ page, base }) {
   await adv(0.2);
   b = await binds();
   check('reset restores P1 jump', b.p1.jump, ['Space']);
-  check('reset restores P2 grab', b.p2.grab, ['Slash']);
+  check('reset restores P2 grab', b.p2.grab, ['KeyL']);
 
   // change a key from the pause menu: the HUD card follows
   await page.evaluate(() => window.__FF.app.playLevel('moveout'));
