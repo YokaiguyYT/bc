@@ -9,6 +9,7 @@ import { Player } from '../entities/Player';
 import { PlayerRig } from '../entities/PlayerRig';
 import type { Cargo } from '../entities/cargo/Cargo';
 import { createCargo } from '../entities/cargo';
+import { disposeTree } from '../render/dispose';
 import { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import { DEFAULT_THEME } from '../render/Renderer';
@@ -420,14 +421,13 @@ export class LevelSession {
   }
 
   dispose() {
+    // free the level's GPU memory first (hazards detach their own visuals when
+    // disposed), or every restart would leave a copy behind
+    this.root.removeFromParent();
+    disposeTree(this.root);
     for (const h of this.hazards) h.dispose();
     for (const r of this.rigs) r.dispose();
     this.effects.dispose();
-    this.root.removeFromParent();
-    this.root.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (m.isMesh && m.geometry && m.name === 'static_batch') m.geometry.dispose();
-    });
     this.physics.dispose();
     this.events.clear();
   }

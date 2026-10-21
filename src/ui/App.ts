@@ -30,6 +30,7 @@ export class App {
   private listening: { player: 'p1' | 'p2' | 'cam'; action: string; btn: HTMLButtonElement } | null = null;
   private attract: Attract | null = null;
   private keytestTimer = 0;
+  private perf = { from: 0, frames: 0, hinted: false };
 
   constructor(
     private game: Game,
@@ -43,6 +44,11 @@ export class App {
     game.keyboard.onKey = (code, e) => this.onKey(code, e);
     window.addEventListener('pointerdown', () => this.audio.unlock(), { once: false });
     game.onFrame = (dt) => this.frame(dt);
+    // switching to another app or tab pauses, rather than leaving the movers standing in traffic
+    window.addEventListener('blur', () => this.pause());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.pause();
+    });
   }
 
   // ------------------------------------------------------------ navigation
@@ -93,6 +99,10 @@ export class App {
       if (b.pause.includes(code)) this.pause();
       return;
     }
+    if (this.screen === 'paused' && b.pause.includes(code)) {
+      this.resume();
+      return;
+    }
     if (this.screen === 'results' && this.game.session?.result && !this.focusables.length) return;
     // menu navigation
     const prev = ['ArrowUp', 'KeyW', 'ArrowLeft', 'KeyA'];
@@ -120,6 +130,7 @@ export class App {
   }
 
   private frame(dt: number) {
+    this.watchFrameRate();
     this.attract?.update(dt);
     const s = this.game.session;
     if (s && this.hud && (this.screen === 'playing' || this.screen === 'paused')) this.hud.update(dt);
@@ -368,6 +379,8 @@ export class App {
     if (forced) def = { ...def, cargo: forced as typeof def.cargo };
     this.attract = null;
     this.audio.unlock();
+    // restart / retry / next job: the old HUD goes with the old session
+    this.hud?.dispose();
     const s = this.game.startLevel(def);
     this.wireSession(s);
     this.hud = new Hud(this.hudLayer, this.game, s);
@@ -380,6 +393,29 @@ export class App {
     s.events.on('cargoDamage', () => {
       if (!this.game.settings.shake) s.cameraRig.addShake(-1);
     });
+  }
+
+  /** If play stays choppy (real frames per second), suggest Fast graphics once. */
+  private watchFrameRate() {
+    const p = this.perf;
+    const now = performance.now() / 1000;
+    if (p.hinted || this.game.manual || this.screen !== 'playing' || this.game.settings.quality === 'low') {
+      p.from = 0;
+      return;
+    }
+    if (!p.from) {
+      p.from = now + 3; // skip the hitch while a level loads
+      p.frames = 0;
+    }
+    if (now < p.from) return;
+    p.frames++;
+    if (now - p.from < 5) return;
+    if (p.frames / (now - p.from) < 40) {
+      p.hinted = true;
+      this.hud?.say('Choppy? Press Esc, then Settings → Graphics: Fast.', 8);
+    }
+    p.from = now;
+    p.frames = 0;
   }
 
   pause() {

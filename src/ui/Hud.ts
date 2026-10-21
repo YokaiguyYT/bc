@@ -159,6 +159,13 @@ export class Hud {
     }
   }
 
+  /** A one-off message on the hint line; the regular hints carry on after it. */
+  say(text: string, seconds = 6) {
+    this.hint.textContent = text;
+    this.hint.style.opacity = '1';
+    this.hintTimer = seconds;
+  }
+
   dispose() {
     for (const off of this.offs) off();
     this.el.remove();
