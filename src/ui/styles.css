@@ -809,3 +809,76 @@ kbd.p2 {
     min-width: 0;
   }
 }
+
+/* ---------- online play ---------- */
+.net-code {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+.net-code span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 78px;
+  border-radius: 14px;
+  background: #fff;
+  border: 4px solid var(--ink);
+  font-size: 50px;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
+}
+.net-code.entry span.cursor {
+  border-color: var(--p2);
+  animation: netBlink 1s infinite;
+}
+@keyframes netBlink {
+  50% {
+    box-shadow: 0 5px 0 var(--ink), 0 0 0 5px rgba(61, 155, 255, 0.35);
+  }
+}
+.net-status {
+  font-size: 18px;
+  min-height: 1.4em;
+}
+.net-badge {
+  position: fixed;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  pointer-events: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(38, 44, 62, 0.72);
+  padding: 3px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.net-toast {
+  position: fixed;
+  bottom: 120px;
+  z-index: 41;
+}
+.net-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #10131c;
+}
+.net-local {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+.net-local .screen,
+.net-local button {
+  pointer-events: auto;
+}

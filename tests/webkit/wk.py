@@ -44,6 +44,9 @@ class WK:
         s.set_enable_developer_extras(True)
         s.set_enable_write_console_messages_to_stdout(True)
         s.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.ALWAYS)
+        # on in Safari, off by default in WebKitGTK: online play needs it
+        s.set_property('enable-webrtc', True)
+        s.set_property('enable-media-stream', True)
         self.win = Gtk.Window()
         self.win.set_default_size(width, height)
         self.win.add(self.view)

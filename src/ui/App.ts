@@ -12,8 +12,26 @@ import { DevPanel } from './DevPanel';
 import { tuning } from '../config/tuning';
 import { Attract } from '../game/Attract';
 import { CARGO_INFO } from '../entities/cargo/info';
+import { CODE_LEN, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
+import { morph } from '../net/mirror';
 
-type Screen = 'title' | 'menu' | 'levels' | 'controls' | 'settings' | 'credits' | 'playing' | 'paused' | 'results' | 'howto';
+type Screen =
+  | 'title'
+  | 'menu'
+  | 'levels'
+  | 'controls'
+  | 'settings'
+  | 'credits'
+  | 'playing'
+  | 'paused'
+  | 'results'
+  | 'howto'
+  | 'online'
+  | 'host'
+  | 'join'
+  | 'guest'
+  | 'guest-menu'
+  | 'guest-lost';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -34,10 +52,19 @@ export class App {
   private perf = { from: 0, frames: 0, hinted: false };
   /** Seconds the results card has been up. */
   private resultsFor = 0;
+  /** Online: hosting a game for a friend, or playing on a friend's. */
+  private host: OnlineHost | null = null;
+  private guest: OnlineGuest | null = null;
+  private joinCode = '';
+  private joining = false;
+  private netBadge: HTMLDivElement | null = null;
+  /** Guest: our own menus go here, above the copy of the host's. */
+  private localUi: HTMLDivElement | null = null;
+  private video: HTMLVideoElement | null = null;
 
   constructor(
     private game: Game,
-    root: HTMLElement,
+    private root: HTMLElement,
   ) {
     this.hudLayer = document.createElement('div');
     this.layer = document.createElement('div');
@@ -47,14 +74,19 @@ export class App {
     game.keyboard.onKey = (code, e) => this.onKey(code, e);
     window.addEventListener('pointerdown', () => this.audio.unlock(), { once: false });
     game.onFrame = (dt) => this.frame(dt);
+    window.addEventListener('paste', this.onPaste);
     // switching to another app or tab pauses, rather than leaving the movers standing in traffic
-    window.addEventListener('blur', () => this.pause());
+    window.addEventListener('blur', () => {
+      this.pause();
+      // a guest switching away must not leave its mover walking on the host's screen
+      this.guest?.sendKeys(null, 1);
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
     });
     // a stray trackpad swipe back or ⌘R mid-job asks first
     window.addEventListener('beforeunload', (e) => {
-      if (this.screen !== 'playing' && this.screen !== 'paused') return;
+      if (this.screen !== 'playing' && this.screen !== 'paused' && !this.guest && !this.host?.connected) return;
       e.preventDefault();
       e.returnValue = '';
     });
@@ -113,6 +145,11 @@ export class App {
       this.toggleDev();
       return;
     }
+    if (this.screen === 'join' && this.typeCode(code, e)) return;
+    if (this.screen === 'guest') {
+      if (b.pause.includes(code)) this.showGuestMenu();
+      return;
+    }
     if (this.screen === 'title') {
       this.audio.ui('select');
       this.showMenu();
@@ -156,6 +193,11 @@ export class App {
   }
 
   private frame(dt: number) {
+    if (this.guest) {
+      this.guest.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, dt);
+      return;
+    }
+    this.host?.update(dt);
     this.watchFrameRate();
     if (this.screen === 'results') this.resultsFor += dt;
     this.attract?.update(dt);
@@ -184,7 +226,7 @@ export class App {
       'title',
       `<div class="logo" style="font-size:clamp(54px,11vw,140px)"><span class="w fragile">FRAGILE</span><br><span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
        <div class="press-start">Press any key</div>
-       <div class="hint-line">A goofy 2-player moving company · one keyboard, two movers</div>`,
+       <div class="hint-line">A goofy 2-player moving company · one keyboard, or a laptop each</div>`,
     );
     this.layer.querySelector('.screen')?.addEventListener('click', () => this.showMenu());
   }
@@ -207,6 +249,7 @@ export class App {
       `<div class="logo" style="font-size:clamp(40px,6vw,74px)"><span class="w fragile">FRAGILE</span> <span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
        <div class="menu">
          <button class="btn primary" data-nav data-default id="m-play">Play</button>
+         <button class="btn" data-nav id="m-online">${this.host ? `Online: ${this.host.connected ? 'friend connected' : 'hosting'}` : 'Play Online'}</button>
          <button class="btn" data-nav id="m-howto">How to Play</button>
          <button class="btn" data-nav id="m-controls">Controls</button>
          <button class="btn" data-nav id="m-settings">Settings</button>
@@ -216,6 +259,7 @@ export class App {
        <div class="hint-line">${earned > 0 ? `Company earnings so far: <b>${formatMoney(earned)}</b> · ` : ''}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showLevels());
+    this.bind('m-online', () => (this.host ? this.showHost() : this.showOnline()));
     this.bind('m-howto', () => this.showHowTo(() => this.showMenu()));
     this.bind('m-controls', () => this.showControls(() => this.showMenu()));
     this.bind('m-settings', () => this.showSettings(() => this.showMenu()));
@@ -579,6 +623,370 @@ export class App {
       this.hud = null;
       this.showLevels();
     });
+  }
+
+  // ------------------------------------------------------------ online
+
+  /** Host or join. */
+  showOnline() {
+    this.startAttract();
+    this.setScreen(
+      'online',
+      `<div class="logo" style="font-size:44px">PLAY ONLINE</div>
+       <div class="panel" style="max-width:min(640px,92vw)">
+         <p>Each of you plays on your <b>own laptop</b>. One of you <b>hosts</b>: the game runs on that laptop and its picture is sent to the other, who <b>joins</b> with a code.</p>
+         <p style="font-size:14px">Free: the laptops connect directly to each other. Works best on the same Wi-Fi; over the internet it usually works too. The host's laptop does the heavy lifting, so the faster laptop should host.</p>
+       </div>
+       <div class="menu">
+         <button class="btn primary" data-nav data-default id="o-host">Host a game</button>
+         <button class="btn" data-nav id="o-join">Join a friend</button>
+         <button class="btn small" data-nav id="o-back">← Back</button>
+       </div>`,
+      { back: () => this.showMenu() },
+    );
+    this.bind('o-host', () => this.showHost());
+    this.bind('o-join', () => {
+      this.joinCode = '';
+      this.showJoin('');
+    });
+    this.bind('o-back', () => this.showMenu());
+  }
+
+  /** The host's lobby: the code to share, and whether the friend is in. */
+  private showHost(error = '') {
+    this.startAttract();
+    const h = this.host;
+    const code = h ? h.code.split('').map((c) => `<span>${c}</span>`).join('') : '<span>·</span>'.repeat(CODE_LEN);
+    const status = error
+      ? `<span style="color:var(--bad)">${esc(error)}</span>`
+      : !h
+        ? 'Getting a code…'
+        : h.connected
+          ? '✅ <b>Your friend is in!</b> Pick a job.'
+          : h.status === 'connecting'
+            ? 'Your friend is connecting…'
+            : 'Waiting for your friend…';
+    this.setScreen(
+      'host',
+      `<div class="logo" style="font-size:44px">HOSTING</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Your game code</p>
+         <div class="net-code">${code}</div>
+         <p class="net-status">${status}</p>
+         <p style="font-size:14px">On your friend's laptop: open Fragile Freight → <b>Play Online</b> → <b>Join a friend</b> → type the code.<br>
+         You're <b style="color:var(--p1)">P1</b> and they're <b style="color:var(--p2)">P2</b>. You can each use <b>WASD</b> or the <b>arrows</b>, whichever you like. You pick the jobs; they see everything you see.</p>
+       </div>
+       <div class="row">
+         ${error ? '<button class="btn primary" data-nav data-default id="h-retry">Try again</button>' : '<button class="btn primary" data-nav data-default id="h-play">Pick a job →</button>'}
+         <button class="btn" data-nav id="h-stop">${h ? 'Stop hosting' : 'Cancel'}</button>
+       </div>`,
+      { back: () => this.showMenu() },
+    );
+    this.bind('h-play', () => this.showLevels());
+    this.bind('h-retry', () => this.showHost());
+    this.bind('h-stop', () => {
+      this.stopHosting();
+      this.showMenu();
+    });
+    if (!h && !error && !this.joining) {
+      this.joining = true;
+      OnlineHost.start(this.game.renderer.renderer.domElement, this.root).then(
+        (host) => {
+          this.joining = false;
+          // gave up waiting (went back to the menu): don't keep a code nobody can see
+          if (this.screen !== 'host') return host.stop();
+          this.host = host;
+          host.onChange = (what) => this.hostChanged(what);
+          host.onPauseRequest = () => this.pause();
+          this.game.afterRender = () => host.copyFrame();
+          this.updateBadge();
+          this.showHost();
+        },
+        (e) => {
+          this.joining = false;
+          if (this.screen === 'host') this.showHost(e instanceof Error ? e.message : String(e));
+        },
+      );
+    }
+  }
+
+  private hostChanged(what: 'joined' | 'left' | 'status') {
+    const h = this.host;
+    if (!h) return;
+    const on = h.connected;
+    this.game.onlineP2 = on;
+    // while a friend is in: our keys (either layout) drive P1, theirs drive P2
+    this.game.input = on
+      ? {
+          player: (i) => {
+            if (i === 1) return h.input();
+            const b = this.game.keyboard.bindings;
+            return mergeMoves(this.game.keyboard.readPlayer(b.p1), this.game.keyboard.readPlayer(b.p2));
+          },
+          cam: () => h.cam(),
+        }
+      : null;
+    if (this.game.session) this.game.session.input = this.game.input;
+    this.game.renderer.capWidth = on ? 1600 : null;
+    this.game.renderer.resize();
+    this.hud?.refreshKeys();
+    this.updateBadge();
+    if (what === 'joined') this.toast('🌐 Your friend joined!');
+    if (what === 'left') {
+      this.toast('Your friend disconnected. They can join again with the same code.');
+      this.pause();
+    }
+    if (this.screen === 'host') this.showHost();
+    if (this.screen === 'menu') this.showMenu();
+  }
+
+  private stopHosting() {
+    if (!this.host) return;
+    this.host.send({ k: 'bye' });
+    this.host.stop();
+    this.host = null;
+    this.game.afterRender = null;
+    this.hostChanged('status');
+    this.game.onlineP2 = false;
+    this.game.input = null;
+    if (this.game.session) this.game.session.input = null;
+    this.game.renderer.capWidth = null;
+    this.game.renderer.resize();
+    this.hud?.refreshKeys();
+    this.updateBadge();
+  }
+
+  /** A small line in the corner saying what's going on online (not copied to the guest). */
+  private updateBadge(text?: string) {
+    const t = text ?? (this.host ? (this.host.connected ? '🌐 Online · your friend is P2' : `🌐 Hosting · code ${this.host.code} · waiting for your friend`) : '');
+    if (!t) {
+      this.netBadge?.remove();
+      this.netBadge = null;
+      return;
+    }
+    if (!this.netBadge) {
+      this.netBadge = document.createElement('div');
+      this.netBadge.className = 'net-badge';
+      document.body.appendChild(this.netBadge);
+    }
+    this.netBadge.textContent = t;
+  }
+
+  private toast(text: string) {
+    const d = document.createElement('div');
+    d.className = 'toast net-toast';
+    d.textContent = text;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 4000);
+  }
+
+  /** Typing the code: letters and digits type, Backspace deletes, Return joins. */
+  private typeCode(code: string, e: KeyboardEvent) {
+    if (this.joining) return code !== 'Escape';
+    const m = /^(?:Key([A-Z])|Digit([0-9])|Numpad([0-9]))$/.exec(code);
+    if (m) {
+      e.preventDefault();
+      if (this.joinCode.length < CODE_LEN) this.joinCode += m[1] ?? m[2] ?? m[3];
+      this.updateJoin('');
+      return true;
+    }
+    if (code === 'Backspace') {
+      e.preventDefault();
+      this.joinCode = this.joinCode.slice(0, -1);
+      this.updateJoin('');
+      return true;
+    }
+    if (code === 'Enter' || code === 'NumpadEnter') {
+      e.preventDefault();
+      this.join();
+      return true;
+    }
+    return false;
+  }
+
+  private codeBoxes() {
+    return Array.from({ length: CODE_LEN }, (_, i) => `<span class="${i === this.joinCode.length ? 'cursor' : ''}">${this.joinCode[i] ?? ''}</span>`).join('');
+  }
+
+  /** Update the join screen in place (rebuilding it would replay its fade-in on every key). */
+  private updateJoin(status: string, bad = false) {
+    const box = this.layer.querySelector('.net-code');
+    const st = this.layer.querySelector<HTMLElement>('.net-status');
+    const go = this.layer.querySelector<HTMLButtonElement>('#j-go');
+    if (this.screen !== 'join' || !box || !st || !go) return this.showJoin(status, bad);
+    box.innerHTML = this.codeBoxes();
+    st.textContent = status || '\u00a0';
+    st.style.color = bad ? 'var(--bad)' : '';
+    go.disabled = this.joinCode.length !== CODE_LEN || this.joining;
+  }
+
+  private showJoin(status: string, bad = false) {
+    this.startAttract();
+    const boxes = this.codeBoxes();
+    this.setScreen(
+      'join',
+      `<div class="logo" style="font-size:44px">JOIN A FRIEND</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Type the code on your friend's screen</p>
+         <div class="net-code entry">${boxes}</div>
+         <p class="net-status" ${bad ? 'style="color:var(--bad)"' : ''}>${esc(status) || '&nbsp;'}</p>
+         <p style="font-size:14px">Their laptop runs the game and sends you the picture. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.</p>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="j-go" ${this.joinCode.length === CODE_LEN && !this.joining ? '' : 'disabled'}>Join</button>
+         <button class="btn small" data-nav id="j-back">← Back</button>
+       </div>`,
+      { back: () => (this.joining ? undefined : this.showOnline()) },
+    );
+    this.bind('j-go', () => this.join());
+    this.bind('j-back', () => !this.joining && this.showOnline());
+    // pasting a code works too
+    this.layer.querySelector('.net-code')?.addEventListener('click', () => navigator.clipboard?.readText?.().then((t) => this.pasteCode(t)).catch(() => {}));
+  }
+
+  private onPaste = (e: ClipboardEvent) => {
+    if (this.screen === 'join' && !this.joining) this.pasteCode(e.clipboardData?.getData('text') ?? '');
+  };
+
+  private pasteCode(t: string) {
+    const c = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN);
+    if (!c) return;
+    this.joinCode = c;
+    this.updateJoin('');
+  }
+
+  private join() {
+    if (this.joining || this.joinCode.length !== CODE_LEN) return;
+    this.joining = true;
+    this.updateJoin('Looking for your friend’s game…');
+    OnlineGuest.join(this.joinCode, (msg) => this.screen === 'join' && this.updateJoin(msg)).then(
+      (g) => {
+        this.joining = false;
+        if (this.screen !== 'join') return g.leave();
+        this.enterGuest(g);
+      },
+      (e) => {
+        this.joining = false;
+        if (this.screen === 'join') this.updateJoin(e instanceof Error ? e.message : String(e), true);
+      },
+    );
+  }
+
+  /** Become the guest: show the host's picture and a copy of its menus/HUD, send our keys. */
+  private enterGuest(g: OnlineGuest) {
+    this.guest = g;
+    this.attract = null;
+    this.hud?.dispose();
+    this.hud = null;
+    this.game.endLevel();
+    this.game.halted = true;
+    this.game.renderer.renderer.domElement.style.visibility = 'hidden';
+    // the picture
+    const v = document.createElement('video');
+    v.className = 'net-video';
+    v.muted = true;
+    v.autoplay = true;
+    v.playsInline = true;
+    document.body.insertBefore(v, this.root);
+    this.video = v;
+    // our own menus move above the copy of the host's
+    this.localUi = document.createElement('div');
+    this.localUi.className = 'net-local';
+    this.localUi.append(this.layer);
+    document.body.appendChild(this.localUi);
+    this.hudLayer.remove();
+    this.root.innerHTML = '';
+    const fit = () => {
+      const u = g.ui;
+      if (!u) return;
+      const s = Math.min(window.innerWidth / u.w, window.innerHeight / u.h);
+      Object.assign(this.root.style, {
+        inset: 'auto',
+        left: `${(window.innerWidth - u.w * s) / 2}px`,
+        top: `${(window.innerHeight - u.h * s) / 2}px`,
+        width: `${u.w}px`,
+        height: `${u.h}px`,
+        transform: `scale(${s})`,
+        transformOrigin: '0 0',
+      });
+    };
+    this.fitGuest = fit;
+    window.addEventListener('resize', fit);
+    const show = (s: MediaStream) => {
+      v.srcObject = s;
+      v.play().catch(() => {});
+    };
+    g.onStream = show;
+    if (g.stream) show(g.stream);
+    g.onUi = (html) => {
+      morph(this.root, html);
+      fit();
+    };
+    if (g.ui) g.onUi(g.ui.html, g.ui.w, g.ui.h);
+    g.onLost = (why) => this.showGuestLost(why);
+    this.pictureTimer = window.setInterval(() => this.video && this.guest?.checkPicture(this.video), 2000);
+    this.updateBadge('🌐 Playing on your friend’s game · Esc: online menu');
+    this.setScreen('guest', '');
+  }
+
+  private fitGuest: (() => void) | null = null;
+  private pictureTimer = 0;
+
+  private showGuestMenu() {
+    if (!this.guest) return;
+    this.setScreen(
+      'guest-menu',
+      `<div class="logo" style="font-size:48px">ONLINE</div>
+       <div class="menu">
+         <button class="btn primary" data-nav data-default id="g-back">Keep playing</button>
+         <button class="btn" data-nav id="g-pause">Pause the game</button>
+         <button class="btn" data-nav id="g-leave">Leave</button>
+       </div>
+       <div class="hint-line">Your friend picks the jobs and runs the pause menu.</div>`,
+      { dim: true, back: () => this.setScreen('guest', '') },
+    );
+    this.bind('g-back', () => this.setScreen('guest', ''));
+    this.bind('g-pause', () => {
+      this.guest?.requestPause();
+      this.setScreen('guest', '');
+    });
+    this.bind('g-leave', () => this.leaveGuest());
+  }
+
+  private showGuestLost(why: string) {
+    const text = why === 'left' ? 'Your friend stopped hosting.' : 'Lost the connection to your friend’s game.';
+    this.setScreen(
+      'guest-lost',
+      `<div class="panel" style="text-align:center">
+         <h2>Disconnected</h2>
+         <p>${text}</p>
+         <p style="font-size:14px">To play again, join with the code on their screen.</p>
+       </div>
+       <div class="row"><button class="btn primary" data-nav data-default id="gl-ok">Back to menu</button></div>`,
+      { dim: true, back: () => this.leaveGuest() },
+    );
+    this.bind('gl-ok', () => this.leaveGuest());
+  }
+
+  private leaveGuest() {
+    const g = this.guest;
+    if (!g) return;
+    this.guest = null;
+    g.leave();
+    clearInterval(this.pictureTimer);
+    if (this.fitGuest) window.removeEventListener('resize', this.fitGuest);
+    this.fitGuest = null;
+    this.video?.remove();
+    this.video = null;
+    this.root.innerHTML = '';
+    this.root.removeAttribute('style');
+    this.root.append(this.hudLayer, this.layer);
+    this.localUi?.remove();
+    this.localUi = null;
+    this.game.renderer.renderer.domElement.style.visibility = '';
+    this.game.halted = false;
+    this.updateBadge();
+    this.showMenu();
   }
 
   toggleDev() {

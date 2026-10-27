@@ -208,7 +208,7 @@ export class Renderer {
     this.quality = q;
     const dpr = window.devicePixelRatio || 1;
     const ratio = q === 'low' ? Math.min(dpr, 1) : q === 'medium' ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
-    this.renderer.setPixelRatio(ratio);
+    this.baseRatio = ratio;
     const size = q === 'low' ? 1024 : 2048;
     this.renderer.shadowMap.enabled = true;
     if (this.sun.shadow.mapSize.x !== size) {
@@ -221,10 +221,17 @@ export class Renderer {
     this.resize();
   }
 
+  /** Pixel ratio from the quality setting. */
+  private baseRatio = 1;
+  /** While streaming online: keep the picture at most this many pixels wide (cheaper to capture and send). */
+  capWidth: number | null = null;
+
   resize() {
     const el = this.renderer.domElement.parentElement;
     const w = el?.clientWidth || window.innerWidth;
     const h = el?.clientHeight || window.innerHeight;
+    const ratio = this.capWidth ? Math.min(this.baseRatio, this.capWidth / Math.max(1, w)) : this.baseRatio;
+    if (this.renderer.getPixelRatio() !== ratio) this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';

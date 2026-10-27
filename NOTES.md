@@ -9,6 +9,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Eight jobs and the Practice Yard | Playable start to finish |
 | Jobs 9–10 (a painting in the wind, a balloon bouquet) | Planned, not started |
 | Keyboard controls, rebinding, key tester | Done |
+| Online play (one laptop each) | Done; tested in Chromium, not yet between two real Macs |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click in Safari) and GitHub Pages | Done |
@@ -105,6 +106,19 @@ This keeps walking reliable while still looking floppy.
 - `keys`, `pause`, `rebind`, `restart` and `restarts` cover the keyboard quirks, pausing, changing keys, restarting and memory. `p2layout` covers Player 2's layouts and the one-time move off the old keys; `levelnav` the job list (row-by-row keys, title and Back always on screen).
 - `tests/webkit/` runs the same scenarios in WebKitGTK, the engine family Safari uses, through a small Python bridge.
 
+## Online play
+
+"Remote play" style, like Steam's Remote Play Together: the host's laptop runs the whole game as usual, and the guest's laptop is a screen and a keyboard.
+
+- **Picture:** the host's game canvas goes out as a WebRTC video track (`canvas.captureStream(60)`, up to 6 Mbit/s, scaled to at most 1600 px wide). While a friend is connected the host also renders at most 1600 px wide (`Renderer.capWidth`), so capturing stays cheap on a Retina screen.
+- **Menus and HUD** are HTML, not part of the canvas, so the host sends `#ui`'s HTML (when it changes, at most 20 times a second) and the guest patches its own copy to match (`net/mirror.ts`), scaled to sit exactly over the video.
+- **Keys:** the guest sends its move state (either key layout) about 60 times a second over an unreliable, unordered data channel; jumps are counted so a quick tap can't be lost. The host treats half a second of silence as "all keys up". Online, the host's P1 also takes either layout.
+- **Finding each other:** the host registers `fragile-freight-<code>` on PeerJS's free public server (`0.peerjs.com`), used only to pass the WebRTC offer, answer and candidates (`net/signal.ts`). Public STUN servers (Google, Cloudflare) help each laptop find its public address. There's **no TURN relay** (those cost money), so networks that block direct connections can't play online.
+- **Black picture fallback:** if the guest's video stays empty or black for a few seconds, it asks the host to switch to copying each frame into a plain 2D canvas and streaming that instead (`OnlineHost.useCopy`, via `replaceTrack`). That's for browsers that capture a WebGL canvas as black frames; Chromium doesn't need it, and the test forces it to check the switch works.
+- **Why not run the physics on both laptops?** Keeping two physics simulations in step needs every hazard, cargo effect and particle to be synchronised; streaming the picture means every job, present and future, just works online.
+
+Tests: `online` (two tabs: code, join, picture, HUD/menu copy, P2 keys from either layout, host's arrows, pause from the guest, the fallback, leaving) and `online-errors` (wrong code, a third player, the host stopping). They use a BroadcastChannel between tabs by default; `NET=ws://127.0.0.1:9000/peerjs` runs them through the official PeerJS server software run locally, which passed too. The sandbox these were built in can't open WebSockets to the internet, so the public server itself wasn't reached from here. `netloop` checks the WebRTC link inside one page; the Linux WebKitGTK build used for Safari testing has no WebRTC at all, so online play is **untested in Safari's engine**.
+
 ## Tuning still needed
 
 Every number below lives in `src/config/tuning.ts` and has a slider in the dev panel (`` ` `` key). So far they're tuned against the bot and screenshots, not human hands. Playtest these first:
@@ -140,6 +154,8 @@ The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop p
 - **Not yet tested in Safari on a real Mac.** Every job, every menu and the double-clickable file were run in WebKitGTK 2.52 (Safari's engine family) on Linux with no errors, and the build targets Safari 15+. The graphics drivers and the keyboard on a real Mac are the parts still untested. If it stutters, try **Graphics: Fast**; the game suggests it once if play stays under 40 fps.
 - **Mac keyboards ghost.** Some key combinations don't register when both players hold many keys at once. That's why the Controls screen has a key tester and lets you change every key.
 - **No gamepad support**, by request.
+- **Online play hasn't been tried between two real Macs yet.** Everything except Safari's own WebRTC was tested (see Online play above). If the friend sees a black picture for more than a few seconds, the automatic fallback should kick in; if they never connect, being on the same Wi-Fi is the usual fix.
+- **Online has a little lag for the guest:** their keys travel to the host and the picture comes back, typically 0.1–0.2 s on home Wi-Fi.
 - **Randomness.** Pedestrians, the dog and the drunk wander, so the aquarium job plays out differently each run.
 - **The single file is about 9 MB** because the 3D models are embedded in it, so it takes a moment to open. The GitHub Pages version loads the models as separate files.
 - **Saved bests** live in Safari's local storage. In Private Browsing, or wherever storage is blocked for local files, the game still runs but forgets bests when it closes.

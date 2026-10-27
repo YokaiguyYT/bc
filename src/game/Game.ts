@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Renderer, Quality } from '../render/Renderer';
 import { Keyboard } from '../input/Keyboard';
-import { LevelSession } from './LevelSession';
+import { LevelSession, NetInput } from './LevelSession';
 import { LEVELS, levelById } from '../levels';
 import type { LevelDef } from '../levels/types';
 import { loadJSON, saveJSON } from '../util/storage';
@@ -31,6 +31,14 @@ export class Game {
   /** Test mode: time only advances via advance(). */
   manual = false;
   onFrame: ((dt: number) => void) | null = null;
+  /** Online: keys from the other laptop (handed to every new session). */
+  input: NetInput | null = null;
+  /** Online guest: the picture comes from the host, so this laptop runs and draws nothing. */
+  halted = false;
+  /** Online: Player 2 is on the other laptop. */
+  onlineP2 = false;
+  /** Called right after each frame is drawn (online: copy the picture while it's still there). */
+  afterRender: (() => void) | null = null;
   frameTimes: number[] = [];
 
   constructor(readonly container: HTMLElement) {
@@ -49,6 +57,7 @@ export class Game {
     if (!d) throw new Error(`no level ${def}`);
     this.endLevel();
     this.session = new LevelSession(d, this.renderer, this.keyboard);
+    this.session.input = this.input;
     return this.session;
   }
 
@@ -78,8 +87,10 @@ export class Game {
     const t0 = performance.now();
     this.keyboard.beginFrame();
     this.onFrame?.(dt);
+    if (this.halted) return;
     if (this.session) this.session.update(dt);
     this.renderer.render();
+    this.afterRender?.();
     const ft = performance.now() - t0;
     this.frameTimes.push(ft);
     if (this.frameTimes.length > 120) this.frameTimes.shift();

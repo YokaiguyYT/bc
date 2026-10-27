@@ -13,7 +13,7 @@ import { disposeTree } from '../render/dispose';
 import { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import { DEFAULT_THEME } from '../render/Renderer';
-import type { Keyboard } from '../input/Keyboard';
+import type { Keyboard, MoveState } from '../input/Keyboard';
 import { tuning } from '../config/tuning';
 import { createHazard, Hazard } from '../entities/hazards';
 import { Zone } from '../render/Zone';
@@ -50,6 +50,12 @@ interface SpawnPose {
   vel: THREE.Vector3;
 }
 
+/** Online play swaps in keys from elsewhere. */
+export interface NetInput {
+  player(i: number): MoveState | null;
+  cam(): number;
+}
+
 /** One attempt at one level. */
 export class LevelSession {
   readonly sim: Sim;
@@ -83,6 +89,8 @@ export class LevelSession {
   attractMode = false;
   /** Tests: intents are set directly, the keyboard is ignored, everything else is real. */
   scriptedInput = false;
+  /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
+  input: NetInput | null = null;
 
   constructor(
     readonly def: LevelDef,
@@ -218,7 +226,7 @@ export class LevelSession {
     if (!this.paused && !this.attractMode && !this.scriptedInput) {
       const binds = [b.p1, b.p2];
       this.players.forEach((p, i) => {
-        const m = kb.readPlayer(binds[i]);
+        const m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
         const ctl = playing && this.state !== 'delivered';
         p.intent.moveX = ctl ? camR.x * m.x + camF.x * m.y : 0;
         p.intent.moveZ = ctl ? camR.z * m.x + camF.z * m.y : 0;
@@ -247,6 +255,7 @@ export class LevelSession {
     if (!this.paused) {
       if (kb.isDown(b.camLeft)) rot -= 1;
       if (kb.isDown(b.camRight)) rot += 1;
+      rot = Math.max(-1, Math.min(1, rot + (this.input?.cam() ?? 0)));
     }
     const pts = this.focusPoints();
     this.cameraRig.update(frameDt, pts.length ? pts : [this.cameraRig.focusPoint.clone()], rot);

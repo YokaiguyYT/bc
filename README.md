@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy local **2-player** physics game for **one keyboard**. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano) through chaotic obstacle courses without breaking them.
+A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano) through chaotic obstacle courses without breaking them.
 
 It runs in **Safari on a Mac**. There's nothing to install.
 
@@ -24,6 +24,24 @@ Once the game is on the `main` branch:
 1. On GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 2. Wait for the **Deploy to GitHub Pages** run to finish (the **Actions** tab).
 3. Play at **https://yokaiguyyt.github.io/bc/** and bookmark it. Every update to `main` redeploys automatically.
+
+---
+
+## Play online: one laptop each
+
+No more four hands on one keyboard. Both of you need the game (the same `FragileFreight.html` file, or the same link).
+
+1. **The faster laptop hosts.** Main menu → **Play Online** → **Host a game**. A five-letter code appears, like `K7QXM`.
+2. **Your friend joins.** On their laptop: **Play Online** → **Join a friend**, type the code, press **Return**.
+3. The host picks a job as usual. The game runs on the host's laptop and its picture is streamed to the friend, who sees exactly the same screen and plays **P2** (blue).
+
+- **Keys:** online, each of you can use **WASD** *or* the **arrows** (with either player's jump and grab keys), whichever is comfier. `Q`/`E` spin the camera for both of you.
+- **The friend's `Esc`** opens a small menu: keep playing, pause the game, or leave. The host runs the pause menu and picks the jobs.
+- If your friend drops out, the game pauses. They can rejoin with the same code.
+- **It's free.** A free public service (PeerJS) introduces the two laptops; after that they talk directly to each other. There's no account and nothing to pay.
+- **Works best on the same Wi-Fi.** Over the internet it usually works too, but some networks (schools, offices, some phone hotspots) block direct connections; the join screen says so if that happens.
+- If your Mac asks whether Safari may **find devices on your local network**, say **Allow**.
+- There's a little delay (the picture travels over Wi-Fi), so the friend's mover reacts a tick later than the host's. If the picture looks blurry or choppy, the host can pick **Settings → Graphics: Fast**.
 
 ---
 
@@ -101,6 +119,7 @@ src/
   game/       Game, LevelSession (one attempt at a level), progress (best payouts/times)
   render/     renderer, camera, materials, effects, model loading
   input/      keyboard
+  net/        online play: signalling, the WebRTC link, the HUD/menu mirror
   audio/      AudioEngine stub (audio is planned, not yet implemented; see NOTES.md)
   ui/         menus, HUD, dev panel
 ```
@@ -116,6 +135,8 @@ npx vite --port 5199 &
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs deliver   # ROUTE=moveout-full|delivery-full|mansion-full|glass-south|city-full|cold-full|museum-full|hills-full
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs carryall  # every cargo: lift, carry, set down
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs menus     # screenshots of every menu
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs online    # host + guest in two tabs: join, picture, keys, pause, leave
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs online-errors   # wrong code, full game, host leaves
 ```
 
 Screenshots go to a scratch folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.

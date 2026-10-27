@@ -168,6 +168,7 @@ export class Hud {
   }
 
   private keysHtml(i: number) {
+    if (i === 1 && this.game.onlineP2) return '🌐 playing from<br>their own laptop';
     const b = this.game.keyboard.bindings;
     const pb = i === 0 ? b.p1 : b.p2;
     const cls = i === 0 ? 'p1' : 'p2';
