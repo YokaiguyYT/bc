@@ -36,6 +36,8 @@ interface Base {
   tag?: string;
   /** Pointy (cactus, pins…): pops balloons that touch it. */
   sharp?: boolean;
+  /** Balloons set down on it get tied on instead of floating off (stands, the party table). */
+  tie?: boolean;
 }
 
 export interface BoxObj extends Base {

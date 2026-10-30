@@ -213,6 +213,40 @@ const ROUTES = {
       place: true,
     },
   },
+  // balloon bouquet: side by side the whole way, the balloons kept clear of the giant darts, round
+  // the cacti, weaving between the spiky glitter balls in the Tunnel of Love and the topiary
+  // hedgehogs, then up either side of the party table
+  'funfair-full': {
+    broad: [0.6, 0.72],
+    midway: {
+      start: true,
+      path: [
+        [0, 19.4, 'broad'],
+        [0.7, 15.0, 'broad'],
+        [0.8, 9.2, 'broad'],
+        [-0.9, 7.6, 'broad'],
+        { wait: 'walkers', at: [-0.9, 4.6], along: [1, 0] },
+        [-0.9, 4.8, 'broad'],
+        [0.9, 3.6, 'broad'],
+        [0.9, 1.6, 'broad'],
+        [-0.9, 0.2, 'broad'],
+        [-0.9, -2.2, 'broad'],
+        [0, -4.4, 'broad'],
+      ],
+    },
+    tunnel: { keep: true, path: [[0, -6.4, 'broad'], [-0.75, -8.6, 'broad'], [-0.75, -12.0, 'broad'], [0.75, -13.6, 'broad'], [0.75, -15.6, 'broad'], [-0.75, -17.2, 'broad'], [-0.75, -19.2, 'broad'], [0.75, -20.8, 'broad'], [0.75, -22.8, 'broad'], [0, -25.6, 'broad'], [0, -28.4, 'broad']] },
+    hollow: { keep: true, path: [[0, -30.2, 'broad'], [1.5, -32.0, 'broad'], [1.5, -35.2, 'broad'], [-1.5, -37.0, 'broad'], [-1.5, -40.2, 'broad'], [1.5, -42.0, 'broad'], [1.5, -45.2, 'broad'], [0, -47.6, 'broad'], [0, -51.0, 'broad'], [0, -54.2, 'broad'], [0, -55.6, 'broad']], place: true },
+  },
+  // just the Tunnel of Love, from checkpoint 1
+  'funfair-tunnel': {
+    broad: [0.6, 0.72],
+    tunnel: { cargo: [0, 1.3, -4.6], yaw: 180, half: 0.62, path: [[0, -6.4, 'broad'], [-0.75, -8.6, 'broad'], [-0.75, -12.0, 'broad'], [0.75, -13.6, 'broad'], [0.75, -15.6, 'broad'], [-0.75, -17.2, 'broad'], [-0.75, -19.2, 'broad'], [0.75, -20.8, 'broad'], [0.75, -22.8, 'broad'], [0, -25.6, 'broad'], [0, -28.4, 'broad']] },
+  },
+  // just the hedgehogs and the party table, from checkpoint 2
+  'funfair-party': {
+    broad: [0.6, 0.72],
+    hollow: { cargo: [0, 1.3, -28.6], yaw: 180, half: 0.62, path: [[0, -30.2, 'broad'], [1.5, -32.0, 'broad'], [1.5, -35.2, 'broad'], [-1.5, -37.0, 'broad'], [-1.5, -40.2, 'broad'], [1.5, -42.0, 'broad'], [1.5, -45.2, 'broad'], [0, -47.6, 'broad'], [0, -51.0, 'broad'], [0, -54.2, 'broad'], [0, -55.6, 'broad']], place: true },
+  },
   // just the start: grab and out of the shop door
   'hills-start': {
     broad: [1.15, 1.35],
@@ -391,7 +425,8 @@ export default async function ({ page, base, shot }) {
             let near = 9;
             for (const col of s.cargo.colliders) {
               const pr = col.projectPoint(b, true);
-              if (pr) near = Math.min(near, Math.hypot(pr.point.x - b.x, pr.point.z - b.z));
+              // overhead bits (balloons) aren't in the way: we walk under them
+              if (pr && pr.point.y < b.y + 0.8) near = Math.min(near, Math.hypot(pr.point.x - b.x, pr.point.z - b.z));
             }
             const dx = c.x - b.x;
             const dz = c.z - b.z;

@@ -10,6 +10,7 @@ import { WeddingCake } from './WeddingCake';
 import { IceSwan } from './IceSwan';
 import { DinoEgg } from './DinoEgg';
 import { UprightPiano } from './UprightPiano';
+import { Balloons } from './Balloons';
 
 type Factory = (sim: Sim, opts: CargoOptions) => Cargo;
 
@@ -23,6 +24,7 @@ const registry: Partial<Record<CargoKind, Factory>> = {
   swan: (sim, o) => new IceSwan(sim, o),
   egg: (sim, o) => new DinoEgg(sim, o),
   piano: (sim, o) => new UprightPiano(sim, o),
+  balloons: (sim, o) => new Balloons(sim, o),
 };
 
 export function registerCargo(kind: CargoKind, f: Factory) {
