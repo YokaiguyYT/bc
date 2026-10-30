@@ -361,7 +361,7 @@ export function openMulti(id: string, ways: (() => Promise<Signal>)[]): Promise<
           if (++failed === ways.length && !resolved) {
             resolved = true;
             closed = true; // and stop retrying
-            reject(new Error('Couldn’t reach the matchmaking servers. Check the internet connection (some school networks block them), then try again.'));
+            reject(new Error('Couldn’t reach the matchmaking servers. Check the internet connection (some school networks block them; “Check this network” on the Play Online screen shows what’s blocked), then try again.'));
             return;
           }
           // up on another server already (or soon): keep trying this one now and then, in case the other laptop can only reach it
@@ -378,12 +378,22 @@ export function openMulti(id: string, ways: (() => Promise<Signal>)[]): Promise<
  * ?mqtt=0 (no MQTT).
  */
 export function openSignal(id: string): Promise<Signal> {
+  const s = signalServers();
+  if (s.local) return openLocal(id);
+  const ways: (() => Promise<Signal>)[] = [];
+  if (s.peerjs) ways.push(() => openPeerServer(id, s.peerjs!));
+  if (s.mqtt) ways.push(() => openMqtt(id, s.mqtt!));
+  return openMulti(id, ways);
+}
+
+/** Which matchmaking servers this page uses (the address bar can swap or drop them, for tests). */
+export function signalServers(): { local: boolean; peerjs: string | null; mqtt: string | null } {
   const q = new URLSearchParams(location.search);
   const net = q.get('net');
-  if (net === 'local') return openLocal(id);
   const mqtt = q.get('mqtt');
-  const ways: (() => Promise<Signal>)[] = [];
-  if (net !== 'mqtt') ways.push(() => openPeerServer(id, net?.startsWith('ws') ? net : SERVER));
-  if (net !== 'peerjs' && mqtt !== '0') ways.push(() => openMqtt(id, mqtt?.startsWith('ws') ? mqtt : MQTT_URL));
-  return openMulti(id, ways);
+  return {
+    local: net === 'local',
+    peerjs: net === 'mqtt' ? null : net?.startsWith('ws') ? net : SERVER,
+    mqtt: net === 'peerjs' || mqtt === '0' ? null : mqtt?.startsWith('ws') ? mqtt : MQTT_URL,
+  };
 }

@@ -288,17 +288,20 @@ const wreckingBall: Piece = {
     const z = -L / 2;
     b.ground(0, -L);
     const pivot = b.f.p(0, 8.4, z);
+    // a load carried end to end is three metres long and takes longer to get clear: swing slower for it
+    const inline = b.g.kit.form === 'inline';
     b.world({
       type: 'hazard',
       kind: 'wreckingBall',
       pos: pivot,
       // a slow, wide swing: about three seconds clear after each pass, enough to carry something heavy across
-      params: { length: 7.2, amp: 52, period: 8.8 - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
+      params: { length: 7.2, amp: 52, period: (inline ? 11.8 : 8.8) - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
     });
     // wait well clear (a wide load sways when it stops), go the moment it has swung past
     b.go(0, z + 1.8);
     b.wait({ wait: 'ball', at: [pivot[0], pivot[2]] });
-    b.go(0, z - 2.0);
+    // (end to end the bot steers the leader: take it far enough that the back mover is clear too)
+    b.go(0, z - 2.0 - (inline ? 2.8 : 0));
     b.go(0, -L);
     b.tip(0, z + 2, 'Wait for the ball to swing past, then go!', 3.5);
     return { length: L };
@@ -406,20 +409,36 @@ const people: Piece = {
   weight: () => 0.5,
   build(b) {
     const r = b.g.rng;
-    const L = 12;
+    const f = b.f;
+    const L = 16;
     b.ground(0, -L);
     const colors = [0xff8fab, 0x52d39a, 0x4dd0e1, 0xb085f5, 0xffd23f, 0x2b2b33];
-    if (r.chance(0.5)) b.world({ type: 'hazard', kind: 'pigeons', pos: b.f.p(r.range(-2, 2), 0, -L * 0.5), params: { count: r.int(4, 7), radius: 1.2 } });
-    for (const [i, z] of [-L * 0.35, -L * 0.7].entries()) {
+    const pigeons = r.chance(0.5) ? r.range(-2, 2) : null;
+    // two walkers crossing back and forth, far enough apart to stop between them (and they stop for
+    // movers within 1.6 m of their line, so the waiting spots keep further off than that)
+    const rows = [-3.8, -12];
+    rows.forEach((z, i) => {
       const s = i % 2 ? 1 : -1;
       b.world({
         type: 'hazard',
         kind: 'pedestrian',
-        pos: b.f.p(s * (W / 2 - 0.5), 0.02, z),
-        params: { points: [[0, 0, 0], b.f.v(-s * (W - 1), 0, 0)], speed: r.range(0.35, 0.55), color: r.pick(colors) },
+        pos: f.p(s * (W / 2 - 0.5), 0.02, z),
+        params: { points: [[0, 0, 0], f.v(-s * (W - 1), 0, 0)], speed: r.range(0.35, 0.55), color: r.pick(colors), polite: true },
       });
-    }
+    });
+    if (pigeons !== null) b.world({ type: 'hazard', kind: 'pigeons', pos: f.p(pigeons, 0, -7.9), params: { count: r.int(4, 7), radius: 1.2 } });
+    // the bot lets each walker pass (end to end, the leader goes further so the back mover clears the first row)
+    const inline = b.g.kit.form === 'inline';
+    const row = (z: number) => {
+      const at = f.p(0, 0, z);
+      b.wait({ wait: 'walkers', at: [at[0], at[2]], along: [f.v(1, 0, 0)[0], f.v(1, 0, 0)[2]] });
+    };
+    b.go(0, -0.9);
+    row(rows[0]);
+    b.go(0, inline ? -9.4 : -7.9);
+    row(rows[1]);
     b.go(0, -L);
+    b.tip(0, -1, 'Pedestrians! Let them cross, or squeeze past behind them.', 3);
     return { length: L, calm: true };
   },
 };
@@ -465,7 +484,8 @@ const corner: Piece = {
 
 const conveyor: Piece = {
   id: 'conveyor',
-  weight: (g) => (g.cargo === 'piano' ? 0.25 : 0.6),
+  // (a piano on castors just rolls off with the belt)
+  weight: (g) => (g.cargo === 'piano' ? 0 : 0.6),
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;
@@ -511,9 +531,12 @@ const lift: Piece = {
       rot: [0, f.yaw(0), 0],
       params: { size: [w, d], height: H, speed: 0.9, wall: 1.1, walls: ['+x', '-x'], landing: 4.2 },
     });
-    b.go(0, (z0 + z1) / 2, k.tight);
+    // ride in the usual formation (the car is wide enough for it; changing over in the doorway snags).
+    // End to end, the bot steers the leader: put the load (not the leader) in the middle so both movers are aboard
+    b.go(0, (z0 + z1) / 2 - (k.form === 'inline' ? 1.4 : 0));
     // it sets off once both movers have been aboard a moment
-    b.wait({ wait: 'time', s: H / 0.9 + 4.5 });
+    const at = f.p(0, 0, (z0 + z1) / 2);
+    b.wait({ wait: 'rise', at: [at[0], at[2]] });
     b.go(0, z1 - 2.2);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'All aboard: stand on the lift together and up it goes.', 3);
@@ -521,7 +544,110 @@ const lift: Piece = {
   },
 };
 
-export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift];
+const swingDoors: Piece = {
+  id: 'swing',
+  weight: () => 0.5,
+  build(b) {
+    const r = b.g.rng;
+    const t = b.g.theme;
+    const k = b.g.kit;
+    const f = b.f;
+    const L = 9;
+    const z = -4.5;
+    b.ground(0, -L);
+    // a doorway as wide as the load needs, with a spring door either side meeting in the middle
+    const leaf = Math.max(1.3, k.door / 2);
+    const hx = leaf + 0.04;
+    const half = W / 2 + M;
+    b.world(...wall(f.p(-half, 0, z), f.p(half, 0, z), 2.8, { surface: t.wall.surface, color: t.wall.color, thickness: 0.25, fade: true, doors: [[0.5, 2 * (hx + 0.06), 2.45]] }));
+    // they rest part-open (less on harder jobs) and flap back after you; hinges just past the wall and off
+    // the floor, so the leaves never rub on either (as in the ski lodge)
+    const open = 85 - b.g.difficulty * 20 + r.range(-3, 3);
+    const color = r.pick([0xc98f5a, 0x8fb8de, 0xd96b6b, 0x7fbf7f, 0xe0c25a]);
+    for (const s of [-1, 1]) b.world({ type: 'hazard', kind: 'swingDoor', pos: f.p(s * hx, 0.02, z - 0.16), rot: [0, f.yaw(0), 0], params: { width: leaf, height: 2.3, side: -s, open, spring: 3, color } });
+    b.go(0, z + 2.6);
+    b.go(0, z - 2.4);
+    b.go(0, -L);
+    b.tip(0, z + 3, 'Swing doors: push through, and mind they swing back.', 3);
+    return { length: L, calm: true };
+  },
+};
+
+const bridge: Piece = {
+  id: 'bridge',
+  weight: (g) => 0.35 + g.difficulty * 0.4,
+  build(b) {
+    const r = b.g.rng;
+    const k = b.g.kit;
+    const gap = r.range(5, 7.5);
+    const z0 = -2.5;
+    const z1 = z0 - gap;
+    const mid = (z0 + z1) / 2;
+    const L = -z1 + 3;
+    b.ground(0, z0);
+    b.ground(z1, -L);
+    // as wide as the movers walk (each one's distance from the load, plus a body) and some room to wobble
+    const reach = k.form === 'inline' ? 0.4 : (k.broad?.[1] ?? Math.abs(k.movers[0][0])) + 0.4;
+    const bw = Math.min(W - 1, Math.max(2.6, 2 * reach + 1.6 - b.g.difficulty * 0.5));
+    b.add(
+      // the deck (no railings: that's the point)
+      { type: 'box', pos: [0, -0.12, mid], size: [bw, 0.24, gap + 0.8], surface: 'wood', color: 0xa0703f, radius: 0.03 },
+      // beams underneath and a post at each corner
+      { type: 'box', pos: [-(bw / 2 - 0.2), -0.5, mid], size: [0.22, 0.5, gap + 0.8], color: 0x6b4a2b, collide: false, radius: 0.04 },
+      { type: 'box', pos: [bw / 2 - 0.2, -0.5, mid], size: [0.22, 0.5, gap + 0.8], color: 0x6b4a2b, collide: false, radius: 0.04 },
+    );
+    for (const sx of [-1, 1]) for (const z of [z0 - 0.15, z1 + 0.15]) b.add({ type: 'box', pos: [sx * (bw / 2 + 0.2), 0.35, z], size: [0.18, 0.7, 0.18], color: 0x6b4a2b, radius: 0.04 });
+    b.go(0, z0 + 1.2);
+    b.go(0, z1 - 1.2);
+    b.go(0, -L);
+    b.tip(0, z0 + 2, 'No railings! Keep it straight and steady.', 3);
+    return { length: L };
+  },
+};
+
+const ferry: Piece = {
+  id: 'ferry',
+  // (a piano on castors would roll off the back as it sets off)
+  weight: (g) => (g.cargo === 'piano' ? 0 : 0.4),
+  build(b) {
+    const r = b.g.rng;
+    const k = b.g.kit;
+    const f = b.f;
+    // a cable car platform across a chasm: it waits at the near edge and sets off once both movers are aboard
+    const w = 4.6;
+    const d = k.form === 'inline' ? 5.0 : 3.8;
+    const gap = r.range(d + 4, d + 7);
+    const z0 = -2.5;
+    const z1 = z0 - gap;
+    const c0 = z0 - d / 2 - 0.05;
+    const travel = gap - d - 0.1;
+    const L = -z1 + 4;
+    b.ground(0, z0);
+    b.ground(z1, -L);
+    b.world({
+      type: 'hazard',
+      kind: 'elevator',
+      pos: f.p(0, 0, c0),
+      rot: [0, f.yaw(0), 0],
+      params: { size: [w, d], travel: f.v(0, 0, -travel), speed: 0.7, wall: 1.1, walls: ['+x', '-x'], landing: 4.2, style: 'gondola' },
+    });
+    // a gantry at each end carries the cable
+    const steel = 0x5a5f69;
+    for (const z of [z0 + 0.45, z1 - 0.45]) {
+      for (const sx of [-1, 1]) b.add({ type: 'box', pos: [sx * (w / 2 + 0.4), 2.05, z], size: [0.22, 4.1, 0.22], color: steel, radius: 0.04 });
+      b.add({ type: 'box', pos: [0, 4.05, z], size: [w + 1.0, 0.22, 0.26], color: steel, radius: 0.04, collide: false });
+    }
+    // end to end, the bot steers the leader: put the load in the middle of the car
+    b.go(0, c0 - (k.form === 'inline' ? 1.4 : 0));
+    b.wait({ wait: 'rise', at: [f.p(0, 0, c0)[0], f.p(0, 0, c0)[2]] });
+    b.go(0, z1 - 2.2);
+    b.go(0, -L);
+    b.tip(0, z0 + 2, 'All aboard the cable car: step on together and it carries you over.', 3);
+    return { length: L };
+  },
+};
+
+export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift, swingDoors, bridge, ferry];
 
 // ---------------------------------------------------------------- start, checkpoint, finish
 
@@ -565,6 +691,7 @@ export function goalPiece(b: Build): { goal: { pos: Vec3; size: Vec3; label: str
   // things that start on a stand are set down on one too (nobody can lower a cake gently all the way to the floor)
   else if (b.g.cargo === 'cake' || b.g.cargo === 'swan' || b.g.cargo === 'egg') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] - L / 2] });
   b.add({ type: 'sign', pos: [W / 2 + 1.2, 2.2, -L / 2], rot: [0, -20, 0], size: [2.6, 0.7, 0.06], text: 'DELIVERIES', color: 0x2a6f4a, post: true });
-  b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.25 : -L / 2);
+  // glass: walk it right up against the bar (the bot stops within 0.2 m of its target, so aim past it) so it leans there
+  b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.55 : -L / 2);
   return { goal };
 }

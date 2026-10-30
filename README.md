@@ -93,9 +93,12 @@ There's also a **Practice Yard** to learn the controls.
 
 At the top of the job list:
 
-- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, slaloms, wrecking balls, traffic, laser gates, ice, people, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
+- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
 - **📅 Today's job:** the same course for everyone all day; a new one tomorrow. Your best today is kept.
+- **🔢 By number:** type a job number from someone's results card to play that exact course.
 - **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
+
+Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
 
 ## Settings
 

@@ -844,6 +844,50 @@ kbd.p2 {
   font-size: 18px;
   min-height: 1.4em;
 }
+.net-check {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  text-align: left;
+}
+.net-check li {
+  position: relative;
+  padding: 7px 10px 7px 40px;
+  margin: 6px 0;
+  border-radius: 10px;
+  background: rgba(43, 42, 51, 0.06);
+  font-size: 16px;
+}
+.net-check .nc-icon {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  font-size: 20px;
+}
+.net-check .nc-detail {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.net-check li.nc-ok {
+  box-shadow: inset 4px 0 0 var(--good);
+}
+.net-check li.nc-warn {
+  box-shadow: inset 4px 0 0 var(--warn);
+}
+.net-check li.nc-bad {
+  box-shadow: inset 4px 0 0 var(--bad);
+}
+.net-check-summary {
+  font-weight: 700;
+  font-size: 17px;
+  min-height: 1.4em;
+}
+.net-check-summary.nc-ok {
+  color: #1f8f5c;
+}
+.net-check-summary.nc-bad {
+  color: #c8323a;
+}
 .net-badge {
   position: fixed;
   bottom: 6px;

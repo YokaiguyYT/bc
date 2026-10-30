@@ -18,6 +18,7 @@ import type { GenParams, LevelDef } from '../levels/types';
 import { dailySeed, generateJob, hashSeed, randomSeed } from '../levels/gen/generate';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
+import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 
 type Screen =
   | 'title'
@@ -36,13 +37,15 @@ type Screen =
   | 'guest'
   | 'guest-menu'
   | 'guest-lost'
-  | 'jobnum';
+  | 'jobnum'
+  | 'netcheck';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** All the DOM UI: screens, menus, HUD, and the glue to the game. */
 export class App {
   screen: Screen = 'title';
+  private netCheckRun = 0;
   private layer: HTMLDivElement;
   private hudLayer: HTMLDivElement;
   private hud: Hud | null = null;
@@ -882,6 +885,7 @@ export class App {
        <div class="menu">
          <button class="btn primary" data-nav data-default id="o-host">Host a game</button>
          <button class="btn" data-nav id="o-join">Join a friend</button>
+         <button class="btn small" data-nav id="o-check">Check this network</button>
          <button class="btn small" data-nav id="o-back">← Back</button>
        </div>`,
       { back: () => this.showMenu() },
@@ -891,7 +895,44 @@ export class App {
       this.joinCode = '';
       this.showJoin('');
     });
+    this.bind('o-check', () => this.showNetCheck());
     this.bind('o-back', () => this.showMenu());
+  }
+
+  /** Can this network reach the matchmaking servers, and will a direct link work? Updated in place as each check ends. */
+  private showNetCheck() {
+    const run = ++this.netCheckRun;
+    const icon: Record<string, string> = { wait: '⏳', ok: '✅', warn: '⚠️', bad: '❌' };
+    const list = (items: CheckItem[]) =>
+      items.map((it) => `<li class="nc-${it.state}" data-check="${it.id}"><span class="nc-icon">${icon[it.state]}</span><b>${esc(it.label)}</b><br><span class="nc-detail">${esc(it.detail)}</span></li>`).join('');
+    this.setScreen(
+      'netcheck',
+      `<div class="logo" style="font-size:44px">NETWORK CHECK</div>
+       <div class="panel" style="max-width:min(640px,92vw)">
+         <ul class="net-check"></ul>
+         <p class="net-check-summary nc-wait"></p>
+         <p style="font-size:13px;opacity:0.75">Run it on both laptops. Only one matchmaking server has to work (on both). School Wi-Fi often blocks direct links: that's fine, the game goes through the relay.</p>
+       </div>
+       <div class="menu">
+         <button class="btn primary" data-nav data-default id="nc-again">Check again</button>
+         <button class="btn small" data-nav id="nc-back">← Back</button>
+       </div>`,
+      { back: () => this.showOnline() },
+    );
+    this.bind('nc-again', () => this.showNetCheck());
+    this.bind('nc-back', () => this.showOnline());
+    const show = (items: CheckItem[]) => {
+      if (run !== this.netCheckRun || this.screen !== 'netcheck') return;
+      const ul = this.layer.querySelector('.net-check');
+      const sum = this.layer.querySelector<HTMLElement>('.net-check-summary');
+      if (ul) ul.innerHTML = list(items);
+      const s = checkSummary(items);
+      if (sum) {
+        sum.className = `net-check-summary nc-${s.state}`;
+        sum.textContent = s.text;
+      }
+    };
+    void checkNetwork(show);
   }
 
   /** How the friend is connected, in words (with the round trip, once it's known). */
@@ -927,13 +968,14 @@ export class App {
          You're <b style="color:var(--p1)">P1</b> and they're <b style="color:var(--p2)">P2</b>. You can each use <b>WASD</b> or the <b>arrows</b>, whichever you like. You pick the jobs.</p>
        </div>
        <div class="row">
-         ${error ? '<button class="btn primary" data-nav data-default id="h-retry">Try again</button>' : '<button class="btn primary" data-nav data-default id="h-play">Pick a job →</button>'}
+         ${error ? '<button class="btn primary" data-nav data-default id="h-retry">Try again</button><button class="btn" data-nav id="h-check">Check this network</button>' : '<button class="btn primary" data-nav data-default id="h-play">Pick a job →</button>'}
          <button class="btn" data-nav id="h-stop">${h ? 'Stop hosting' : 'Cancel'}</button>
        </div>`,
       { back: () => this.showMenu() },
     );
     this.bind('h-play', () => this.showLevels());
     this.bind('h-retry', () => this.showHost());
+    this.bind('h-check', () => this.showNetCheck());
     this.bind('h-stop', () => {
       this.stopHosting();
       this.showMenu();

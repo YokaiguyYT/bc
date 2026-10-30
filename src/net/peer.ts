@@ -1,7 +1,7 @@
 import type { Signal } from './signal';
 
 /** Free public STUN servers: they only tell each laptop its public address. */
-const ICE: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
+export const ICE: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
 
 /** Bump when host and guest builds can no longer talk to each other. */
 export const NET_VERSION = 2;

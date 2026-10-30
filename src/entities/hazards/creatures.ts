@@ -156,11 +156,13 @@ class Npc implements Hazard {
     const dir = tgt.clone().sub(pos).setY(0);
     if (dir.lengthSq() < 1e-4) return false;
     dir.normalize();
+    // a polite walker (random jobs) also stops for movers alongside and gives a wide berth
+    const polite = !!this.o.params?.polite;
     const blocked = (p: THREE.Vector3) => {
       const rel = p.clone().sub(pos).setY(0);
       const ahead = rel.dot(dir);
       const side = Math.abs(rel.x * dir.z - rel.z * dir.x);
-      return ahead > 0.2 && ahead < 1.9 && side < 0.9;
+      return polite ? ahead > -0.4 && ahead < 2.8 && side < 1.6 : ahead > 0.2 && ahead < 1.9 && side < 0.9;
     };
     const others = (this.sim.players ?? []).map((p) => p.bodyPos);
     const cargo = this.sim.cargo?.body.translation();

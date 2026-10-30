@@ -15,7 +15,7 @@ import { CARGO_INFO } from '../../entities/cargo/info';
 const OPENERS = ['The Long Way to', 'Shortcut Through', 'Rush Hour at', 'Sunday Drive to', 'Express to', 'Detour via', 'Special Delivery to', 'The Scenic Route to', 'Handle With Care at', 'No Refunds at'];
 
 /** Extra seconds a hazard costs (waiting for gaps and swings), for par time. */
-const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2 };
+const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2 };
 
 export function generateJob(p: GenParams): LevelDef {
   const rng = new Rng(p.seed);

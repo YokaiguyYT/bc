@@ -123,9 +123,11 @@ Tests (two tabs in one browser): `online` (connect, menus copied, the job built 
 
 ## Random jobs
 
-`src/levels/gen/`: a seeded generator strings course pieces together (ramps, stairs, doors, slaloms, wrecking balls, traffic with a traffic island, laser gates, ice, people, corners), with a start kit for the cargo (the same stands and heights as the hand-made jobs), a checkpoint every three obstacles and a drop-off at the end. Pieces are written in their own frame (enter at the origin heading -Z), so a course can turn west or east (never back toward the camera). Each piece also writes the test bot's route through it, so any job can be checked: `GEN=<number> CARGO=<kind> … run.mjs deliver`.
+`src/levels/gen/`: a seeded generator strings course pieces together (ramps, stairs, doors, slaloms, wrecking balls, traffic with a traffic island, laser gates, ice, pedestrians, conveyor belts, lifts, corners), with a start kit for the cargo (the same stands and heights as the hand-made jobs), a checkpoint every three obstacles and a drop-off at the end. Pieces are written in their own frame (enter at the origin heading -Z), so a course can turn west or east (never back toward the camera). Each piece also writes the test bot's route through it, so any job can be checked: `GEN=<number> CARGO=<kind> … run.mjs deliver`.
 
-Fairness rules learned from the bot: wrecking balls swing slowly (7.5–8.8 s a swing) so there are about three seconds to carry something heavy across; the road has a traffic island so you cross one lane at a time; stairs are gentle (0.16 m rise, 0.5 m run); no ice for cake, egg or piano; glass gets a rack at the drop-off (a pane can't stand on its own).
+Fairness rules learned from the bot: wrecking balls swing slowly (7.5–8.8 s a swing) so there are about three seconds to carry something heavy across; the road has a traffic island so you cross one lane at a time, and the gap the bot waits for grows with the cars' speed; stairs are gentle (0.16 m rise, 0.5 m run); no ice for cake, egg or piano; doors are wide for big loads, with a straight run-up; glass gets a rack at the drop-off (a pane can't stand on its own) and cake, swan and egg get a stand; the two pedestrians cross far enough apart to wait between them; lifts are deep enough for a load carried end to end.
+
+Sweeps (the bot plays a batch of numbered jobs, cycling the cargo): the first one delivered 7 of 16; after the fixes above, 13 of 16, and the three failures (pedestrians shoving the movers into a rail, and a lift leaving with one mover still stepping on) led to the last two rules. Run one with a loop over `GEN=<n> CARGO=<kind> … run.mjs deliver` and grep each log for `"state":"delivered"`.
 
 ## Tuning still needed
 

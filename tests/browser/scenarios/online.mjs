@@ -172,7 +172,11 @@ export default async function ({ page, base, out }) {
 
   // guest leaves: the host's P2 goes back to this keyboard
   await guest.keyboard.press('Escape');
-  for (let i = 0; i < 3; i++) await guest.keyboard.press('ArrowDown');
+  // walk the menu with the keys down to "Leave" (the buttons above it vary: Graphics shows in light mode only)
+  for (let i = 0; i < 8; i++) {
+    if (await guest.evaluate(() => !!document.querySelector('#g-leave.focus'))) break;
+    await guest.keyboard.press('ArrowDown');
+  }
   await guest.keyboard.press('Enter');
   check('guest back at its menu', (await guest.evaluate(() => window.__FF.app.screen)) === 'menu', await guest.evaluate(() => window.__FF.app.screen));
   const left = await until(host, () => !window.__FF.game.onlineP2, null, 15000);

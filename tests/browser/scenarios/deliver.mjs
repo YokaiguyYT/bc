@@ -618,6 +618,46 @@ export default async function ({ page, base, shot }) {
         g.advance(w.s, 60, false);
         return w.s;
       }
+      if (w.wait === 'rise') {
+        // ride the lift nearest `at` all the way up (it sets off once everyone is aboard)
+        const lifts = s.hazards.filter((h) => h.base && typeof h.state === 'string' && typeof h.census === 'function');
+        const lift = lifts.reduce((a, b) => (Math.hypot(b.base.x - w.at[0], b.base.z - w.at[1]) < Math.hypot(a.base.x - w.at[0], a.base.z - w.at[1]) ? b : a));
+        while (t < 30 && lift.state !== 'top') {
+          g.advance(0.1, 60, false);
+          t += 0.1;
+        }
+        g.advance(0.5, 60, false);
+        return t + 0.5;
+      }
+      if (w.wait === 'walkers') {
+        // pedestrians crossing the path at `at` (walking along `along`): go once this row's walker is off to one
+        // side and not about to come back across (heading away, or far enough out that it stops for us)
+        const [ax, az] = w.along;
+        const walkers = s.hazards.filter((h) => h.player && h.mode === 'walk');
+        const where = () =>
+          walkers.map((h) => {
+            const p = h.player.bodyPos;
+            const rx = p.x - w.at[0];
+            const rz = p.z - w.at[1];
+            return { u: rx * ax + rz * az, off: Math.abs(rx * az - rz * ax) };
+          });
+        let prev = where();
+        let run = 0;
+        while (t < 40) {
+          g.advance(0.1, 60, false);
+          t += 0.1;
+          const now = where();
+          const ok = now.every((n, i) => {
+            if (n.off > 2.5) return true; // another row
+            const away = (n.u - prev[i].u) * Math.sign(n.u) > 0.004;
+            return Math.abs(n.u) > 2.1 && (away || Math.abs(n.u) > 2.5);
+          });
+          prev = now;
+          run = ok ? run + 0.1 : 0;
+          if (run > 0.25) break;
+        }
+        return t;
+      }
       if (w.wait === 'laser') {
         // go as a laser gate blinks off (wait for it to come on first, so we get the whole gap)
         const gate = s.hazards.find((h) => h.pos && typeof h.live === 'boolean' && Math.abs(h.pos.z - w.z) < 0.5);
