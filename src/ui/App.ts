@@ -14,7 +14,9 @@ import { Attract } from '../game/Attract';
 import { CARGO_INFO } from '../entities/cargo/info';
 import { CODE_LEN, LevelMsg, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
 import { GuestSync } from '../net/sync';
-import type { LevelDef } from '../levels/types';
+import type { GenParams, LevelDef } from '../levels/types';
+import { dailySeed, generateJob, hashSeed, randomSeed } from '../levels/gen/generate';
+import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 
 type Screen =
@@ -54,6 +56,8 @@ export class App {
   private perf = { from: 0, frames: 0, hinted: false };
   /** Seconds the results card has been up. */
   private resultsFor = 0;
+  /** What's being played: a hand-made job, or a generated one (and how it came about). */
+  private job: Job | null = null;
   /** Online: hosting a game for a friend, or playing on a friend's. */
   private host: OnlineHost | null = null;
   private guest: OnlineGuest | null = null;
@@ -201,7 +205,10 @@ export class App {
       const s = this.game.session;
       if (g.mode === 'light') {
         this.attract?.update(dt);
-        if (s?.mirror && this.hud) this.hud.update(dt);
+        if (s?.mirror && this.hud) {
+          this.hud.update(dt);
+          this.watchGuestFrameRate();
+        }
       }
       return;
     }
@@ -300,15 +307,49 @@ export class App {
         </button>`;
       })
       .join('');
+    const daily = generateJob({ seed: dailySeed(), label: 'Daily job', difficulty: 0.5 });
+    const dInfo = CARGO_INFO[daily.cargo];
+    const dBest = prog[dailyId()];
+    const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
+    const special = `
+      <button class="level-card special" data-nav data-gen="random">
+        <div class="num">🎲 RANDOM</div>
+        <div class="name">Random job</div>
+        <div class="cargo">A brand-new course every time</div>
+        <div class="tag">Any cargo, any place. Each one has a job number you can share.</div>
+        <div class="best"><span>never the same twice</span></div>
+      </button>
+      <button class="level-card special" data-nav data-gen="daily">
+        <div class="num">📅 DAILY</div>
+        <div class="name">Today's job</div>
+        <div class="cargo">${dInfo.icon} ${esc(dInfo.name)} · ${formatMoney(dInfo.value)}</div>
+        <div class="tag">The same course for everyone today. A new one tomorrow.</div>
+        <div class="best"><span>${dBest?.completed ? `today's best ${formatMoney(dBest.bestPayout)} · ${formatTime(dBest.bestTime ?? 0)}` : 'not delivered yet today'}</span></div>
+      </button>
+      <button class="level-card special" data-nav data-gen="shift">
+        <div class="num">♾️ ENDLESS SHIFT</div>
+        <div class="name">Endless shift</div>
+        <div class="cargo">Job after job, each one harder</div>
+        <div class="tag">Keep delivering until something breaks. How much can you earn?</div>
+        <div class="best"><span>${shiftBest ? `best shift ${formatMoney(shiftBest.total)} · ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</span></div>
+      </button>`;
     this.setScreen(
       'levels',
       `<div class="logo" style="font-size:44px">PICK A JOB</div>
-       <div class="levels">${cards}</div>
+       <div class="levels">${special}${cards}</div>
        ${Object.values(prog).some((p) => p?.completed) ? '' : '<div class="hint-line">First time? The <b>Practice Yard</b> is a good place to learn the ropes.</div>'}
        <div class="row"><button class="btn small" data-nav id="l-back">← Back</button></div>`,
       { back: () => this.showMenu() },
     );
     this.layer.querySelectorAll<HTMLElement>('[data-level]').forEach((el) => el.addEventListener('click', () => this.playLevel(el.dataset.level!)));
+    this.layer.querySelectorAll<HTMLElement>('[data-gen]').forEach((el) =>
+      el.addEventListener('click', () => {
+        const kind = el.dataset.gen;
+        if (kind === 'random') this.playGenerated('random', { seed: randomSeed() });
+        else if (kind === 'daily') this.playGenerated('daily', { seed: dailySeed(), difficulty: 0.5 });
+        else this.startShift();
+      }),
+    );
     this.bind('l-back', () => this.showMenu());
   }
 
@@ -496,6 +537,38 @@ export class App {
     // dev: ?cargo=tv swaps the cargo of any level
     const forced = new URLSearchParams(location.search).get('cargo');
     if (forced) def = { ...def, cargo: forced as typeof def.cargo };
+    this.job = { kind: 'level', id };
+    this.playDef(def);
+  }
+
+  /** A generated job: a random one, today's, or the next one in an endless shift. */
+  playGenerated(kind: 'random' | 'daily', gen: GenParams) {
+    const label = kind === 'daily' ? 'Daily job' : 'Random job';
+    this.job = { kind, gen: { ...gen, label } };
+    this.playDef(generateJob(this.job.gen));
+  }
+
+  /** An endless shift: job after job, harder each time, until something breaks. */
+  startShift() {
+    this.job = { kind: 'shift', base: randomSeed(), round: 1, total: 0, gen: { seed: 0 } };
+    this.playShiftRound();
+  }
+
+  private playShiftRound() {
+    const j = this.job;
+    if (j?.kind !== 'shift') return;
+    j.gen = {
+      seed: 100000 + (hashSeed(`shift ${j.base} ${j.round}`) % 900000),
+      difficulty: Math.min(0.95, 0.15 + j.round * 0.1),
+      pieces: Math.min(12, 2 + j.round),
+      label: `Shift job ${j.round}`,
+    };
+    const def = generateJob(j.gen);
+    def.name = `Shift job ${j.round}${j.total ? ` · ${formatMoney(j.total)} so far` : ''}`;
+    this.playDef(def);
+  }
+
+  private playDef(def: LevelDef) {
     this.attract = null;
     this.audio.unlock();
     // restart / retry / next job: the old HUD goes with the old session
@@ -512,6 +585,34 @@ export class App {
     s.events.on('cargoDamage', () => {
       if (!this.game.settings.shake) s.cameraRig.addShake(-1);
     });
+  }
+
+  /** Online guest drawing the level itself: if it stays choppy, say what helps (once). */
+  private watchGuestFrameRate() {
+    const p = this.perf;
+    const now = performance.now() / 1000;
+    if (p.hinted || this.game.manual) return;
+    if (!p.from) {
+      p.from = now + 3;
+      p.frames = 0;
+    }
+    if (now < p.from) return;
+    p.frames++;
+    if (now - p.from < 5) return;
+    if (p.frames / (now - p.from) < 28) {
+      p.hinted = true;
+      const fast = this.game.settings.quality === 'low';
+      this.hud?.say(
+        this.guest?.canVideo
+          ? `Choppy? Press Esc: ${fast ? '' : 'Graphics: Fast, or '}Picture: stream it.`
+          : fast
+            ? 'Choppy? Close other tabs and apps; this laptop is drawing the whole game.'
+            : 'Choppy? Press Esc, then Graphics: Fast.',
+        9,
+      );
+    }
+    p.from = now;
+    p.frames = 0;
   }
 
   /** If play stays choppy (real frames per second), suggest Fast graphics once. */
@@ -565,10 +666,16 @@ export class App {
       s.respawnAll(false);
       this.resume();
     });
-    this.bind('p-restart', () => this.playLevel(s.def.id));
+    this.bind('p-restart', () => this.replay(s.def));
     this.bind('p-controls', () => this.showControls(() => this.showPauseMenu()));
     this.bind('p-settings', () => this.showSettings(() => this.showPauseMenu()));
     this.bind('p-quit', () => this.quitToMenu());
+  }
+
+  /** The same job again from the top. */
+  private replay(def: LevelDef) {
+    if (def.gen) this.playDef(def.gen.label?.startsWith('Shift') ? { ...generateJob(def.gen), name: def.name } : generateJob(def.gen));
+    else this.playLevel(def.id);
   }
 
   resume() {
@@ -590,10 +697,24 @@ export class App {
   private showResults(r: SessionResult) {
     const s = this.game.session!;
     this.resultsFor = 0;
-    const beat = recordResult(r);
-    const stars = starsFor(r);
     const def = s.def;
-    const nextLevel = PLAYABLE_LEVELS.find((l) => l.order > def.order);
+    const job = this.job ?? { kind: 'level', id: def.id };
+    // generated jobs: a random job is a one-off (nothing to keep), today's job keeps today's best, a shift keeps a running total
+    const kept = job.kind === 'level' ? r : job.kind === 'daily' ? { ...r, levelId: dailyId() } : null;
+    const beat = kept ? recordResult(kept) : { payout: false, time: false };
+    const stars = starsFor(r);
+    const nextLevel = job.kind === 'level' ? PLAYABLE_LEVELS.find((l) => l.order > def.order) : undefined;
+    let shiftLine = '';
+    if (job.kind === 'shift') {
+      if (r.success) job.total += r.payout;
+      else {
+        const done = job.round - 1;
+        const best = loadJSON<ShiftBest>('ff.shiftBest');
+        const record = !best || job.total > best.total;
+        if (record && done > 0) saveJSON('ff.shiftBest', { total: job.total, jobs: done } satisfies ShiftBest);
+        shiftLine = `<p><b>Shift over.</b> ${done} job${done === 1 ? '' : 's'} delivered, ${formatMoney(job.total)} earned${record && done > 0 ? ' <span class="new-best">NEW BEST</span>' : best ? ` (best ${formatMoney(best.total)})` : ''}.</p>`;
+      }
+    }
     const verdicts = r.success
       ? r.condition >= 0.97
         ? ['Flawless!', 'Not a scratch. Suspicious.']
@@ -604,12 +725,30 @@ export class App {
             : ['Technically delivered.', 'The client is weeping softly.']
       : ['Total loss!', `The ${r.cargoName.toLowerCase()} did not survive the move.`];
     const row = (label: string, v: string) => `<tr><td>${label}</td><td>${v}</td></tr>`;
+    const seedLine = def.gen ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b>${job.kind === 'random' ? ' · tell a friend the number to race the same course' : ''}</p>` : '';
+    // the buttons depend on what's being played
+    let buttons: string;
+    if (job.kind === 'shift')
+      buttons = r.success
+        ? `<button class="btn primary" data-nav data-default id="r-shift">Next job in the shift →</button>
+           <button class="btn" data-nav id="r-shift-stop">End the shift here</button>`
+        : `<button class="btn primary" data-nav data-default id="r-shift-new">Start a new shift</button>
+           <button class="btn" data-nav id="r-levels">Job list</button>`;
+    else if (job.kind === 'random')
+      buttons = `<button class="btn primary" data-nav data-default id="r-random">New random job →</button>
+           <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
+           <button class="btn" data-nav id="r-levels">Job list</button>`;
+    else
+      buttons = `${r.success && nextLevel ? `<button class="btn primary" data-nav data-default id="r-next">Next job →</button>` : ''}
+           <button class="btn ${r.success && nextLevel ? '' : 'primary'}" data-nav ${r.success && nextLevel ? '' : 'data-default'} id="r-retry">${r.success ? 'Play again' : 'Retry'}</button>
+           <button class="btn" data-nav id="r-levels">Job list</button>`;
     this.setScreen(
       'results',
       `<div class="panel results">
         <div class="stars">${[0, 1, 2].map((i) => `<span class="${i < stars ? '' : 'off'}" style="animation-delay:${0.15 + i * 0.18}s">★</span>`).join('')}</div>
         <div class="verdict" style="color:${r.success ? 'var(--ink)' : 'var(--bad)'}">${verdicts[0]}</div>
         <p>${verdicts[1]}</p>
+        ${seedLine}
         <table>
           ${row('Cargo value', formatMoney(r.value))}
           ${row('Condition', `${Math.round(r.condition * 100)}%`)}
@@ -617,19 +756,35 @@ export class App {
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
           <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
+          ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
+        ${shiftLine}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
-        <div class="row">
-          ${r.success && nextLevel ? `<button class="btn primary" data-nav data-default id="r-next">Next job →</button>` : ''}
-          <button class="btn ${r.success && nextLevel ? '' : 'primary'}" data-nav ${r.success && nextLevel ? '' : 'data-default'} id="r-retry">${r.success ? 'Play again' : 'Retry'}</button>
-          <button class="btn" data-nav id="r-levels">Job list</button>
-        </div>
+        <div class="row">${buttons}</div>
       </div>`,
       { dim: true, back: () => this.showLevels() },
     );
     this.audio.sfx(r.success ? 'payout' : 'fail');
     this.bind('r-next', () => nextLevel && this.playLevel(nextLevel.id));
-    this.bind('r-retry', () => this.playLevel(def.id));
+    this.bind('r-retry', () => this.replay(def));
+    this.bind('r-random', () => this.playGenerated('random', { seed: randomSeed() }));
+    this.bind('r-shift', () => {
+      if (this.job?.kind !== 'shift') return;
+      this.job.round++;
+      this.playShiftRound();
+    });
+    const endShift = () => {
+      const j = this.job;
+      if (j?.kind === 'shift') {
+        const best = loadJSON<ShiftBest>('ff.shiftBest');
+        if (!best || j.total > best.total) saveJSON('ff.shiftBest', { total: j.total, jobs: j.round } satisfies ShiftBest);
+      }
+      this.hud?.dispose();
+      this.hud = null;
+      this.showLevels();
+    };
+    this.bind('r-shift-stop', endShift);
+    this.bind('r-shift-new', () => this.startShift());
     this.bind('r-levels', () => {
       this.hud?.dispose();
       this.hud = null;
@@ -1013,7 +1168,8 @@ export class App {
   private guestLevel(m: LevelMsg) {
     const g = this.guest;
     if (!g || g.mode !== 'light') return;
-    let def = (m.def as LevelDef | undefined) ?? levelById(m.id);
+    let def = m.gen ? generateJob(m.gen) : levelById(m.id);
+    if (def && m.gen && m.name) def = { ...def, name: m.name };
     if (!def) {
       this.toast('Your friend started a job this copy of the game doesn’t have. You both need the same file.');
       return;
@@ -1057,6 +1213,7 @@ export class App {
          <button class="btn primary" data-nav data-default id="g-back">Keep playing</button>
          <button class="btn" data-nav id="g-pause">Pause the game</button>
          <button class="btn" data-nav id="g-mode" ${video || g.canVideo ? '' : 'disabled'}>${video ? 'Picture: draw it on this laptop' : 'Picture: stream it from my friend'}</button>
+         ${video ? '' : `<button class="btn" data-nav id="g-gfx">Graphics: ${({ low: 'Fast', medium: 'Balanced', high: 'Pretty' } as const)[this.game.settings.quality]}</button>`}
          <button class="btn" data-nav id="g-leave">Leave</button>
        </div>
        <div class="hint-line">${esc(this.viaText(g.via, video))}. ${
@@ -1076,6 +1233,15 @@ export class App {
     this.bind('g-mode', () => {
       this.guest?.requestMode(video ? 'light' : 'video');
       this.setScreen('guest', '');
+    });
+    this.bind('g-gfx', () => {
+      const st = this.game.settings;
+      st.quality = st.quality === 'high' ? 'low' : st.quality === 'low' ? 'medium' : 'high';
+      this.game.renderer.setQuality(st.quality);
+      this.game.saveSettings();
+      this.showGuestMenu();
+      this.focusIndex = this.focusables.findIndex((el) => el.id === 'g-gfx');
+      this.updateFocus();
     });
     this.bind('g-leave', () => this.leaveGuest());
   }
@@ -1125,6 +1291,23 @@ export class App {
     if (!this.dev) this.dev = new DevPanel(this.game);
     else this.dev.toggle();
   }
+}
+
+/** What's being played. */
+type Job =
+  | { kind: 'level'; id: string }
+  | { kind: 'random' | 'daily'; gen: GenParams }
+  | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number };
+
+/** The best endless shift so far. */
+interface ShiftBest {
+  total: number;
+  jobs: number;
+}
+
+/** Today's job's key in the saved bests. */
+function dailyId(d = new Date()) {
+  return `daily-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
 function keys(codes: string[], cls: string) {

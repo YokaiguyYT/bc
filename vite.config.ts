@@ -37,7 +37,9 @@ function embedModels(single: boolean): Plugin {
 /**
  * Single-file build: name the page FragileFreight.html and keep a copy in
  * play/ (committed, so people can download it and double-click it — no
- * command line needed).
+ * command line needed), and the same file as docs/index.html, so GitHub Pages
+ * can serve it from this branch ("Deploy from a branch", folder /docs).
+ * Identical files cost git nothing extra.
  */
 function namePlayableFile(): Plugin {
   return {
@@ -52,6 +54,9 @@ function namePlayableFile(): Plugin {
       const play = resolve(import.meta.dirname, 'play');
       mkdirSync(play, { recursive: true });
       copyFileSync(to, resolve(play, 'FragileFreight.html'));
+      const docs = resolve(import.meta.dirname, 'docs');
+      mkdirSync(docs, { recursive: true });
+      copyFileSync(to, resolve(docs, 'index.html'));
     },
   };
 }

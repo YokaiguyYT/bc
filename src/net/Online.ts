@@ -4,6 +4,7 @@ import { RelayLink } from './relay';
 import { GuestSync, HostSync, NetEvent } from './sync';
 import type { Keyboard, MoveState } from '../input/Keyboard';
 import type { LevelSession } from '../game/LevelSession';
+import type { GenParams } from '../levels/types';
 import * as THREE from 'three';
 
 /**
@@ -404,7 +405,8 @@ export class OnlineHost {
       this.synced = s;
       if (s) {
         this.sync = new HostSync(s);
-        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, def: s.def.generated ? s.def : undefined });
+        // a generated job travels as its recipe: the guest makes the very same one
+        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name });
       } else conn.sendCtl({ k: 'end' });
       this.snapT = 1;
     }
@@ -447,7 +449,9 @@ export class OnlineHost {
 export interface LevelMsg {
   id: string;
   cargo?: string;
-  def?: unknown;
+  /** A generated job's recipe. */
+  gen?: GenParams;
+  name?: string;
 }
 
 export class OnlineGuest {
@@ -525,7 +529,7 @@ export class OnlineGuest {
         this.onMode?.(this.mode);
         break;
       case 'level':
-        this.lastLevel = { id: String(m.id), cargo: m.cargo as string | undefined, def: m.def };
+        this.lastLevel = { id: String(m.id), cargo: m.cargo as string | undefined, gen: m.gen as GenParams | undefined, name: m.name as string | undefined };
         this.early = [];
         this.onLevel?.(this.lastLevel);
         break;

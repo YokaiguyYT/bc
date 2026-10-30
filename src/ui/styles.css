@@ -882,3 +882,16 @@ kbd.p2 {
 .net-local button {
   pointer-events: auto;
 }
+
+/* ---------- generated jobs ---------- */
+.level-card.special {
+  background: linear-gradient(160deg, #fff7e0, #ffe9f1);
+}
+.level-card.special .num {
+  color: #b5562e;
+  letter-spacing: 0.04em;
+}
+.level-card.special:hover,
+.level-card.special.focus {
+  background: linear-gradient(160deg, #fff1b8, #ffd9e6);
+}

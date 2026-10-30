@@ -163,9 +163,26 @@ export interface SpawnSet {
 
 export type LevelObject = BoxObj | CylinderObj | BallObj | ModelObj | SignObj | HazardObj;
 
+/** What the job generator needs to make a job again (online, the guest rebuilds it from this). */
+export interface GenParams {
+  seed: number;
+  cargo?: CargoKind;
+  /** 0 (gentle) .. 1 (nasty). */
+  difficulty?: number;
+  /** How many obstacles (not counting the start, checkpoints and the finish). */
+  pieces?: number;
+  /** 'Random job', 'Daily job', 'Shift job 3'… */
+  label?: string;
+}
+
 export interface LevelDef {
-  /** Made by the job generator (online, the guest gets the whole description, not just the id). */
+  /** Made by the job generator. */
   generated?: boolean;
+  gen?: GenParams;
+  /** Tests: the delivery bot's route through a generated job. */
+  bot?: unknown;
+  /** Tests: which pieces a generated job is made of. */
+  pieces?: string[];
   id: string;
   name: string;
   tagline: string;

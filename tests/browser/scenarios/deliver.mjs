@@ -260,11 +260,28 @@ const ROUTES = {
 
 export default async function ({ page, base, shot }) {
   const routeId = process.env.ROUTE ?? process.env.LEVEL ?? 'delivery';
-  const route = ROUTES[routeId];
+  // GEN=<job number> (CARGO=, DIFF=, PIECES=): a generated job, with the route it comes with
+  const gen = process.env.GEN;
+  let route = ROUTES[routeId];
   const id = routeId.split('-')[0];
   const only = (process.env.SEG ?? '').split(',').filter(Boolean);
-  await page.goto(base + `?level=${id}&manual=1`);
+  if (gen) {
+    const q = new URLSearchParams({ gen, manual: '1' });
+    if (process.env.CARGO) q.set('cargo', process.env.CARGO);
+    if (process.env.DIFF) q.set('diff', process.env.DIFF);
+    if (process.env.PIECES) q.set('pieces', process.env.PIECES);
+    await page.goto(base + '?' + q);
+  } else await page.goto(base + `?level=${id}&manual=1`);
   await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
+  if (gen) {
+    const info = await page.evaluate(() => {
+      const d = window.__FF.game.session.def;
+      return { bot: d.bot, name: d.name, cargo: d.cargo, pieces: d.pieces };
+    });
+    route = { ...(info.bot.broad ? { broad: info.bot.broad } : {}), ...info.bot };
+    if (!info.bot.broad) delete route.broad;
+    console.log(`job ${gen}: ${info.name} · ${info.cargo} · ${info.pieces.join(' ')}`);
+  }
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
   await page.evaluate(([digital, gripsDebug]) => {
     window.__FF.game.session.scriptedInput = true;
@@ -611,7 +628,9 @@ export default async function ({ page, base, shot }) {
       }
       if (w.wait === 'ball') {
         // go right after the wrecking ball swings through (it is away the longest then)
-        const ball = s.hazards.find((h) => typeof h.period === 'number' && typeof h.amp === 'number' && typeof h.L === 'number');
+        // the ball nearest `at` (there can be more than one)
+        const balls = s.hazards.filter((h) => typeof h.period === 'number' && typeof h.amp === 'number' && typeof h.L === 'number');
+        const ball = w.at ? balls.reduce((a, b) => (Math.hypot(b.pivot.x - w.at[0], b.pivot.z - w.at[1]) < Math.hypot(a.pivot.x - w.at[0], a.pivot.z - w.at[1]) ? b : a)) : balls[0];
         const frac = () => {
           const f = (s.physics.time / ball.period + ball.phase) % 1;
           return f < 0 ? f + 1 : f;
