@@ -25,3 +25,6 @@ screenshots/
 *.log
 scripts/.contact-shot.mjs
 scripts/.combine-sheets.mjs
+
+# agents' working copies
+.claude/worktrees/
