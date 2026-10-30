@@ -202,7 +202,8 @@ const stairsPiece: Piece = {
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;
-    const up = r.chance(0.5);
+    // (a long load only goes down stairs: carried end to end, it can't get up them)
+    const up = r.chance(0.5) && b.g.kit.stairs === 'both';
     const n = r.int(5, 8);
     // gentle steps, like the fire escape: steep ones stop a long load
     const rise = 0.16;
@@ -292,9 +293,10 @@ const wreckingBall: Piece = {
       // a slow, wide swing: about three seconds clear after each pass, enough to carry something heavy across
       params: { length: 7.2, amp: 52, period: 8.8 - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
     });
-    b.go(0, z + 1.3);
+    // wait well clear (a wide load sways when it stops), go the moment it has swung past
+    b.go(0, z + 1.8);
     b.wait({ wait: 'ball', at: [pivot[0], pivot[2]] });
-    b.go(0, z - 1.7);
+    b.go(0, z - 2.0);
     b.go(0, -L);
     b.tip(0, z + 2, 'Wait for the ball to swing past, then go!', 3.5);
     return { length: L };
@@ -359,7 +361,8 @@ const traffic: Piece = {
 const lasers: Piece = {
   id: 'lasers',
   // the bot finds a gate by its z: heading north only
-  weight: (g, h) => (north(h) ? 0.4 + g.difficulty * 0.6 : 0),
+  // a long load carried end to end can't get its whole length through while they're off
+  weight: (g, h) => (north(h) && g.kit.form !== 'inline' ? 0.4 + g.difficulty * 0.6 : 0),
   build(b) {
     const r = b.g.rng;
     const L = 12;

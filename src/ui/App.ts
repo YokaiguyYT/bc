@@ -35,7 +35,8 @@ type Screen =
   | 'join'
   | 'guest'
   | 'guest-menu'
-  | 'guest-lost';
+  | 'guest-lost'
+  | 'jobnum';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -152,6 +153,7 @@ export class App {
       return;
     }
     if (this.screen === 'join' && this.typeCode(code, e)) return;
+    if (this.screen === 'jobnum' && this.typeJobNumber(code, e)) return;
     if (this.screen === 'guest') {
       if (b.pause.includes(code)) this.showGuestMenu();
       else if (b.p1.jump.includes(code) || b.p2.jump.includes(code)) this.guest?.tapJump();
@@ -307,7 +309,7 @@ export class App {
         </button>`;
       })
       .join('');
-    const daily = generateJob({ seed: dailySeed(), label: 'Daily job', difficulty: 0.5 });
+    const daily = generateJob({ seed: dailySeed(), label: 'Daily job' });
     const dInfo = CARGO_INFO[daily.cargo];
     const dBest = prog[dailyId()];
     const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
@@ -325,6 +327,13 @@ export class App {
         <div class="cargo">${dInfo.icon} ${esc(dInfo.name)} · ${formatMoney(dInfo.value)}</div>
         <div class="tag">The same course for everyone today. A new one tomorrow.</div>
         <div class="best"><span>${dBest?.completed ? `today's best ${formatMoney(dBest.bestPayout)} · ${formatTime(dBest.bestTime ?? 0)}` : 'not delivered yet today'}</span></div>
+      </button>
+      <button class="level-card special" data-nav data-gen="number">
+        <div class="num">🔢 BY NUMBER</div>
+        <div class="name">Play a job number</div>
+        <div class="cargo">Type a friend's job number</div>
+        <div class="tag">Every random job has a number on its results card. Same number, same course.</div>
+        <div class="best"><span>six digits</span></div>
       </button>
       <button class="level-card special" data-nav data-gen="shift">
         <div class="num">♾️ ENDLESS SHIFT</div>
@@ -346,7 +355,8 @@ export class App {
       el.addEventListener('click', () => {
         const kind = el.dataset.gen;
         if (kind === 'random') this.playGenerated('random', { seed: randomSeed() });
-        else if (kind === 'daily') this.playGenerated('daily', { seed: dailySeed(), difficulty: 0.5 });
+        else if (kind === 'daily') this.playGenerated('daily', { seed: dailySeed() });
+        else if (kind === 'number') this.showJobNumber();
         else this.startShift();
       }),
     );
@@ -725,7 +735,8 @@ export class App {
             : ['Technically delivered.', 'The client is weeping softly.']
       : ['Total loss!', `The ${r.cargoName.toLowerCase()} did not survive the move.`];
     const row = (label: string, v: string) => `<tr><td>${label}</td><td>${v}</td></tr>`;
-    const seedLine = def.gen ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b>${job.kind === 'random' ? ' · tell a friend the number to race the same course' : ''}</p>` : '';
+    // (a shift job's number alone doesn't make the same course: shifts also set how hard it is)
+    const seedLine = def.gen && job.kind !== 'shift' ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>` : '';
     // the buttons depend on what's being played
     let buttons: string;
     if (job.kind === 'shift')
@@ -790,6 +801,61 @@ export class App {
       this.hud = null;
       this.showLevels();
     });
+  }
+
+  // ------------------------------------------------------------ job by number
+
+  private jobNumber = '';
+
+  /** Type a six-digit job number (from a friend's results card) and play that very course. */
+  private showJobNumber() {
+    this.startAttract();
+    this.jobNumber = '';
+    this.setScreen(
+      'jobnum',
+      `<div class="logo" style="font-size:44px">JOB NUMBER</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Type the six-digit job number</p>
+         <div class="net-code entry job-digits">${this.jobBoxes()}</div>
+         <p style="font-size:14px">It's on the results card of every random job. Same number, same course (and the same cargo).</p>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="jn-go" disabled>Play it</button>
+         <button class="btn small" data-nav id="jn-back">← Back</button>
+       </div>`,
+      { back: () => this.showLevels() },
+    );
+    this.bind('jn-go', () => this.playJobNumber());
+    this.bind('jn-back', () => this.showLevels());
+  }
+
+  private jobBoxes() {
+    return Array.from({ length: 6 }, (_, i) => `<span class="${i === this.jobNumber.length ? 'cursor' : ''}">${this.jobNumber[i] ?? ''}</span>`).join('');
+  }
+
+  private typeJobNumber(code: string, e: KeyboardEvent) {
+    const m = /^(?:Digit|Numpad)([0-9])$/.exec(code);
+    if (m || code === 'Backspace') {
+      e.preventDefault();
+      if (m && this.jobNumber.length < 6) this.jobNumber += m[1];
+      if (code === 'Backspace') this.jobNumber = this.jobNumber.slice(0, -1);
+      const box = this.layer.querySelector('.job-digits');
+      if (box) box.innerHTML = this.jobBoxes();
+      const go = this.layer.querySelector<HTMLButtonElement>('#jn-go');
+      if (go) go.disabled = this.jobNumber.length !== 6;
+      return true;
+    }
+    if ((code === 'Enter' || code === 'NumpadEnter') && this.jobNumber.length === 6) {
+      e.preventDefault();
+      this.playJobNumber();
+      return true;
+    }
+    return false;
+  }
+
+  private playJobNumber() {
+    if (this.jobNumber.length !== 6) return;
+    this.playGenerated('random', { seed: Number(this.jobNumber) });
   }
 
   // ------------------------------------------------------------ online

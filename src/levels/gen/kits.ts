@@ -22,11 +22,11 @@ export interface CargoKit {
   tight: 'broad' | 'inline';
   /** Bot: how close either side of the load movers stay [min, max] (small loads want them close). */
   broad?: [number, number];
-  /** Stairs are fine (not for things that slosh, roll, or tip over). */
-  stairs: boolean;
+  /** Stairs are fine (not for things that slosh, roll, or tip over); 'down' only for long loads. */
+  stairs: 'both' | 'down' | false;
   /** Steepest ramp (degrees). */
   maxSlope: number;
-  /** Door gap it needs (m). */
+  /** Door gap it needs (m): the load plus the two movers walking beside it. */
   door: number;
 }
 
@@ -63,15 +63,15 @@ const glassRack = (): LevelObject[] => [
 const floor = (): LevelObject[] => [];
 
 export const KITS: Partial<Record<CargoKind, CargoKit>> = {
-  crate: { stand: floor, y: 0.4, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', stairs: true, maxSlope: 12, door: 2.6 },
-  tv: { stand: floor, y: 0.45, movers: [[-0.9, 0], [0.9, 0]], form: 'broad', tight: 'inline', stairs: true, maxSlope: 11, door: 2.4 },
-  aquarium: { stand: floor, y: 0.3, movers: [[-1.1, 0], [1.1, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 7, door: 3.2 },
-  clock: { stand: floor, y: 0.21, rot: [-90, 0, 0], movers: [[0, 1.65], [0, -1.65]], form: 'inline', tight: 'inline', stairs: true, maxSlope: 11, door: 2.2 },
-  glass: { stand: glassRack, y: 0.73, rot: [8, 0, 0], movers: [[-1.4, -0.05], [1.4, -0.05]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 10, door: 3.4 },
-  cake: { stand: cakeStand, y: 0.83, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 8, door: 3.0 },
-  swan: { stand: carvingStand, y: 0.5 + 0.11 + 0.02, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 9, door: 3.0 },
-  egg: { stand: pedestal, y: 0.42 + 0.387 + 0.02, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', broad: [0.62, 0.72], stairs: false, maxSlope: 9, door: 3.0 },
-  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 3.6 },
+  crate: { stand: floor, y: 0.4, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', stairs: 'both', maxSlope: 12, door: 2.9 },
+  tv: { stand: floor, y: 0.45, movers: [[-0.9, 0], [0.9, 0]], form: 'broad', tight: 'inline', stairs: 'both', maxSlope: 11, door: 2.6 },
+  aquarium: { stand: floor, y: 0.3, movers: [[-1.1, 0], [1.1, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 7, door: 3.6 },
+  clock: { stand: floor, y: 0.21, rot: [-90, 0, 0], movers: [[0, 1.65], [0, -1.65]], form: 'inline', tight: 'inline', stairs: 'down', maxSlope: 11, door: 2.4 },
+  glass: { stand: glassRack, y: 0.73, rot: [8, 0, 0], movers: [[-1.4, -0.05], [1.4, -0.05]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 10, door: 3.8 },
+  cake: { stand: cakeStand, y: 0.83, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 8, door: 3.4 },
+  swan: { stand: carvingStand, y: 0.5 + 0.11 + 0.02, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 9, door: 3.4 },
+  egg: { stand: pedestal, y: 0.42 + 0.387 + 0.02, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', broad: [0.62, 0.72], stairs: false, maxSlope: 9, door: 3.4 },
+  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0 },
 };
 
 /** Cargo a random job can pick. */

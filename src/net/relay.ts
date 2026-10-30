@@ -1,8 +1,8 @@
 import type { Signal } from './signal';
 import type { CtlMsg, Pipe } from './peer';
 
-/** No word from the other side for this long and we call it lost (s). */
-const TIMEOUT = 12;
+/** No word from the other side for this long and we call it lost (s): generous, as a slow laptop can freeze for a while building a big level. */
+const TIMEOUT = 25;
 
 function toB64(buf: ArrayBuffer) {
   const b = new Uint8Array(buf);

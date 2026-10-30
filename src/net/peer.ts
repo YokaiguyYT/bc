@@ -8,8 +8,12 @@ export const NET_VERSION = 2;
 
 /** Messages bigger than this go over the control channel in pieces. */
 const CHUNK = 16000;
-/** No word from the other side for this long and we call it lost. */
-const TIMEOUT = 9;
+/**
+ * No word from the other side for this long and we call it lost. Generous: a
+ * slow laptop can freeze for several seconds building a big level (and a
+ * connection that really fails is reported by WebRTC sooner anyway).
+ */
+const TIMEOUT = 25;
 /** More than this queued on the fast channel: drop fast messages rather than send stale ones late. */
 const FAST_BACKLOG = 256 * 1024;
 
