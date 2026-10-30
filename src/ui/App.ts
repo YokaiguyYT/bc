@@ -201,7 +201,16 @@ export class App {
     }
   }
 
+  private badgeT = 0;
+
   private frame(dt: number) {
+    // keep the online line's round-trip time fresh
+    this.badgeT -= dt;
+    if (this.badgeT <= 0) {
+      this.badgeT = 2;
+      if (this.guest) this.updateBadge(this.guestBadge());
+      else if (this.host?.connected) this.updateBadge();
+    }
     const g = this.guest;
     if (g) {
       const s = this.game.session;
@@ -885,10 +894,11 @@ export class App {
     this.bind('o-back', () => this.showMenu());
   }
 
-  /** How the friend is connected, in words. */
-  private viaText(via: 'direct' | 'relay' | null, video = false) {
-    if (via === 'direct') return video ? 'connected directly · streaming the picture' : 'connected directly';
-    if (via === 'relay') return 'connected through the relay (a little slower)';
+  /** How the friend is connected, in words (with the round trip, once it's known). */
+  private viaText(via: 'direct' | 'relay' | null, video = false, rtt: number | null = null) {
+    const ms = rtt === null ? '' : ` · ${Math.round(rtt)} ms`;
+    if (via === 'direct') return (video ? 'connected directly · streaming the picture' : 'connected directly') + ms;
+    if (via === 'relay') return `connected through the relay (a little slower)${ms}`;
     return 'connecting…';
   }
 
@@ -1001,7 +1011,7 @@ export class App {
     const h = this.host;
     const t =
       text ??
-      (h ? (h.connected ? `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video')}` : `🌐 Hosting · code ${h.code} · waiting for your friend`) : '');
+      (h ? (h.connected ? `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video', h.rtt)}` : `🌐 Hosting · code ${h.code} · waiting for your friend`) : '');
     if (!t) {
       this.netBadge?.remove();
       this.netBadge = null;
@@ -1163,7 +1173,7 @@ export class App {
   private guestBadge() {
     const g = this.guest;
     if (!g) return '';
-    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video')} · Esc: online menu`;
+    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt)} · Esc: online menu`;
   }
 
   /** Show the host's game the way the current mode says: drawn here (light) or streamed (video). */
@@ -1282,7 +1292,7 @@ export class App {
          ${video ? '' : `<button class="btn" data-nav id="g-gfx">Graphics: ${({ low: 'Fast', medium: 'Balanced', high: 'Pretty' } as const)[this.game.settings.quality]}</button>`}
          <button class="btn" data-nav id="g-leave">Leave</button>
        </div>
-       <div class="hint-line">${esc(this.viaText(g.via, video))}. ${
+       <div class="hint-line">${esc(this.viaText(g.via, video, g.rtt))}. ${
          video
            ? 'Streaming suits a slow laptop on a fast network.'
            : g.canVideo

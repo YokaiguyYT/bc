@@ -65,6 +65,11 @@ class Conn {
   get via(): Via | null {
     return this.direct?.open ? 'direct' : this.relay?.open ? 'relay' : null;
   }
+  /** Round trip on the route in use (ms), once measured. */
+  get rtt(): number | null {
+    const p = this.direct?.open ? this.direct : this.relay?.open ? this.relay : null;
+    return p?.rtt ?? null;
+  }
   get open() {
     return !!this.via;
   }
@@ -190,6 +195,11 @@ export class OnlineHost {
   /** How the guest is connected right now. */
   get via(): Via | null {
     return this.conn?.via ?? null;
+  }
+
+  /** Round trip to the guest (ms), once measured. */
+  get rtt(): number | null {
+    return this.conn?.rtt ?? null;
   }
 
   /** Whether the picture can be streamed (it needs the direct link). */
@@ -503,6 +513,10 @@ export class OnlineGuest {
 
   get via(): Via | null {
     return this.conn.via;
+  }
+
+  get rtt(): number | null {
+    return this.conn.rtt;
   }
 
   private takeOffer(sdp: string) {

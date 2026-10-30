@@ -613,6 +613,11 @@ export default async function ({ page, base, shot }) {
         }
         return t;
       }
+      if (w.wait === 'time') {
+        // just stand there (riding a lift)
+        g.advance(w.s, 60, false);
+        return w.s;
+      }
       if (w.wait === 'laser') {
         // go as a laser gate blinks off (wait for it to come on first, so we get the whole gap)
         const gate = s.hazards.find((h) => h.pos && typeof h.live === 'boolean' && Math.abs(h.pos.z - w.z) < 0.5);
@@ -654,7 +659,7 @@ export default async function ({ page, base, shot }) {
           const toCross = (w.x - p.x) * dir.x; // metres until it reaches the crossing
           // the near lane is crossed first; the far lane needs a longer gap
           const near = w.z ? Math.abs(p.z - w.z[1]) < Math.abs(p.z - w.z[0]) : true;
-          return toCross < -3 || toCross > (w.ahead ?? (near ? 12 : 17));
+          return toCross < -(w.behind ?? 3) || toCross > (w.ahead ?? (near ? 12 : 17));
         });
       let run = 0;
       while (t < 40) {

@@ -28,6 +28,8 @@ export type CtlMsg = { k: string; [key: string]: unknown };
 export interface Pipe {
   readonly via: 'direct' | 'relay';
   open: boolean;
+  /** Round trip (ms, smoothed), once measured. */
+  rtt: number | null;
   closed: boolean;
   onCtl: ((m: CtlMsg) => void) | null;
   onFast: ((m: CtlMsg | ArrayBuffer) => void) | null;
@@ -55,6 +57,7 @@ export class PeerLink implements Pipe {
   onLost: ((why: string) => void) | null = null;
   open = false;
   closed = false;
+  rtt: number | null = null;
   private pending: RTCIceCandidateInit[] = [];
   private remoteSet = false;
   private parts = new Map<string, string[]>();
@@ -91,7 +94,7 @@ export class PeerLink implements Pipe {
       this.open = true;
       this.lastHeard = performance.now();
       this.pinger = window.setInterval(() => {
-        this.sendCtl({ k: 'ping' });
+        this.sendCtl({ k: 'ping', t: performance.now() });
         if (performance.now() - this.lastHeard > TIMEOUT * 1000) this.lose('timeout');
       }, 1000);
       this.onOpen?.();
@@ -205,7 +208,12 @@ export class PeerLink implements Pipe {
     } catch {
       return;
     }
-    if (m.k === 'ping') return;
+    if (m.k === 'ping') return this.sendCtl({ k: 'pong', t: m.t });
+    if (m.k === 'pong') {
+      const ms = performance.now() - Number(m.t);
+      if (ms >= 0 && ms < 30000) this.rtt = this.rtt === null ? ms : this.rtt * 0.7 + ms * 0.3;
+      return;
+    }
     if (m.k === 'bye') return this.lose('left');
     if (m.k === 'part') {
       const id = String(m.id);

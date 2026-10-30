@@ -104,7 +104,11 @@ export function generateJob(p: GenParams): LevelDef {
     objects,
     hints: [`${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}.`],
     tips,
-    bot: { broad: kit.broad ?? null, run: { start: true, path: fineSteps(path, start.spawn.cargo), place: true } },
+    // the bot starts with a mover either side, as in the hand-made routes (picking it up off the stand is the pickup test's job)
+    bot: {
+      broad: kit.broad ?? null,
+      run: { cargo: [start.spawn.cargo[0], start.spawn.cargo[1] + 0.03, start.spawn.cargo[2]], yaw: 180, ...(kit.bot ?? {}), path: fineSteps(path, start.spawn.cargo), place: true },
+    },
     pieces: used,
   };
 }

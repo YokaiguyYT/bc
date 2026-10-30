@@ -28,6 +28,8 @@ export interface CargoKit {
   maxSlope: number;
   /** Door gap it needs (m): the load plus the two movers walking beside it. */
   door: number;
+  /** The test bot's grab setup (see deliver.mjs `setup`): on its back end to end, or a wider grip. */
+  bot?: { lying?: boolean; half?: number };
 }
 
 const cakeStand = (): LevelObject[] => [
@@ -66,12 +68,12 @@ export const KITS: Partial<Record<CargoKind, CargoKit>> = {
   crate: { stand: floor, y: 0.4, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', stairs: 'both', maxSlope: 12, door: 2.9 },
   tv: { stand: floor, y: 0.45, movers: [[-0.9, 0], [0.9, 0]], form: 'broad', tight: 'inline', stairs: 'both', maxSlope: 11, door: 2.6 },
   aquarium: { stand: floor, y: 0.3, movers: [[-1.1, 0], [1.1, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 7, door: 3.6 },
-  clock: { stand: floor, y: 0.21, rot: [-90, 0, 0], movers: [[0, 1.65], [0, -1.65]], form: 'inline', tight: 'inline', stairs: 'down', maxSlope: 11, door: 2.4 },
+  clock: { stand: floor, y: 0.21, rot: [-90, 0, 0], movers: [[0, 1.65], [0, -1.65]], form: 'inline', tight: 'inline', stairs: false, maxSlope: 11, door: 2.4, bot: { lying: true } },
   glass: { stand: glassRack, y: 0.73, rot: [8, 0, 0], movers: [[-1.4, -0.05], [1.4, -0.05]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 10, door: 3.8 },
   cake: { stand: cakeStand, y: 0.83, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 8, door: 3.4 },
   swan: { stand: carvingStand, y: 0.5 + 0.11 + 0.02, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 9, door: 3.4 },
   egg: { stand: pedestal, y: 0.42 + 0.387 + 0.02, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', broad: [0.62, 0.72], stairs: false, maxSlope: 9, door: 3.4 },
-  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0 },
+  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0, bot: { half: 1.3 } },
 };
 
 /** Cargo a random job can pick. */

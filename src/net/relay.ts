@@ -31,6 +31,7 @@ export class RelayLink implements Pipe {
   readonly via = 'relay' as const;
   open = false;
   closed = false;
+  rtt: number | null = null;
   onCtl: ((m: CtlMsg) => void) | null = null;
   onFast: ((m: CtlMsg | ArrayBuffer) => void) | null = null;
   onOpen: (() => void) | null = null;
@@ -58,7 +59,7 @@ export class RelayLink implements Pipe {
       this.send({ c: 'hi' });
       return;
     }
-    if (++this.beat % 2 === 0) this.send({ c: 'p' });
+    if (++this.beat % 2 === 0) this.send({ c: 'p', t: performance.now() });
     if (performance.now() - this.lastHeard > TIMEOUT * 1000) this.lose('timeout');
   }
 
@@ -73,6 +74,14 @@ export class RelayLink implements Pipe {
       this.onOpen?.();
     }
     switch (d.c) {
+      case 'p':
+        this.send({ c: 'q', t: d.t });
+        break;
+      case 'q': {
+        const ms = performance.now() - Number(d.t);
+        if (ms >= 0 && ms < 30000) this.rtt = this.rtt === null ? ms : this.rtt * 0.7 + ms * 0.3;
+        break;
+      }
       case 'c':
         this.onCtl?.(d.m as CtlMsg);
         break;

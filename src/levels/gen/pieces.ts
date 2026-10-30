@@ -233,16 +233,18 @@ const door: Piece = {
     const r = b.g.rng;
     const t = b.g.theme;
     const k = b.g.kit;
-    const L = 6;
-    const z = -3;
+    const L = 8.5;
+    const z = -4.5;
     const gap = k.door;
     const dx = Math.max(-(W / 2 - gap / 2 - 0.2), Math.min(W / 2 - gap / 2 - 0.2, r.range(-1.4, 1.4)));
     b.ground(0, -L);
     const half = W / 2 + M;
     const frac = (dx + half) / (2 * half);
     b.world(...wall(b.f.p(-half, 0, z), b.f.p(half, 0, z), 2.8, { surface: t.wall.surface, color: t.wall.color, thickness: 0.25, fade: true, doors: [[frac, gap, 2.45]] }));
-    b.go(dx, z + 1.7, k.tight);
-    b.go(dx, z - 1.7, k.tight);
+    // line up with the doorway in good time (a sharp sideways jink swings a wide load into the frame)
+    b.go(dx * 0.6, -1.5);
+    b.go(dx, z + 1.8, k.tight);
+    b.go(dx, z - 1.8, k.tight);
     b.go(0, -L);
     return { length: L, calm: true };
   },
@@ -347,10 +349,12 @@ const traffic: Piece = {
       return [Math.min(a, c), Math.max(a, c)];
     };
     // one lane at a time, waiting on the island in between
+    // a gap means the next car is at least three seconds of carrying away (and the last one well past)
+    const ahead = 6 + speed * 3.4;
     b.go(0, z0 + 0.7);
-    b.wait({ wait: 'gap', x, z: zr(laneA), ahead: 13 });
+    b.wait({ wait: 'gap', x, z: zr(laneA), ahead, behind: 5 });
     b.go(0, (medA + medB) / 2);
-    b.wait({ wait: 'gap', x, z: zr(laneB), ahead: 13 });
+    b.wait({ wait: 'gap', x, z: zr(laneB), ahead, behind: 5 });
     b.go(0, z1 - 1.2);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'Look both ways! One lane at a time: wait on the island.', 3);
@@ -405,6 +409,7 @@ const people: Piece = {
     const L = 12;
     b.ground(0, -L);
     const colors = [0xff8fab, 0x52d39a, 0x4dd0e1, 0xb085f5, 0xffd23f, 0x2b2b33];
+    if (r.chance(0.5)) b.world({ type: 'hazard', kind: 'pigeons', pos: b.f.p(r.range(-2, 2), 0, -L * 0.5), params: { count: r.int(4, 7), radius: 1.2 } });
     for (const [i, z] of [-L * 0.35, -L * 0.7].entries()) {
       const s = i % 2 ? 1 : -1;
       b.world({
@@ -458,7 +463,65 @@ const corner: Piece = {
   },
 };
 
-export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner];
+const conveyor: Piece = {
+  id: 'conveyor',
+  weight: (g) => (g.cargo === 'piano' ? 0.25 : 0.6),
+  build(b) {
+    const r = b.g.rng;
+    const t = b.g.theme;
+    const L = 10;
+    const z0 = -3;
+    const belt = r.range(3.4, 4.6);
+    const z1 = z0 - belt;
+    b.ground(0, z0);
+    b.ground(z1, -L);
+    // a belt across the path, flush with the floor, running to one side
+    const speed = (r.chance(0.5) ? 1 : -1) * (0.9 + b.g.difficulty * 0.8);
+    b.world({ type: 'hazard', kind: 'conveyor', pos: b.f.p(0, -0.15, (z0 + z1) / 2), rot: [0, b.f.yaw(90), 0], params: { size: [belt, 0.3, W + 2 * M], speed } });
+    b.add({ type: 'box', pos: [0, -1.6, (z0 + z1) / 2], size: [W + 2 * M - 0.5, 2.4, belt - 0.1], color: t.dirt, collide: false, radius: 0.3 });
+    b.edges(z0, z1);
+    b.go(0, z0 + 0.4);
+    b.go(0, z1 - 0.8);
+    b.go(0, -L);
+    b.tip(0, z0 + 1, 'A moving belt: lean into it as you cross!', 3);
+    return { length: L };
+  },
+};
+
+const lift: Piece = {
+  id: 'lift',
+  weight: (g) => (g.cargo === 'piano' ? 0.3 : 0.5),
+  build(b) {
+    const r = b.g.rng;
+    const k = b.g.kit;
+    const f = b.f;
+    // room for both movers and the load: end to end needs a deeper car
+    const w = 4.6;
+    const d = k.form === 'inline' ? 5.0 : 3.8;
+    const H = r.range(2.4, 3.6);
+    const z0 = -3;
+    const z1 = z0 - d;
+    const L = -z1 + 7;
+    b.ground(0, z0);
+    b.ground(z1, -L, { y: H });
+    b.world({
+      type: 'hazard',
+      kind: 'elevator',
+      pos: f.p(0, 0, (z0 + z1) / 2),
+      rot: [0, f.yaw(0), 0],
+      params: { size: [w, d], height: H, speed: 0.9, wall: 1.1, walls: ['+x', '-x'], landing: 4.2 },
+    });
+    b.go(0, (z0 + z1) / 2, k.tight);
+    // it sets off once both movers have been aboard a moment
+    b.wait({ wait: 'time', s: H / 0.9 + 4.5 });
+    b.go(0, z1 - 2.2);
+    b.go(0, -L);
+    b.tip(0, z0 + 1, 'All aboard: stand on the lift together and up it goes.', 3);
+    return { length: L, dy: H };
+  },
+};
+
+export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift];
 
 // ---------------------------------------------------------------- start, checkpoint, finish
 
@@ -499,6 +562,8 @@ export function goalPiece(b: Build): { goal: { pos: Vec3; size: Vec3; label: str
   const goal = { pos, size: (across ? [3.2, 1.4, 3.6] : [3.6, 1.4, 3.2]) as Vec3, label: 'DROP-OFF' };
   // a pane can't stand on its own: lean it on a rack (bar on the far side) instead of a bare pad
   if (b.g.cargo === 'glass') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], -L / 2 - o.pos[2] - 0.35] });
+  // things that start on a stand are set down on one too (nobody can lower a cake gently all the way to the floor)
+  else if (b.g.cargo === 'cake' || b.g.cargo === 'swan' || b.g.cargo === 'egg') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] - L / 2] });
   b.add({ type: 'sign', pos: [W / 2 + 1.2, 2.2, -L / 2], rot: [0, -20, 0], size: [2.6, 0.7, 0.06], text: 'DELIVERIES', color: 0x2a6f4a, post: true });
   b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.25 : -L / 2);
   return { goal };

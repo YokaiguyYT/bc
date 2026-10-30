@@ -44,7 +44,10 @@ export class Game {
   frameTimes: number[] = [];
 
   constructor(readonly container: HTMLElement) {
-    this.settings = { ...DEFAULT_SETTINGS, ...(loadJSON<Partial<Settings>>('ff.settings') ?? {}) };
+    const saved = loadJSON<Partial<Settings>>('ff.settings');
+    this.settings = { ...DEFAULT_SETTINGS, ...(saved ?? {}) };
+    // first time on a Chromebook (usually a modest GPU): start on Fast graphics
+    if (!saved?.quality && /CrOS/.test(navigator.userAgent)) this.settings.quality = 'low';
     this.renderer = new Renderer(container);
     this.renderer.setQuality(this.settings.quality);
     window.addEventListener('resize', () => this.renderer.resize());
