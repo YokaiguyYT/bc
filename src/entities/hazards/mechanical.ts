@@ -1033,17 +1033,23 @@ class Fan implements Hazard {
     const world = this.sim.physics.world;
     const c = this.zone.getCenter(new THREE.Vector3());
     const h = this.zone.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    // find what's in the wind first, then push it: a push from inside the query is lost
     const seen = new Set<number>();
+    const hit: Collider[] = [];
     world.collidersWithAabbIntersectingAabb({ x: c.x, y: c.y, z: c.z }, { x: h.x, y: h.y, z: h.z }, (col) => {
       const b = col.parent();
       if (!b || !b.isDynamic() || seen.has(b.handle)) return true;
       seen.add(b.handle);
+      hit.push(col);
+      return true;
+    });
+    for (const col of hit) {
+      const b = col.parent()!;
       const info = this.sim.physics.info(col);
       const scale = info?.kind === 'cargo' ? (info.owner as { windScale(d: THREE.Vector3, a: number): number }).windScale(this.dir, this.accel * this.strength) : 1;
       const f = this.dir.clone().multiplyScalar(this.accel * b.mass() * dt * this.strength * scale);
       b.applyImpulse({ x: f.x, y: f.y, z: f.z }, true);
-      return true;
-    });
+    }
   }
   mirrorFrame(time: number) {
     this.strength = this.level(time);

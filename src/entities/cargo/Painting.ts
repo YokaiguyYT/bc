@@ -16,14 +16,24 @@ const FD = 0.09;
 const CW = W - 2 * FW;
 const CH = H - 2 * FW;
 const CANVAS_Z = FD / 2 - 0.025;
-/** Wind push (as a multiple of a plain thing's) face-on and edge-on: it's a sail. */
+/**
+ * Wind on the face, as a multiple of the push a plain thing of the same mass
+ * gets: like a sail, it pushes square on the face and grows with the square of
+ * how face-on it is. Edge-on there's only a little drag.
+ */
 const FACE = 10;
-const EDGE = 0.45;
+const EDGE = 0.4;
+/** A gust on the face beyond this (m/s² of push) tears the canvas, this much health per second per m/s² over. */
+const WEAR_FROM = 8;
+const WEAR = 0.0035;
+/** Wind damage comes off in bites this big, each one a new rip. */
+const RIP = 0.02;
 /** Canvas texture size (px). */
 const TW = 512;
 const TH = 336;
 
 const _n = new THREE.Vector3();
+const _l = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 
@@ -201,7 +211,7 @@ export class Painting extends Cargo {
   readonly kind = 'painting' as const;
   readonly displayName = 'Masterpiece';
   readonly value = 1600;
-  readonly tip = 'A sail in the wind! Keep its edge to the wind (or wait for a lull).';
+  readonly tip = 'A sail in the wind! Keep its thin edge to the wind, or wait for a lull.';
   readonly fragility: Fragility = { safeShock: 1.6, perShock: 0.13, maxPerHit: 0.28, spinLimit: 3.6, spinDamage: 0.06 };
 
   private picture!: CanvasRenderingContext2D;
@@ -212,12 +222,20 @@ export class Painting extends Cargo {
   private dents = new THREE.Group();
   private dentGeo = new THREE.SphereGeometry(1, 8, 6);
   private hits = 0;
-  /** Wind on the canvas, filled in by fans each step before our preStep (m/s², signed along the face). */
+  private rips = 0;
+  /**
+   * Filled in by fans each step, before our preStep: the wind along the face
+   * normal (m/s², signed, for the billow), the push on the face (m/s²), and the
+   * part of that push across the wind, which the fans don't give.
+   */
   private windIn = 0;
-  private pushIn = 0;
-  /** Smoothed: how hard the wind is on the face (signed, for the billow) and how hard it pushes. */
+  private loadIn = 0;
+  private across = new THREE.Vector3();
+  /** Smoothed: the wind on the face (signed), and how hard it pushes on it. */
   private wind = 0;
-  private push = 0;
+  private load = 0;
+  /** Wind damage not yet taken (it comes off in RIP-sized bites). */
+  private wear = 0;
 
   constructor(sim: Sim, opts: CargoOptions) {
     super(sim);
@@ -284,30 +302,52 @@ export class Painting extends Cargo {
     this.visual.add(this.frame, this.dents);
   }
 
-  /** Fans call this each step it's in their wind: big face-on, small edge-on. */
+  /**
+   * Fans call this each step it's in their wind. The push is square on the
+   * face (FACE × how face-on², from the windward side); fans push along the
+   * wind, so we return that part and add the rest in preStep.
+   */
   windScale(dir: THREE.Vector3, accel: number) {
     const r = this.body.rotation();
-    const c = _n.set(0, 0, 1).applyQuaternion(_q.set(r.x, r.y, r.z, r.w)).dot(dir);
-    const s = EDGE + (FACE - EDGE) * c * c;
+    const n = _n.set(0, 0, 1).applyQuaternion(_q.set(r.x, r.y, r.z, r.w));
+    const c = n.dot(dir);
+    const face = FACE * c * Math.abs(c);
+    this.across.addScaledVector(_l.copy(n).addScaledVector(dir, -c), face * accel);
     this.windIn += accel * c;
-    this.pushIn += accel * s;
-    return s;
+    this.loadIn += accel * FACE * c * c;
+    return EDGE + face * c;
   }
 
   preStep(dt: number) {
+    if (this.across.lengthSq() > 1e-8) {
+      const m = this.body.mass() * dt;
+      this.body.applyImpulse({ x: this.across.x * m, y: this.across.y * m, z: this.across.z * m }, true);
+      this.across.set(0, 0, 0);
+    }
     const k = 1 - Math.exp(-dt / 0.15);
     this.wind += (this.windIn - this.wind) * k;
-    this.push += (this.pushIn - this.push) * k;
+    this.load += (this.loadIn - this.load) * k;
     this.windIn = 0;
-    this.pushIn = 0;
+    this.loadIn = 0;
+    // a gust full on the face tears the canvas, a bite at a time
+    if (this.destroyed || this.grace > 0) return;
+    this.wear += Math.max(0, this.load - WEAR_FROM) * WEAR * dt;
+    if (this.wear >= RIP) {
+      this.wear -= RIP;
+      const r = rng(this.rips++ * 104729 + 9);
+      const t = this.body.translation();
+      const q = this.body.rotation();
+      const at = _v.set((r() - 0.5) * CW * 0.8, (r() - 0.5) * CH * 0.8, CANVAS_Z).applyQuaternion(_q.set(q.x, q.y, q.z, q.w)).add(_l.set(t.x, t.y, t.z));
+      this.damage(RIP, 0, at.clone());
+    }
   }
 
   netState() {
-    return [this.wind, this.push];
+    return [this.wind, this.load];
   }
 
   applyNetState(s: number[]) {
-    [this.wind, this.push] = s;
+    [this.wind, this.load] = s;
   }
 
   update(_dt: number, time: number) {
@@ -325,10 +365,10 @@ export class Painting extends Cargo {
     const held = this.sim.grips.isHeld(this.body);
     const v = this.body.linvel();
     this.status =
-      held && this.push > 16
-        ? '🌬️ It’s catching the wind! Edge to the wind!'
-        : !held && this.push > 8 && Math.hypot(v.x, v.y, v.z) > 2.5
-          ? '🌬️ Gone with the wind!'
+      !held && this.load > 4 && Math.hypot(v.x, v.y, v.z) > 2.5
+        ? '🌬️ Gone with the wind!'
+        : this.load > WEAR_FROM
+          ? '🌬️ The wind’s ripping it! Turn its edge to the wind!'
           : null;
   }
 
@@ -437,7 +477,7 @@ export class Painting extends Cargo {
     this.dents.add(d);
   }
 
-  protected onDamage(amount: number, point: THREE.Vector3) {
+  protected onDamage(amount: number, point: THREE.Vector3, shock: number) {
     // world point -> frame coordinates (from the body: exact on both laptops)
     const t = this.body.translation();
     const r0 = this.body.rotation();
@@ -445,6 +485,13 @@ export class Painting extends Cargo {
     // the same hits make the same marks on both laptops
     const r = rng(this.hits++ * 7919 + 1600);
     const sev = clamp(amount * 4, 0.1, 1);
+    if (shock === 0) {
+      // the wind (no knock): a rip right where it gives
+      const [px, py] = this.toPx(local.x, local.y);
+      this.tear(px, py, 0.3, r);
+      this.pictureTex.needsUpdate = true;
+      return;
+    }
     const onFrame = Math.abs(local.x) > CW / 2 - 0.04 || Math.abs(local.y) > CH / 2 - 0.04;
     if (onFrame) {
       // dent the nearest bit of moulding, front or back

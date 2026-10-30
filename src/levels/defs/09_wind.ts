@@ -146,7 +146,7 @@ const objects: LevelObject[] = [
   ...wall([-4.5, 0, 27], [4.5, 0, 27], 0.9, { surface: 'plaster', color: 0xd9e4ea }),
   ...wall([-4.5, 0, 20], [-4.5, 0, 27], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true }),
   ...wall([4.5, 0, 20], [4.5, 0, 27], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true }),
-  ...wall([-4.5, 0, 20], [4.5, 0, 20], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true, doors: [[0.5, 3.4, 2.3]] }),
+  ...wall([-4.5, 0, 20], [4.5, 0, 20], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true, doors: [[0.5, 3.8, 2.3]] }),
   { type: 'sign', pos: [0, 2.45, 19.86], size: [3.2, 0.42, 0.05], text: 'M. GALE · PAINTER', color: 0x3d6fb0 },
   ...easel(0, 0, 23.6),
   rug([0, 0, 23.4], [3.4, 2.2], 0xc8648a),
@@ -165,9 +165,9 @@ const objects: LevelObject[] = [
   { type: 'box', pos: [4.9, 0.71, 15.6], size: [1.7, 0.04, 2.7], color: 0xfbfaf6, collide: false, radius: 0.02 },
   { type: 'cylinder', pos: [5.5, 1.0, 10.4], radius: 0.8, height: 2.0, color: 0x6c7480, segments: 16 },
   { type: 'cylinder', pos: [5.5, 2.05, 10.4], radius: 0.85, radiusTop: 0.2, height: 0.3, color: 0x5b636e, segments: 16, collide: false },
-  ...extractor(13.8, 17.6, 0),
-  ...extractor(10.4, 13.4, 3.3),
-  { type: 'sign', pos: [-3.4, 1.9, 18.6], size: [2.2, 0.5, 0.06], text: 'FANS! MIND THE WIND', color: 0xd94a3d, post: true },
+  ...extractor(15.8, 19.2, 0),
+  ...extractor(12.2, 15.6, 3.3),
+  { type: 'sign', pos: [-3.7, 1.9, 19.5], size: [2.2, 0.5, 0.06], text: 'FANS! MIND THE WIND', color: 0xd94a3d, post: true },
 
   // ---- the gully between the houses, and the gangway over it (x -1.2..1.2, z 0..8)
   { type: 'box', pos: [0, -0.07, 4], size: [2.4, 0.14, 8.3], surface: 'wood', color: 0x9a7048, radius: 0.02 },
@@ -175,7 +175,7 @@ const objects: LevelObject[] = [
   ...railing([1.15, 0, 8], [1.15, 0, 0], { color: 0xd8c8a0, spacing: 1.35 }),
   ...[-1.15, 1.15].flatMap((x) => [2, 6].map((z) => beam([x, -0.1, z], [x, -1.6, z + (z < 4 ? -2 : 2)], 0.12, 0x8a6a48))),
   // the sea wind funnels up the gully in gusts; the windsocks fill a second before each one
-  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 8.6], dir: WIND, force: 5, gust: [3, 5.6], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
+  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 8.6], dir: WIND, force: 5, gust: [3, 6.5], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
   // house fronts down the gully, and a washing line across it
   ...[-4.6, -1.6, 2.6, 5.4].flatMap((x) => windowPane([x, -2.4, 0.04], 0, 1.0, 1.2)),
   ...[-4.6, 2.6].flatMap((x) => windowPane([x, -5.6, 0.04], 0, 1.0, 1.2)),
@@ -209,12 +209,12 @@ const objects: LevelObject[] = [
   // the sea breeze, in gusts, with a sheltered spot behind the old lookout in between
   { type: 'hazard', kind: 'fan', pos: [-5.5, 1.5, -19.8], params: { size: [6, 3, 15.4], dir: WIND, force: 4.5, gust: [3.4, 4.2], phase: 0.6, housing: false, socks: [[-7.4, 0, -12.6], [-7.4, 0, -25.6]] } },
   { type: 'hazard', kind: 'fan', pos: [-5.5, 1.5 + HEAD / 2, -35.4], params: { size: [6, 3 + HEAD, 11.2], dir: WIND, force: 4.5, gust: [3.4, 4.2], phase: 2.4, housing: false, socks: [[-7.4, HEAD, -40.6]] } },
-  { type: 'box', pos: [-7.3, 1.1, -28.6], size: [1.2, 2.2, 2.4], surface: 'brick', color: STONE, radius: 0.08 },
-  { type: 'box', pos: [-7.3, 2.3, -28.6], size: [1.5, 0.2, 2.8], color: 0x5b636e, collide: false, radius: 0.04 },
-  { type: 'sign', pos: [-6.66, 1.4, -28.6], size: [1.2, 0.36, 0.05], text: 'LOOKOUT', color: 0x2f5d4a, rot: [0, 90, 0] },
+  { type: 'box', pos: [-7.45, 1.1, -28.6], size: [0.9, 2.2, 2.4], surface: 'brick', color: STONE, radius: 0.08 },
+  { type: 'box', pos: [-7.45, 2.3, -28.6], size: [1.2, 0.2, 2.8], color: 0x5b636e, collide: false, radius: 0.04 },
+  { type: 'sign', pos: [-6.98, 1.4, -28.6], size: [1.2, 0.36, 0.05], text: 'LOOKOUT', color: 0x2f5d4a, rot: [0, 90, 0] },
   bench(-3.55, 0, -16.5, 90),
-  { type: 'cylinder', pos: [-7.2, 0.55, -21.5], radius: 0.07, height: 1.1, color: 0x6c7480, segments: 10 },
-  { type: 'box', pos: [-7.2, 1.2, -21.5], size: [0.5, 0.22, 0.22], color: 0x3d6fb0, rot: [0, 0, 12], collide: false, radius: 0.06 },
+  { type: 'cylinder', pos: [-7.45, 0.55, -21.5], radius: 0.07, height: 1.1, color: 0x6c7480, segments: 10 },
+  { type: 'box', pos: [-7.45, 1.2, -21.5], size: [0.5, 0.22, 0.22], color: 0x3d6fb0, rot: [0, 0, 12], collide: false, radius: 0.06 },
   gulls(-5.2, 0, -24.0, 4, 1.0),
   { type: 'sign', pos: [-3.35, 1.8, -13.6], size: [2.6, 0.55, 0.06], text: 'SEA BREEZE! EDGE TO THE SEA', color: 0xd94a3d, post: true, rot: [0, -30, 0] },
   ...bush([0, 0.4, -18], 0.7),
