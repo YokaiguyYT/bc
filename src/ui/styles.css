@@ -559,6 +559,34 @@ kbd.p2 {
   transition: opacity 0.2s;
 }
 
+.hud .tags .say {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 6px;
+  transform: translateX(-50%) scale(0.4);
+  opacity: 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+  border: 3px solid var(--ink);
+  font-size: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition:
+    opacity 0.25s,
+    transform 0.25s;
+}
+.hud .tags .say:empty {
+  display: none;
+}
+.hud .tags .say.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
 .hud .banner {
   position: absolute;
   top: 26%;

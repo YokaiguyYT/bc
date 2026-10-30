@@ -62,6 +62,7 @@ No more four hands on one keyboard. Both of you need the game: the same link (be
 Player 2 keeps their right hand on the arrows and their left hand on `K` and `L`. If you'd rather keep everything under the right hand, **Controls → Player 2 layout** has **Arrows + Return** (`Right Shift` jump, `Return` grab) and the original **Arrows + /** (`Right Shift` or `Return` jump, `/` grab).
 
 - `Q` / `E`: spin the camera (movement follows the camera)
+- `1` `2` `3` `4`: say something over your mover (👋 Hi! · 👍 Nice! · 😬 Careful! · ✋ Wait!). Player 2 on the same keyboard uses `7` `8` `9` `0`; online, you both use `1`–`4`.
 - `Esc` or `P`: pause
 - `` ` `` (backquote): developer tuning panel
 

@@ -153,6 +153,8 @@ export class OnlineHost {
   onChange: ((what: 'joined' | 'left' | 'status') => void) | null = null;
   /** The guest asked to pause. */
   onPauseRequest: (() => void) | null = null;
+  /** The guest said something (an emote). */
+  onEmote: ((kind: number) => void) | null = null;
   /** The level being played (null in the menus); the app keeps this up to date. */
   level: LevelSession | null = null;
   private stream: MediaStream | null = null;
@@ -302,6 +304,7 @@ export class OnlineHost {
     };
     conn.onCtl = (m) => {
       if (m.k === 'pause') this.onPauseRequest?.();
+      if (m.k === 'emote') this.onEmote?.(Number(m.e) || 0);
       else if (m.k === 'blank') this.useCopy();
       else if (m.k === 'want') this.setMode(m.m === 'video' ? 'video' : 'light');
       else if (m.k === 'kf') this.sync?.keyframeSoon();
@@ -677,6 +680,11 @@ export class OnlineGuest {
   requestPause() {
     this.conn.sendCtl({ k: 'pause' });
   }
+  /** Say something over our mover (the host shows it to both). */
+  emote(kind: number) {
+    this.conn.sendCtl({ k: 'emote', e: kind });
+  }
+
 
   /** Ask the host to stream the picture, or to go back to drawing it here. */
   requestMode(m: NetMode) {

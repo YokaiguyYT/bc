@@ -288,14 +288,16 @@ const wreckingBall: Piece = {
     const z = -L / 2;
     b.ground(0, -L);
     const pivot = b.f.p(0, 8.4, z);
-    // a load carried end to end is three metres long and takes longer to get clear: swing slower for it
+    // a load carried end to end is three metres long, and the piano is slow: both take longer to get clear,
+    // so the ball swings slower for them
     const inline = b.g.kit.form === 'inline';
+    const slow = inline || b.g.cargo === 'piano';
     b.world({
       type: 'hazard',
       kind: 'wreckingBall',
       pos: pivot,
       // a slow, wide swing: about three seconds clear after each pass, enough to carry something heavy across
-      params: { length: 7.2, amp: 52, period: (inline ? 11.8 : 8.8) - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
+      params: { length: 7.2, amp: 52, period: (slow ? 11.8 : 8.8) - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
     });
     // wait well clear (a wide load sways when it stops), go the moment it has swung past
     b.go(0, z + 1.8);
@@ -411,23 +413,32 @@ const people: Piece = {
     const r = b.g.rng;
     const f = b.f;
     const L = 16;
-    b.ground(0, -L);
+    // two zebra crossings, far enough apart to wait between them; the walkers wait at the kerb, off the path,
+    // while anyone is near their crossing (and the edges have gaps for them)
+    const rows = [-3.8, -12];
+    b.ground(0, -L, { edges: false, decor: false });
+    b.edges(0, rows[0] + 0.8);
+    b.edges(rows[0] - 0.8, rows[1] + 0.8);
+    b.edges(rows[1] - 0.8, -L);
+    b.decorate(0, rows[0] + 1.2);
+    b.decorate(rows[0] - 1.2, rows[1] + 1.2);
+    b.decorate(rows[1] - 1.2, -L);
+    for (const z of rows) for (let x = -W / 2 + 0.55; x < W / 2; x += 0.95) b.add({ type: 'box', pos: [x, 0.014, z], size: [0.5, 0.012, 1.3], color: 0xf4f1ea, collide: false, castShadow: false, radius: 0.003 });
     const colors = [0xff8fab, 0x52d39a, 0x4dd0e1, 0xb085f5, 0xffd23f, 0x2b2b33];
     const pigeons = r.chance(0.5) ? r.range(-2, 2) : null;
-    // two walkers crossing back and forth, far enough apart to stop between them (and they stop for
-    // movers within 1.6 m of their line, so the waiting spots keep further off than that)
-    const rows = [-3.8, -12];
+    const kerb = W / 2 + 0.9;
     rows.forEach((z, i) => {
       const s = i % 2 ? 1 : -1;
       b.world({
         type: 'hazard',
         kind: 'pedestrian',
-        pos: f.p(s * (W / 2 - 0.5), 0.02, z),
-        params: { points: [[0, 0, 0], f.v(-s * (W - 1), 0, 0)], speed: r.range(0.35, 0.55), color: r.pick(colors), polite: true },
+        pos: f.p(s * kerb, 0.02, z),
+        params: { points: [[0, 0, 0], f.v(-s * 2 * kerb, 0, 0)], speed: r.range(0.35, 0.55), color: r.pick(colors), polite: true },
       });
     });
     if (pigeons !== null) b.world({ type: 'hazard', kind: 'pigeons', pos: f.p(pigeons, 0, -7.9), params: { count: r.int(4, 7), radius: 1.2 } });
-    // the bot lets each walker pass (end to end, the leader goes further so the back mover clears the first row)
+    // the bot waits (near enough that the walkers hold at the kerb) until each crossing is clear; end to end,
+    // the leader goes further so the back mover is well past the first crossing
     const inline = b.g.kit.form === 'inline';
     const row = (z: number) => {
       const at = f.p(0, 0, z);
@@ -438,7 +449,7 @@ const people: Piece = {
     b.go(0, inline ? -9.4 : -7.9);
     row(rows[1]);
     b.go(0, -L);
-    b.tip(0, -1, 'Pedestrians! Let them cross, or squeeze past behind them.', 3);
+    b.tip(0, -1, 'Zebra crossing! Pedestrians wait for you at the kerb, so wait for them to finish crossing.', 3);
     return { length: L, calm: true };
   },
 };

@@ -129,12 +129,15 @@ class Npc implements Hazard {
         const tgt = this.pts[this.ptIdx];
         const to = tgt.clone().sub(pos).setY(0);
         const d = to.length();
-        if (d < 0.7) {
+        // a polite walker (random jobs) waits at the kerb while anyone is near its crossing
+        const kerb = d < 0.7 && !!this.o.params?.polite && this.crossingBusy();
+        if (d < 0.7 && !kerb) {
           if (this.ptIdx + this.ptDir >= this.pts.length || this.ptIdx + this.ptDir < 0) this.ptDir *= -1;
           this.ptIdx += this.ptDir;
           if (Math.random() < 0.3) this.pause = 1 + Math.random() * 2;
         }
         to.normalize();
+        if (kerb) to.set(0, 0, 0);
         // shuffle sideways if stuck on something (or someone)
         if (pos.distanceTo(this.lastPos) < 0.003 * 60 * dt) this.stuck += dt;
         else this.stuck = Math.max(0, this.stuck - dt);
@@ -156,18 +159,32 @@ class Npc implements Hazard {
     const dir = tgt.clone().sub(pos).setY(0);
     if (dir.lengthSq() < 1e-4) return false;
     dir.normalize();
-    // a polite walker (random jobs) also stops for movers alongside and gives a wide berth
-    const polite = !!this.o.params?.polite;
     const blocked = (p: THREE.Vector3) => {
       const rel = p.clone().sub(pos).setY(0);
       const ahead = rel.dot(dir);
       const side = Math.abs(rel.x * dir.z - rel.z * dir.x);
-      return polite ? ahead > -0.4 && ahead < 2.8 && side < 1.6 : ahead > 0.2 && ahead < 1.9 && side < 0.9;
+      return ahead > 0.2 && ahead < 1.9 && side < 0.9;
     };
     const others = (this.sim.players ?? []).map((p) => p.bodyPos);
     const cargo = this.sim.cargo?.body.translation();
     if (cargo) others.push(new THREE.Vector3(cargo.x, cargo.y, cargo.z));
     return others.some(blocked);
+  }
+
+  /** Anyone (or the cargo) on or near the stretch this walker crosses, within 4.5 m of its line. */
+  private crossingBusy() {
+    const a = this.pts[0];
+    const ab = this.pts[this.pts.length - 1].clone().sub(a).setY(0);
+    const len = ab.length();
+    if (len < 0.1) return false;
+    ab.multiplyScalar(1 / len);
+    const near = (q: THREE.Vector3) => {
+      const r = q.clone().sub(a).setY(0);
+      const t = r.dot(ab);
+      return Math.abs(r.x * ab.z - r.z * ab.x) < 4.5 && t > 0 && t < len;
+    };
+    const cargo = this.sim.cargo?.body.translation();
+    return (this.sim.players ?? []).some((pl) => near(pl.bodyPos)) || (!!cargo && near(new THREE.Vector3(cargo.x, cargo.y, cargo.z)));
   }
 
   postStep(dt: number) {

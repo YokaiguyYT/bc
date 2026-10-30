@@ -26,7 +26,12 @@ export interface GameEvents {
   splash: { pos: THREE.Vector3; amount: number };
   chime: { pos: THREE.Vector3 };
   tick: { pos: THREE.Vector3; tock: boolean };
+  /** A player says something (EMOTES[kind]) over their head. */
+  emote: { player: number; kind: number };
 }
+
+/** What the number keys make a mover say. */
+export const EMOTES = ['👋 Hi!', '👍 Nice!', '😬 Careful!', '✋ Wait!'];
 
 type Handler<T> = (payload: T) => void;
 

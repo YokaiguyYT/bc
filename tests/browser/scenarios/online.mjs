@@ -113,6 +113,15 @@ export default async function ({ page, base, out }) {
   await host.waitForTimeout(400);
   const a3 = await hostPos();
   check("host's arrows move P1 (m/s)", speed(a3, b3, 0) > 0.8, +speed(a3, b3, 0).toFixed(2));
+  // emotes: the guest's 1 key pops a bubble over P2 on both screens; the host's 2 over P1
+  const bubble = (p, i) => p.evaluate((i) => { const el = document.querySelectorAll('.hud .tags .say')[i]; return el?.classList.contains('show') ? el.textContent : ''; }, i);
+  await guest.keyboard.press('Digit1');
+  const saidHost = await until(host, () => document.querySelectorAll('.hud .tags .say')[1]?.classList.contains('show'), null, 8000);
+  const saidGuest = await until(guest, () => document.querySelectorAll('.hud .tags .say')[1]?.classList.contains('show'), null, 8000);
+  check("guest's emote shows over P2 on both", saidHost && saidGuest, [await bubble(host, 1), await bubble(guest, 1)]);
+  await host.keyboard.press('Digit2');
+  const said1 = await until(guest, () => document.querySelectorAll('.hud .tags .say')[0]?.classList.contains('show'), null, 8000);
+  check("host's emote shows over P1 on the guest", said1, await bubble(guest, 0));
   // once everyone stands still (and the guest's clock has caught up), its copy should match the host's
   const tStill = await host.evaluate(() => window.__FF.game.session.physics.time + 1.2);
   await until(host, (t) => window.__FF.game.session.physics.time > t, tStill, 30000);

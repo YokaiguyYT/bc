@@ -3,6 +3,7 @@ import type { Game } from '../game/Game';
 import type { LevelSession } from '../game/LevelSession';
 import { keyLabel } from '../config/bindings';
 import { CARGO_INFO } from '../entities/cargo/info';
+import { EMOTES } from '../game/events';
 import { formatMoney, formatTime } from '../util/math';
 
 const _v = new THREE.Vector3();
@@ -57,7 +58,7 @@ export class Hud {
       <div class="card timer-card"><div class="lvl">${s.def.name}</div><div class="time">0:00.0</div></div>
       <div class="card status-card"></div>
       ${pcard(0)}${pcard(1)}
-      <div class="tags"><div class="tag">P1</div><div class="tag">P2</div></div>
+      <div class="tags"><div class="tag"><span class="say"></span>P1</div><div class="tag"><span class="say"></span>P2</div></div>
       <div class="hint" style="opacity:0"></div>
       <div class="objective"><svg class="arrow" viewBox="0 0 24 24" width="22" height="22"><path d="M4 12h13M12 6l6 6-6 6" stroke="currentColor" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></div>
       <div class="card goal-meter" style="display:none"><div class="goal-label" style="font-size:14px;text-align:center">DELIVERING…</div><div class="bar"><div class="fill" style="background:var(--good)"></div></div></div>
@@ -89,9 +90,23 @@ export class Hud {
       s.events.on('goal', () => this.banner('DELIVERED!')),
       s.events.on('cargoBreak', () => this.banner(breakLine(s.def.cargo))),
       s.events.on('respawn', () => this.banner('WHOOPS!', true)),
+      s.events.on('emote', (e) => this.bubble(e.player, EMOTES[e.kind] ?? '')),
     );
     this.banner(s.def.name.toUpperCase(), true);
   }
+
+  /** A speech bubble over a mover's name tag for a couple of seconds. */
+  private bubble(player: number, text: string) {
+    const el = this.tags[player]?.querySelector<HTMLElement>('.say');
+    if (!el || !text) return;
+    el.textContent = text;
+    el.classList.remove('show');
+    void el.offsetWidth; // restart the pop-in
+    el.classList.add('show');
+    clearTimeout(this.bubbleTimers[player]);
+    this.bubbleTimers[player] = window.setTimeout(() => el.classList.remove('show'), 2200);
+  }
+  private bubbleTimers: number[] = [];
 
   banner(text: string, small = false) {
     const d = document.createElement('div');

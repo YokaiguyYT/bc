@@ -146,16 +146,20 @@ function fineSteps(path: BotStep[], from: Vec3, most = 3.5): BotStep[] {
   const out: BotStep[] = [];
   let px = from[0];
   let pz = from[2];
+  let dash = false;
   for (const st of path) {
     if (!Array.isArray(st)) {
       out.push(st);
       // a ride (the cable car) carries the load on: carry on from where it lands, not back from where it got on
       const land = (st as { land?: [number, number] }).land;
       if (land) [px, pz] = land;
+      dash = true;
       continue;
     }
     const [x, z, form] = st;
-    const n = Math.ceil(Math.hypot(x - px, z - pz) / most);
+    // after a wait (a gap in the traffic, the ball swinging past…) go in one go: no stop halfway through the danger
+    const n = dash ? 1 : Math.ceil(Math.hypot(x - px, z - pz) / most);
+    dash = false;
     for (let k = 1; k < n; k++) out.push([+(px + ((x - px) * k) / n).toFixed(3), +(pz + ((z - pz) * k) / n).toFixed(3), form]);
     out.push(st);
     px = x;

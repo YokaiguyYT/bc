@@ -630,8 +630,8 @@ export default async function ({ page, base, shot }) {
         return t + 0.5;
       }
       if (w.wait === 'walkers') {
-        // pedestrians crossing the path at `at` (walking along `along`): go once this row's walker is off to one
-        // side and not about to come back across (heading away, or far enough out that it stops for us)
+        // pedestrians crossing the path at `at` (walking along `along`): go once this row's walker is at a kerb, off
+        // the path (where it waits while we're near) and not setting off across
         const [ax, az] = w.along;
         const walkers = s.hazards.filter((h) => h.player && h.mode === 'walk');
         const where = () =>
@@ -649,8 +649,8 @@ export default async function ({ page, base, shot }) {
           const now = where();
           const ok = now.every((n, i) => {
             if (n.off > 2.5) return true; // another row
-            const away = (n.u - prev[i].u) * Math.sign(n.u) > 0.004;
-            return Math.abs(n.u) > 2.1 && (away || Math.abs(n.u) > 2.5);
+            const inward = (n.u - prev[i].u) * Math.sign(n.u) < -0.004;
+            return Math.abs(n.u) > 3.6 && !inward;
           });
           prev = now;
           run = ok ? run + 0.1 : 0;

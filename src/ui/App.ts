@@ -139,6 +139,35 @@ export class App {
     return i + cols < cards.length ? cols : cards.length - i;
   }
 
+  /** Number keys say things: 1–4 for P1, 7–0 for P2 (unless they've been bound to something). */
+  private emoteKey(code: string): { player: number; kind: number } | null {
+    const m = /^Digit([0-9])$/.exec(code);
+    if (!m) return null;
+    const b = this.game.keyboard.bindings as unknown as Record<string, string[] | Record<string, string[]>>;
+    const bound = Object.values(b).some((v) => (Array.isArray(v) ? v.includes(code) : Object.values(v).some((l) => l.includes(code))));
+    if (bound) return null;
+    const d = Number(m[1]);
+    if (d >= 1 && d <= 4) return { player: 0, kind: d - 1 };
+    if (d >= 7 || d === 0) return { player: 1, kind: d === 0 ? 3 : d - 7 };
+    return null;
+  }
+
+  private emoteAt = [0, 0];
+  /** At most one emote a half-second per player. */
+  private emoteReady(player: number) {
+    const now = performance.now();
+    if (now - this.emoteAt[player] < 500) return false;
+    this.emoteAt[player] = now;
+    return true;
+  }
+
+  /** A mover says something over its head (on the host it's sent on to the guest with the other events). */
+  private emote(player: number, kind: number) {
+    const s = this.game.session;
+    if (!s || s.mirror || !this.emoteReady(player)) return;
+    s.events.emit('emote', { player, kind });
+  }
+
   private updateFocus() {
     this.focusables.forEach((el, i) => el.classList.toggle('focus', i === this.focusIndex));
   }
@@ -160,6 +189,7 @@ export class App {
     if (this.screen === 'guest') {
       if (b.pause.includes(code)) this.showGuestMenu();
       else if (b.p1.jump.includes(code) || b.p2.jump.includes(code)) this.guest?.tapJump();
+      else if (this.emoteKey(code) && this.emoteReady(1)) this.guest?.emote(this.emoteKey(code)!.kind);
       return;
     }
     if (this.screen === 'title') {
@@ -169,6 +199,11 @@ export class App {
     }
     if (this.screen === 'playing') {
       if (b.pause.includes(code)) this.pause();
+      else {
+        const k = this.emoteKey(code);
+        // online, this laptop's player is P1; on one keyboard 1–4 is P1 and 7–0 is P2
+        if (k) this.emote(this.game.onlineP2 ? 0 : k.player, k.kind);
+      }
       return;
     }
     if (this.screen === 'paused' && b.pause.includes(code)) {
@@ -390,6 +425,8 @@ export class App {
         <p>Slow bumps are fine. Drops, slams, and wild swings crack, smash, or squish your cargo. The more condition you keep, the more you get paid.</p>
         <h3>🧭 Finding the way</h3>
         <p>When the next checkpoint (🚩) or the drop-off (🏁) is off screen, an arrow at the edge of the screen points to it.</p>
+        <h3>💬 Talking</h3>
+        <p>Number keys pop a bubble over your mover: <b>1</b> 👋 Hi! · <b>2</b> 👍 Nice! · <b>3</b> 😬 Careful! · <b>4</b> ✋ Wait! (Player 2 on the same keyboard: <b>7 8 9 0</b>; online, each of you uses 1–4.)</p>
         <h3>☁️ Falling off</h3>
         <p>Fall off the world and you respawn at the last checkpoint (flags), minus a small payout penalty. Get the cargo to a checkpoint to save progress.</p>
         <h3>🎥 Camera</h3>
@@ -990,6 +1027,7 @@ export class App {
           this.host = host;
           host.onChange = (what) => this.hostChanged(what);
           host.onPauseRequest = () => this.pause();
+          host.onEmote = (kind) => this.emote(1, kind);
           this.game.afterRender = () => host.copyFrame();
           this.updateBadge();
           this.showHost();
