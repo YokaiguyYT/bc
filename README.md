@@ -2,7 +2,7 @@
 
 A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano) through chaotic obstacle courses without breaking them.
 
-It runs in **Safari on a Mac**. There's nothing to install.
+It runs in **Safari or Chrome**, on a Mac or a **Chromebook**. There's nothing to install.
 
 ---
 
@@ -17,31 +17,35 @@ It runs in **Safari on a Mac**. There's nothing to install.
    - You can move the file anywhere (the Desktop is fine). Your best payouts are remembered by Safari.
    - For a bigger view, use Safari's **View → Enter Full Screen**.
 
-### Option 2: play from a link (one-time setup)
+### Option 2: play from a link (best for Chromebooks and school)
 
-Once the game is on the `main` branch:
+School Chromebooks often won't open downloaded files, but a link always works. One-time setup on GitHub (a minute, no command line):
 
-1. On GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Wait for the **Deploy to GitHub Pages** run to finish (the **Actions** tab).
-3. Play at **https://yokaiguyyt.github.io/bc/** and bookmark it. Every update to `main` redeploys automatically.
+1. Open the repository on GitHub → **Settings** → **Pages** (left side).
+2. Under **Build and deployment**, set **Source: Deploy from a branch**.
+3. Pick the branch **`claude/brave-meitner-74ar9h`** and the folder **`/docs`**, then **Save**.
+4. After a minute or two, play at **https://yokaiguyyt.github.io/bc/** (bookmark it, send it to your friend). Every update to that branch updates the link.
+
+(Later, when everything is merged into `main`, you can switch the source to `main` and `/docs`, or to **GitHub Actions**, which also publishes a faster-loading version.)
 
 ---
 
-## Play online: one laptop each
+## Play online: one laptop each (works at school)
 
-No more four hands on one keyboard. Both of you need the game (the same `FragileFreight.html` file, or the same link).
+No more four hands on one keyboard. Both of you need the game: the same link (best) or the same `FragileFreight.html` file. A MacBook and a Chromebook together is fine.
 
 1. **The faster laptop hosts.** Main menu → **Play Online** → **Host a game**. A five-letter code appears, like `K7QXM`.
 2. **Your friend joins.** On their laptop: **Play Online** → **Join a friend**, type the code, press **Return**.
-3. The host picks a job as usual. The game runs on the host's laptop and its picture is streamed to the friend, who sees exactly the same screen and plays **P2** (blue).
+3. The host picks a job as usual. The friend plays **P2** (blue).
 
-- **Keys:** online, each of you can use **WASD** *or* the **arrows** (with either player's jump and grab keys), whichever is comfier. `Q`/`E` spin the camera for both of you.
-- **The friend's `Esc`** opens a small menu: keep playing, pause the game, or leave. The host runs the pause menu and picks the jobs.
+- **How it works:** the game runs on the host's laptop. The friend's laptop draws the same scene itself from a stream of positions (a couple of kilobytes, many times a second), so it stays sharp and needs very little Wi-Fi.
+- **School networks:** if the network won't let the laptops connect directly, the game passes its messages through the matchmaking server instead. It's a little slower, but it works. The friend's `Esc` menu shows which way you're connected.
+- **Keys:** online, each of you can use **WASD** *or* the **arrows** (with either player's jump and grab keys), whichever is comfier. Each of you has your own camera (`Q`/`E` to spin it).
+- **The friend's `Esc`** opens a small menu: keep playing, pause the game, graphics quality, the picture mode, or leave. The host runs the pause menu and picks the jobs.
+- **A slow Chromebook?** In the friend's `Esc` menu, try **Graphics: Fast**, or **Picture: stream it from my friend** (the host's laptop sends a video instead; that needs a direct connection).
 - If your friend drops out, the game pauses. They can rejoin with the same code.
-- **It's free.** A free public service (PeerJS) introduces the two laptops; after that they talk directly to each other. There's no account and nothing to pay.
-- **Works best on the same Wi-Fi.** Over the internet it usually works too, but some networks (schools, offices, some phone hotspots) block direct connections; the join screen says so if that happens.
-- If your Mac asks whether Safari may **find devices on your local network**, say **Allow**.
-- There's a little delay (the picture travels over Wi-Fi), so the friend's mover reacts a tick later than the host's. If the picture looks blurry or choppy, the host can pick **Settings → Graphics: Fast**.
+- **It's free.** Free public servers (PeerJS, with EMQX's MQTT server as a backup) introduce the two laptops. There's no account and nothing to pay.
+- If your Mac asks whether the browser may **find devices on your local network**, say **Allow**.
 
 ---
 
@@ -85,6 +89,14 @@ You can change every key under **Controls**. That screen also has a **key tester
 
 There's also a **Practice Yard** to learn the controls.
 
+### Endless jobs
+
+At the top of the job list:
+
+- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, slaloms, wrecking balls, traffic, laser gates, ice, people, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
+- **📅 Today's job:** the same course for everyone all day; a new one tomorrow. Your best today is kept.
+- **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
+
 ## Settings
 
 - **Graphics:** Fast / Balanced / Pretty. Pick **Fast** if Safari stutters.
@@ -119,10 +131,12 @@ src/
   game/       Game, LevelSession (one attempt at a level), progress (best payouts/times)
   render/     renderer, camera, materials, effects, model loading
   input/      keyboard
-  net/        online play: signalling, the WebRTC link, the HUD/menu mirror
+  net/        online play: matchmaking (PeerJS + MQTT), direct link and relay, snapshots (sync.ts), menu mirror
   audio/      AudioEngine stub (audio is planned, not yet implemented; see NOTES.md)
   ui/         menus, HUD, dev panel
 ```
+
+**Random jobs:** `src/levels/gen/`. A piece (in `pieces.ts`) builds one stretch of course in its own frame (enter at the origin heading -Z, floor at y 0) and writes the bot's route through it; `generate.ts` strings pieces together from a seed. Adding a piece = writing one more `Piece` and listing it in `PIECES`, then checking it with `genbuild` and a few `GEN=` bot runs.
 
 **Adding a level:** add a file to `src/levels/defs/` that default-exports a `LevelDef` (boxes, ramps, models, hazards, spawn, checkpoints, goal). It's picked up automatically; `order` sets its place in the job list.
 
@@ -137,6 +151,9 @@ FF_URL=http://localhost:5199/ node tests/browser/run.mjs carryall  # every cargo
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs menus     # screenshots of every menu
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs online    # host + guest in two tabs: join, picture, keys, pause, leave
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs online-errors   # wrong code, full game, host leaves
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs genbuild  # build 24 random jobs and check them (SEEDS=n)
+FF_URL=http://localhost:5199/ GEN=123456 CARGO=tv node tests/browser/run.mjs deliver   # the bot plays a random job by number
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs genflow   # random / daily / shift menus and results
 ```
 
 Screenshots go to a scratch folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.

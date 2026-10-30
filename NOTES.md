@@ -9,10 +9,11 @@ Design decisions, what still needs tuning, and known limitations.
 | Eight jobs and the Practice Yard | Playable start to finish |
 | Jobs 9–10 (a painting in the wind, a balloon bouquet) | Planned, not started |
 | Keyboard controls, rebinding, key tester | Done |
-| Online play (one laptop each) | Done; tested in Chromium, not yet between two real Macs |
+| Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
+| Random jobs, daily job, endless shift | Done |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
-| Single-file build (double-click in Safari) and GitHub Pages | Done |
+| Single-file build (double-click), GitHub Pages from `/docs` | Done |
 | Gamepad | Not planned (by request) |
 | **Audio** | **Planned, not yet implemented** |
 
@@ -108,16 +109,23 @@ This keeps walking reliable while still looking floppy.
 
 ## Online play
 
-"Remote play" style, like Steam's Remote Play Together: the host's laptop runs the whole game as usual, and the guest's laptop is a screen and a keyboard.
+Two ways for the guest to see the game; the host's laptop always runs it.
 
-- **Picture:** the host's game canvas goes out as a WebRTC video track (`canvas.captureStream(60)`, up to 6 Mbit/s, scaled to at most 1600 px wide). While a friend is connected the host also renders at most 1600 px wide (`Renderer.capWidth`), so capturing stays cheap on a Retina screen.
-- **Menus and HUD** are HTML, not part of the canvas, so the host sends `#ui`'s HTML (when it changes, at most 20 times a second) and the guest patches its own copy to match (`net/mirror.ts`), scaled to sit exactly over the video.
-- **Keys:** the guest sends its move state (either key layout) about 60 times a second over an unreliable, unordered data channel; jumps are counted so a quick tap can't be lost. The host treats half a second of silence as "all keys up". Online, the host's P1 also takes either layout.
-- **Finding each other:** the host registers `fragile-freight-<code>` on PeerJS's free public server (`0.peerjs.com`), used only to pass the WebRTC offer, answer and candidates (`net/signal.ts`). Public STUN servers (Google, Cloudflare) help each laptop find its public address. There's **no TURN relay** (those cost money), so networks that block direct connections can't play online.
-- **Black picture fallback:** if the guest's video stays empty or black for a few seconds, it asks the host to switch to copying each frame into a plain 2D canvas and streaming that instead (`OnlineHost.useCopy`, via `replaceTrack`). That's for browsers that capture a WebGL canvas as black frames; Chromium doesn't need it, and the test forces it to check the switch works.
-- **Why not run the physics on both laptops?** Keeping two physics simulations in step needs every hazard, cargo effect and particle to be synchronised; streaming the picture means every job, present and future, just works online.
+**Light mode (the default): the guest draws the level itself.** Both laptops build the job from the same description, so every moving body with a visual is made in the same order on both. The host sends snapshots (`net/sync.ts`): the pose of every body that moved (all of them in a keyframe once a second), the score and clock, who holds what, and the few numbers bodies don't show (cargo `netState()`: water level and slosh, wobbles, melt; hazard `netState()`: a truck's wheels, the dog's mood). About 1–2 KB each, 30 a second over a direct link, 15 over the relay. The guest buffers them and interpolates, a little behind the host (it estimates the host's clock rate, so a host that can't keep up doesn't make it stutter). Game events and particle bursts made by the game itself are sent too and replayed on time, so banners, cracks, confetti and zaps happen on both screens. The guest has its own HUD and its own camera; it turns its keys into a world direction with that camera before sending them.
 
-Tests: `online` (two tabs: code, join, picture, HUD/menu copy, P2 keys from either layout, host's arrows, pause from the guest, the fallback, leaving) and `online-errors` (wrong code, a third player, the host stopping). They use a BroadcastChannel between tabs by default; `NET=ws://127.0.0.1:9000/peerjs` runs them through the official PeerJS server software run locally, which passed too. The sandbox these were built in can't open WebSockets to the internet, so the public server itself wasn't reached from here. `netloop` checks the WebRTC link inside one page; the Linux WebKitGTK build used for Safari testing has no WebRTC at all, so online play is **untested in Safari's engine**.
+**Video mode (optional): the host streams its screen.** The canvas goes out as a WebRTC video track (`canvas.captureStream(60)`, up to 6 Mbit/s, at most 1600 px wide) and the guest copies the host's whole UI over it (`net/mirror.ts`). Easier on a slow guest laptop but needs a direct connection and a few megabits. If the guest's picture stays black for a few seconds it asks the host to copy each frame to a plain 2D canvas and stream that instead (for browsers that capture WebGL as black).
+
+**Connecting.** The host registers `fragile-freight-<code>` on two free public matchmaking servers at once: PeerJS's (`0.peerjs.com`, port 443) and EMQX's public MQTT broker (`broker.emqx.io`, secure WebSocket on port 8084, a tiny MQTT client in `net/signal.ts`). The guest says hello on both; whichever reaches the host carries on. Play starts at once through that server as a **relay** (`net/relay.ts`), and meanwhile the laptops try a direct WebRTC link (public STUN only; no TURN, which costs money). If it opens, messages switch to it; if it ever drops, they fall back to the relay. School networks that block direct links still play, through the relay. A server that drops is reconnected in the background; one that couldn't be reached at first is retried now and then.
+
+**Keys.** The guest sends its key state 30 times a second on a timer (not per frame, so a slow laptop can't stall it) over the fast channel; jump taps are counted from key presses. The host treats 0.6 s of silence as "all keys up". Online, each player can use either key layout.
+
+Tests (two tabs in one browser): `online` (connect, menus copied, the job built on the guest in step with the host, P2 from either layout, cargo damage, pause, video mode and back, the host quitting, leaving); `ONLY=relay` and `ONLY=direct` variants; `NET=ws://127.0.0.1:9000/peerjs` (the official PeerJS server software run locally), `NET=mqtt MQTT=ws://127.0.0.1:8888` (an MQTT broker run locally), both servers at once, and PeerJS unreachable (falls back to MQTT); `online-errors` (wrong code, third player, host stopping); `online-lag` prints how far behind the guest runs. The sandbox these were built in can't open WebSockets to the internet, so the public servers themselves weren't reached from here. WebRTC is untested in Safari's engine (the Linux WebKitGTK build has none), but light mode over the relay needs only WebSockets.
+
+## Random jobs
+
+`src/levels/gen/`: a seeded generator strings course pieces together (ramps, stairs, doors, slaloms, wrecking balls, traffic with a traffic island, laser gates, ice, people, corners), with a start kit for the cargo (the same stands and heights as the hand-made jobs), a checkpoint every three obstacles and a drop-off at the end. Pieces are written in their own frame (enter at the origin heading -Z), so a course can turn west or east (never back toward the camera). Each piece also writes the test bot's route through it, so any job can be checked: `GEN=<number> CARGO=<kind> … run.mjs deliver`.
+
+Fairness rules learned from the bot: wrecking balls swing slowly (7.5–8.8 s a swing) so there are about three seconds to carry something heavy across; the road has a traffic island so you cross one lane at a time; stairs are gentle (0.16 m rise, 0.5 m run); no ice for cake, egg or piano; glass gets a rack at the drop-off (a pane can't stand on its own).
 
 ## Tuning still needed
 

@@ -15,6 +15,9 @@ export default async function ({ page, base, shot }) {
       ([seed, cargo]) => {
         const F = window.__FF;
         const def = F.gen.generateJob({ seed, cargo });
+        // the online guest rebuilds a job from its recipe: it must come out identical
+        const again = F.gen.generateJob({ ...def.gen });
+        const same = JSON.stringify(again.objects) === JSON.stringify(def.objects) && again.name === def.name;
         F.app.attract = null; // (the menu's background demo)
         const s = F.game.startLevel(def);
         s.scriptedInput = true;
@@ -34,6 +37,7 @@ export default async function ({ page, base, shot }) {
           players: s.players.map((p) => +p.body.translation().y.toFixed(2)),
           killY: def.killY,
           state: s.state,
+          same,
           links: s.physics.linkCount,
         };
         return out;
@@ -41,9 +45,9 @@ export default async function ({ page, base, shot }) {
       [seed, cargo],
     );
     for (const p of r.pieces) usage[p] = (usage[p] ?? 0) + 1;
-    const ok = r.drift < 0.15 && r.health > 0.99 && r.state === 'playing' && r.players.every((y) => y > r.killY + 1);
+    const ok = r.same && r.drift < 0.15 && r.health > 0.99 && r.state === 'playing' && r.players.every((y) => y > r.killY + 1);
     rows.push({ ...r, ok });
-    console.log(ok ? 'ok  ' : 'FAIL', String(seed).padEnd(7), cargo.padEnd(9), `${r.objects} objs ${r.cps} cps par ${r.par}s drift ${r.drift} health ${r.health}`, r.pieces.join(' '), r.name);
+    console.log(ok ? 'ok  ' : 'FAIL', String(seed).padEnd(7), cargo.padEnd(9), `${r.same ? '' : 'NOT REPRODUCIBLE '}${r.objects} objs ${r.cps} cps par ${r.par}s drift ${r.drift} health ${r.health}`, r.pieces.join(' '), r.name);
     if (i < 4) {
       await page.evaluate(() => window.__FF.game.renderer.render());
       await shot(`gen_${seed}_${cargo}`);

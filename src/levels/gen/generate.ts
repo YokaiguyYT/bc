@@ -19,11 +19,14 @@ const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4
 
 export function generateJob(p: GenParams): LevelDef {
   const rng = new Rng(p.seed);
-  const cargo: CargoKind = p.cargo && KITS[p.cargo] ? p.cargo : rng.pick(GEN_CARGO);
+  // always draw the same numbers, then apply any choices given: otherwise naming
+  // the cargo (as the online guest's copy does) would shift everything after it
+  const rolled = { cargo: rng.pick(GEN_CARGO), theme: rng.pick(THEMES), difficulty: rng.range(0.25, 0.7), extra: rng.range(0, 2) };
+  const cargo: CargoKind = p.cargo && KITS[p.cargo] ? p.cargo : rolled.cargo;
   const kit = KITS[cargo]!;
-  const theme = rng.pick(THEMES);
-  const difficulty = Math.max(0, Math.min(1, p.difficulty ?? rng.range(0.25, 0.7)));
-  const count = p.pieces ?? Math.round(4 + difficulty * 6 + rng.range(0, 2));
+  const theme = rolled.theme;
+  const difficulty = Math.max(0, Math.min(1, p.difficulty ?? rolled.difficulty));
+  const count = p.pieces ?? Math.round(4 + difficulty * 6 + rolled.extra);
   const g: GenCtx = { rng, kit, theme, difficulty, cargo };
   const title = `${rng.pick(OPENERS)} ${rng.pick(theme.places)}`;
 
