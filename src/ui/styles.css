@@ -939,3 +939,247 @@ kbd.p2 {
 .level-card.special.focus {
   background: linear-gradient(160deg, #fff1b8, #ffd9e6);
 }
+
+/* ---------- touch controls (phones and tablets) ---------- */
+/* <html class="touch"> while a touch screen is in use (src/input/Touch.ts); a key press takes it off */
+html:not(.touch) .touch-only {
+  display: none !important;
+}
+html.touch {
+  --tc-btn: clamp(66px, 19vmin, 104px);
+  --tc-small: clamp(40px, 11vmin, 52px);
+  --tc-stick: clamp(100px, 30vmin, 150px);
+  --tc-right: calc(16px + env(safe-area-inset-right));
+  --tc-bottom: calc(16px + env(safe-area-inset-bottom));
+  /* the buttons' corner, so the HUD can keep clear of it */
+  --tc-cluster-w: calc(16px + 2 * var(--tc-btn) + 14px);
+  --tc-cluster-h: calc(16px + var(--tc-btn) + 18px + var(--tc-small));
+}
+html.touch,
+html.touch body {
+  overscroll-behavior: none;
+}
+#game {
+  touch-action: none;
+}
+.touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: var(--font);
+}
+.touch-controls[data-show='off'] {
+  display: none;
+}
+.touch-controls[data-show='menu'] > :not(.tc-menu) {
+  display: none;
+}
+.touch-controls > * {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+}
+/* the stick appears wherever the left thumb lands */
+.tc-zone {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+.tc-stick {
+  pointer-events: none;
+  left: calc(26px + env(safe-area-inset-left));
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  width: var(--tc-stick);
+  height: var(--tc-stick);
+  border-radius: 50%;
+  border: 4px solid rgba(43, 42, 51, 0.6);
+  background: rgba(255, 248, 236, 0.28);
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+.tc-stick.on {
+  bottom: auto;
+  opacity: 1;
+}
+.tc-knob {
+  position: absolute;
+  left: 27%;
+  top: 27%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  border: 4px solid var(--ink);
+  background: rgba(255, 248, 236, 0.92);
+  box-shadow: 0 3px 0 var(--ink);
+}
+.tc-btn,
+.tc-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid var(--ink);
+  background: rgba(255, 248, 236, 0.8);
+  box-shadow: 0 4px 0 var(--ink);
+  color: var(--ink);
+  font-weight: 700;
+}
+.tc-btn {
+  width: var(--tc-btn);
+  height: var(--tc-btn);
+  border-radius: 50%;
+  font-size: calc(var(--tc-btn) * 0.22);
+}
+.tc-small {
+  width: var(--tc-small);
+  height: var(--tc-small);
+  border-radius: 14px;
+  font-size: calc(var(--tc-small) * 0.5);
+}
+.tc-btn.on,
+.tc-small.on {
+  background: var(--accent);
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+.tc-jump {
+  right: var(--tc-right);
+  bottom: var(--tc-bottom);
+}
+.tc-grab {
+  right: calc(var(--tc-right) + var(--tc-btn) + 14px);
+  bottom: calc(var(--tc-bottom) + var(--tc-btn) * 0.35);
+}
+.tc-cam {
+  bottom: calc(var(--tc-bottom) + var(--tc-btn) + 18px);
+  right: var(--tc-right);
+}
+.tc-cam[data-act='camLeft'] {
+  right: calc(var(--tc-right) + var(--tc-small) + 12px);
+}
+.tc-menu {
+  top: calc(14px + env(safe-area-inset-top));
+  right: calc(14px + env(safe-area-inset-right));
+  gap: 5px;
+}
+.tc-menu i {
+  width: 6px;
+  height: 40%;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+/* the HUD keeps clear of the thumbs: player cards go up top (no keys to show), the hint between the thumbs */
+html.touch .hud .player-card {
+  top: 124px;
+  bottom: auto;
+}
+html.touch .hud .player-card .keys {
+  display: none;
+}
+html.touch .hud .status-card {
+  right: calc(28px + var(--tc-small));
+}
+html.touch .hud .hint {
+  bottom: var(--tc-bottom);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--tc-cluster-w) - 24px);
+  white-space: normal;
+  text-align: center;
+  font-size: 16px;
+}
+@media (orientation: portrait) {
+  html.touch .hud .hint {
+    bottom: calc(var(--tc-cluster-h) + 18px);
+    max-width: 94%;
+  }
+}
+/* narrow phones: the cargo card gets the first row, the timer and player cards the second */
+@media (max-width: 560px) {
+  html.touch .hud .cargo-card {
+    top: 10px;
+    left: 10px;
+    right: calc(24px + var(--tc-small));
+  }
+  html.touch .hud .timer-card {
+    top: 120px;
+    max-width: calc(100% - 240px);
+  }
+  html.touch .hud .timer-card .lvl {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html.touch .hud .status-card {
+    top: 184px;
+    right: 10px;
+  }
+  html.touch .hud .player-card {
+    top: 120px;
+  }
+  html.touch .hud .player-card.p1 {
+    left: 10px;
+  }
+  html.touch .hud .player-card.p2 {
+    right: 10px;
+  }
+  html.touch .hud .goal-meter {
+    top: 196px;
+  }
+}
+
+/* typing a code on a phone or tablet */
+input.type-box {
+  display: block;
+  margin: 0 auto 10px;
+  width: min(330px, 86%);
+  font-family: var(--font);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 12px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+input.type-box::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: #9a96a3;
+}
+
+/* short screens (a phone on its side): a menu that doesn't fit scrolls instead of spilling off both ends */
+.screen {
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.screen > :first-child {
+  margin-top: auto;
+}
+.screen > :last-child {
+  margin-bottom: auto;
+}
+@media (max-height: 500px) {
+  .screen {
+    gap: 12px;
+    padding: 14px;
+  }
+  .menu {
+    gap: 8px;
+  }
+  button.btn {
+    font-size: 19px;
+    padding: 7px 18px;
+  }
+}

@@ -26,6 +26,12 @@ export interface MoveState {
   grab: boolean;
 }
 
+/** Combine two move states (online, either key layout drives your player; on a phone, the on-screen controls). */
+export function mergeMoves(a: MoveState, b: MoveState): MoveState {
+  const c = (v: number) => Math.max(-1, Math.min(1, v));
+  return { x: c(a.x + b.x), y: c(a.y + b.y), jump: a.jump || b.jump, jumpPressed: a.jumpPressed || b.jumpPressed, grab: a.grab || b.grab };
+}
+
 /** Modifier keys and the event flag that says whether either of the pair is held. */
 const MODIFIERS: Record<string, 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'> = {
   ShiftLeft: 'shiftKey',

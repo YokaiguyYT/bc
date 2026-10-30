@@ -82,6 +82,7 @@ export class App {
     this.audio.setVolumes(game.settings.master, game.settings.music, game.settings.sfx);
     tuning.damage.scale = game.settings.damage ?? 1;
     game.keyboard.onKey = (code, e) => this.onKey(code, e);
+    game.touch.onMenu = () => (this.guest ? this.showGuestMenu() : this.pause());
     window.addEventListener('pointerdown', () => this.audio.unlock(), { once: false });
     game.onFrame = (dt) => this.frame(dt);
     window.addEventListener('paste', this.onPaste);
@@ -207,6 +208,7 @@ export class App {
   private badgeT = 0;
 
   private frame(dt: number) {
+    this.game.touch.show(this.touchShow());
     // keep the online line's round-trip time fresh (and say so soon if the other laptop goes quiet)
     this.badgeT -= dt;
     if (this.badgeT <= 0) {
@@ -251,6 +253,16 @@ export class App {
     this.audio.update(dt, s);
   }
 
+  /** Phones and tablets: the on-screen controls in a job, just the menu button on the online guest's screen otherwise. */
+  private touchShow() {
+    if (this.screen === 'playing') return 'play';
+    const g = this.guest;
+    if (!g || this.screen !== 'guest') return 'off';
+    // the guest is in a job when its HUD is up, and the host isn't showing a menu over it
+    const job = g.mode === 'light' ? !!this.game.session?.mirror && !this.menuMirror?.firstElementChild : !!this.root.querySelector('.hud') && !this.root.querySelector('.screen');
+    return job ? 'play' : 'menu';
+  }
+
   // ------------------------------------------------------------ screens
 
   showTitle() {
@@ -258,7 +270,7 @@ export class App {
     this.setScreen(
       'title',
       `<div class="logo" style="font-size:clamp(54px,11vw,140px)"><span class="w fragile">FRAGILE</span><br><span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
-       <div class="press-start">Press any key</div>
+       <div class="press-start">${this.game.touch.active ? 'Tap to start' : 'Press any key'}</div>
        <div class="hint-line">A goofy 2-player moving company · one keyboard, or a laptop each</div>`,
     );
     this.layer.querySelector('.screen')?.addEventListener('click', () => this.showMenu());
@@ -394,6 +406,7 @@ export class App {
         <p>Fall off the world and you respawn at the last checkpoint (flags), minus a small payout penalty. Get the cargo to a checkpoint to save progress.</p>
         <h3>🎥 Camera</h3>
         <p>${keys(b.camLeft, '')} ${keys(b.camRight, '')} spin the camera. Movement is relative to the camera. ${keys(b.pause, '')} pauses.</p>
+        <p class="touch-only">📱 <b>On a phone or tablet:</b> put your left thumb down anywhere on the left half and slide it to walk. Hold <b>GRAB</b>, tap <b>JUMP</b>; ⟲ ⟳ spin the camera and the button in the corner pauses.</p>
        </div>
        <div class="row"><button class="btn" data-nav data-default id="h-back">Got it</button></div>`,
       { back, dim: true },
@@ -829,6 +842,7 @@ export class App {
        <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
          <p>Type the six-digit job number</p>
          <div class="net-code entry job-digits">${this.jobBoxes()}</div>
+         ${typeBox('jn-type', 'Tap here to type it', true)}
          <p style="font-size:14px">It's on the results card of every random job. Same number, same course (and the same cargo).</p>
        </div>
        <div class="row">
@@ -838,6 +852,10 @@ export class App {
       { back: () => this.showLevels() },
     );
     this.bind('jn-go', () => this.playJobNumber());
+    this.typeBox('jn-type', (t) => {
+      this.jobNumber = t.replace(/[^0-9]/g, '').slice(0, 6);
+      this.updateJobNumber();
+    });
     this.bind('jn-back', () => this.showLevels());
   }
 
@@ -851,10 +869,7 @@ export class App {
       e.preventDefault();
       if (m && this.jobNumber.length < 6) this.jobNumber += m[1];
       if (code === 'Backspace') this.jobNumber = this.jobNumber.slice(0, -1);
-      const box = this.layer.querySelector('.job-digits');
-      if (box) box.innerHTML = this.jobBoxes();
-      const go = this.layer.querySelector<HTMLButtonElement>('#jn-go');
-      if (go) go.disabled = this.jobNumber.length !== 6;
+      this.updateJobNumber();
       return true;
     }
     if ((code === 'Enter' || code === 'NumpadEnter') && this.jobNumber.length === 6) {
@@ -863,6 +878,22 @@ export class App {
       return true;
     }
     return false;
+  }
+
+  private updateJobNumber() {
+    const box = this.layer.querySelector('.job-digits');
+    if (box) box.innerHTML = this.jobBoxes();
+    const go = this.layer.querySelector<HTMLButtonElement>('#jn-go');
+    if (go) go.disabled = this.jobNumber.length !== 6;
+    syncTypeBox(this.layer, 'jn-type', this.jobNumber);
+  }
+
+  /** Phones and tablets have no keys to type a code with: a text box brings up the on-screen keyboard. */
+  private typeBox(id: string, typed: (text: string) => void) {
+    const el = this.layer.querySelector<HTMLInputElement>('#' + id);
+    el?.addEventListener('input', () => typed(el.value));
+    // Return / Go on the on-screen keyboard: put the keyboard away (the key itself goes on to join or play)
+    el?.addEventListener('keydown', (e) => e.key === 'Enter' && el.blur());
   }
 
   private playJobNumber() {
@@ -1119,6 +1150,7 @@ export class App {
     st.textContent = status || ' ';
     st.style.color = bad ? 'var(--bad)' : '';
     go.disabled = this.joinCode.length !== CODE_LEN || this.joining;
+    syncTypeBox(this.layer, 'j-type', this.joinCode);
   }
 
   private showJoin(status: string, bad = false) {
@@ -1130,8 +1162,9 @@ export class App {
        <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
          <p>Type the code on your friend's screen</p>
          <div class="net-code entry">${boxes}</div>
+         ${typeBox('j-type', 'Tap here to type the code', false, this.joinCode)}
          <p class="net-status" ${bad ? 'style="color:var(--bad)"' : ''}>${esc(status) || '&nbsp;'}</p>
-         <p style="font-size:14px">Their laptop runs the game; yours shows it. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.</p>
+         <p style="font-size:14px">Their laptop runs the game; yours shows it. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.<span class="touch-only"><br>On a phone or tablet: the stick and buttons on screen, and the button in the corner for the menu.</span></p>
        </div>
        <div class="row">
          <button class="btn primary" data-nav data-default id="j-go" ${this.joinCode.length === CODE_LEN && !this.joining ? '' : 'disabled'}>Join</button>
@@ -1141,6 +1174,11 @@ export class App {
     );
     this.bind('j-go', () => this.join());
     this.bind('j-back', () => !this.joining && this.showOnline());
+    this.typeBox('j-type', (t) => {
+      if (this.joining) return syncTypeBox(this.layer, 'j-type', this.joinCode);
+      this.joinCode = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN);
+      this.updateJoin('');
+    });
     // pasting a code works too
     this.layer.querySelector('.net-code')?.addEventListener('click', () => navigator.clipboard?.readText?.().then((t) => this.pasteCode(t)).catch(() => {}));
   }
@@ -1210,7 +1248,7 @@ export class App {
     // keys go out on a steady beat, however slowly this laptop draws frames
     this.keysTimer = window.setInterval(() => {
       const s = this.game.session;
-      this.guest?.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, 1 / 30, s?.mirror ? s : null);
+      this.guest?.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, 1 / 30, s?.mirror ? s : null, this.game.touch);
     }, 1000 / 30);
     this.setScreen('guest', '');
     this.presentGuest(g.mode);
@@ -1443,6 +1481,17 @@ interface ShiftBest {
 /** Today's job's key in the saved bests. */
 function dailyId(d = new Date()) {
   return `daily-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+/** A text box for typing a code on a phone or tablet (hidden on a keyboard). */
+function typeBox(id: string, placeholder: string, digits: boolean, value = '') {
+  return `<input class="type-box touch-only" id="${id}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}" ${digits ? 'inputmode="numeric" pattern="[0-9]*"' : 'autocapitalize="characters"'} autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">`;
+}
+
+/** Keep a code's text box showing the code (keys typed on a real keyboard go straight to the code). */
+function syncTypeBox(layer: HTMLElement, id: string, code: string) {
+  const el = layer.querySelector<HTMLInputElement>('#' + id);
+  if (el && el.value !== code) el.value = code;
 }
 
 function keys(codes: string[], cls: string) {

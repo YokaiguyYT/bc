@@ -14,6 +14,7 @@ import { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import { DEFAULT_THEME } from '../render/Renderer';
 import type { Keyboard, MoveState } from '../input/Keyboard';
+import type { Touch } from '../input/Touch';
 import { tuning } from '../config/tuning';
 import { createHazard, Hazard } from '../entities/hazards';
 import { Zone } from '../render/Zone';
@@ -101,6 +102,8 @@ export class LevelSession {
   scriptedInput = false;
   /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
   input: NetInput | null = null;
+  /** Phones and tablets: the on-screen controls, for this device's player (P1, here or hosting online) and the camera. */
+  touch: Touch | null = null;
   /** Online guest: the host runs this level and we only show it. */
   mirror: MirrorDriver | null = null;
   /** True while the per-frame looks run (online: what happens then isn't sent to the guest). */
@@ -245,7 +248,8 @@ export class LevelSession {
     if (!this.mirror && !this.paused && !this.attractMode && !this.scriptedInput) {
       const binds = [b.p1, b.p2];
       this.players.forEach((p, i) => {
-        const m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
+        let m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
+        if (i === 0 && this.touch) m = this.touch.merge(m);
         const ctl = playing && this.state !== 'delivered';
         p.intent.moveX = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
         p.intent.moveZ = !ctl ? 0 : m.world ? m.y : camR.z * m.x + camF.z * m.y;
@@ -277,7 +281,7 @@ export class LevelSession {
     if (!this.paused) {
       if (kb.isDown(b.camLeft)) rot -= 1;
       if (kb.isDown(b.camRight)) rot += 1;
-      rot = Math.max(-1, Math.min(1, rot + (this.input?.cam() ?? 0)));
+      rot = Math.max(-1, Math.min(1, rot + (this.input?.cam() ?? 0) + (this.touch?.cam() ?? 0)));
     }
     const pts = this.focusPoints();
     this.cameraRig.update(frameDt, pts.length ? pts : [this.cameraRig.focusPoint.clone()], rot);
