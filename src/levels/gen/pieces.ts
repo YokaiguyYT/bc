@@ -507,12 +507,14 @@ const conveyor: Piece = {
     b.ground(0, z0);
     b.ground(z1, -L);
     // a belt across the path, flush with the floor, running to one side
-    const speed = (r.chance(0.5) ? 1 : -1) * (0.9 + b.g.difficulty * 0.8);
+    const speed = (r.chance(0.5) ? 1 : -1) * (0.75 + b.g.difficulty * 0.6);
     b.world({ type: 'hazard', kind: 'conveyor', pos: b.f.p(0, -0.15, (z0 + z1) / 2), rot: [0, b.f.yaw(90), 0], params: { size: [belt, 0.3, W + 2 * M], speed } });
     b.add({ type: 'box', pos: [0, -1.6, (z0 + z1) / 2], size: [W + 2 * M - 0.5, 2.4, belt - 0.1], color: t.dirt, collide: false, radius: 0.3 });
     b.edges(z0, z1);
-    b.go(0, z0 + 0.4);
-    b.go(0, z1 - 0.8);
+    // (it carries things toward local +x when speed > 0): start upstream and lean into it, ending up mid-path
+    const up = -Math.sign(speed);
+    b.go(up * 1.2, z0 + 0.4);
+    b.go(up * 0.3, z1 - 0.8);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'A moving belt: lean into it as you cross!', 3);
     return { length: L };
@@ -664,7 +666,8 @@ const seesaw: Piece = {
   id: 'seesaw',
   // nothing on castors, no tiered cake or egg on a tipping plank, and no load carried end to end (the plank
   // tips with one mover on each side of it)
-  weight: (g) => (g.cargo === 'piano' || g.cargo === 'cake' || g.cargo === 'egg' || g.kit.form === 'inline' ? 0 : 0.4),
+  // (water and a pane take a knock when it tips: rarer for them)
+  weight: (g) => (g.cargo === 'piano' || g.cargo === 'cake' || g.cargo === 'egg' || g.kit.form === 'inline' ? 0 : g.cargo === 'aquarium' || g.cargo === 'glass' ? 0.15 : 0.4),
   build(b) {
     const r = b.g.rng;
     const k = b.g.kit;
