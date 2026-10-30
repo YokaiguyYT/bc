@@ -127,7 +127,7 @@ registerHazard('wreckingBall', (o, sim) => new WreckingBall(o, sim));
 
 // ------------------------------------------------------------------ see-saw
 
-/** A plank balanced on a fulcrum. params: length, width, maxAngle (deg), mass, tilt (deg it starts tipped). */
+/** A plank balanced on a fulcrum. params: length, width, maxAngle (deg), mass, tilt (deg it starts tipped), damping (how slowly it tips). */
 class SeeSaw implements Hazard {
   private plank: RigidBody;
   private mesh: THREE.Mesh;
@@ -149,7 +149,7 @@ class SeeSaw implements Hazard {
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(centre.x, centre.y, centre.z)
         .setRotation({ x: qp.x, y: qp.y, z: qp.z, w: qp.w })
-        .setAngularDamping(1.5)
+        .setAngularDamping(num(p, 'damping', 1.5))
         .setCanSleep(false),
     );
     const pc = world.createCollider(

@@ -607,8 +607,8 @@ const bridge: Piece = {
 
 const ferry: Piece = {
   id: 'ferry',
-  // (a piano on castors would roll off the back as it sets off)
-  weight: (g) => (g.cargo === 'piano' ? 0 : 0.4),
+  // (a piano on castors would roll off the back as it sets off; a clock carried end to end snags getting off)
+  weight: (g) => (g.cargo === 'piano' || g.kit.form === 'inline' ? 0 : 0.4),
   build(b) {
     const r = b.g.rng;
     const k = b.g.kit;
@@ -651,15 +651,16 @@ const ferry: Piece = {
 
 const seesaw: Piece = {
   id: 'seesaw',
-  // nothing on castors, and no tiered cake or egg on a tipping plank
-  weight: (g) => (g.cargo === 'piano' || g.cargo === 'cake' || g.cargo === 'egg' ? 0 : 0.4),
+  // nothing on castors, no tiered cake or egg on a tipping plank, and no load carried end to end (the plank
+  // tips with one mover on each side of it)
+  weight: (g) => (g.cargo === 'piano' || g.cargo === 'cake' || g.cargo === 'egg' || g.kit.form === 'inline' ? 0 : 0.4),
   build(b) {
     const r = b.g.rng;
     const k = b.g.kit;
     const f = b.f;
     const len = r.range(6.4, 7.4);
-    // tips no steeper than the load can take on a ramp
-    const maxA = Math.min(12, k.maxSlope + 1);
+    // gentle: tips no steeper than the load can take on a ramp, and slowly (a slammed plank jolts the load)
+    const maxA = Math.min(8, k.maxSlope);
     const reach = k.form === 'inline' ? 0.4 : (k.broad?.[1] ?? Math.abs(k.movers[0][0])) + 0.35;
     const width = Math.max(2.4, 2 * reach + 0.8);
     const z0 = -1.2;
@@ -669,17 +670,18 @@ const seesaw: Piece = {
     b.ground(0, -L);
     // pivot high enough that each end just rests on the ground when it's down; it starts with our end down
     const h = (len / 2) * Math.sin((maxA * Math.PI) / 180);
-    b.world({ type: 'hazard', kind: 'seesaw', pos: f.p(0, h, zc), rot: [0, f.yaw(90), 0], params: { length: len, width, maxAngle: maxA, mass: 55, tilt: maxA } });
+    b.world({ type: 'hazard', kind: 'seesaw', pos: f.p(0, h, zc), rot: [0, f.yaw(90), 0], params: { length: len, width, maxAngle: maxA, mass: 55, tilt: maxA, damping: 6 } });
     // a little wedge at each end to step up onto the plank
-    const wedge = (z: number, dir: 1 | -1) => b.add({ type: 'box', pos: [0, 0.06, z], size: [width, 0.12, 0.9], rot: [dir * 7, 0, 0], color: 0xb98a5a, surface: 'wood', radius: 0.02 });
-    wedge(z0 + 0.4, 1);
-    wedge(z1 - 0.4, -1);
+    const wedge = (z: number, dir: 1 | -1) => b.add({ type: 'box', pos: [0, 0.03, z], size: [width, 0.12, 1.4], rot: [dir * 6, 0, 0], color: 0xb98a5a, surface: 'wood', radius: 0.02 });
+    wedge(z0 + 0.65, 1);
+    wedge(z1 - 0.65, -1);
+    // stop just past the middle and let it tip under you, then walk down
     b.go(0, z0 + 0.6);
-    b.go(0, zc + 0.9);
-    b.go(0, zc - 1.4);
+    b.go(0, zc - 0.5);
+    b.wait({ wait: 'time', s: 2.5 });
     b.go(0, z1 - 1.0);
     b.go(0, -L);
-    b.tip(0, z0 + 1, 'See-saw! Walk up together and hold on when it tips.', 3);
+    b.tip(0, z0 + 1, 'See-saw! Walk to the middle, stop and let it tip, then walk down.', 3);
     return { length: L };
   },
 };
@@ -723,12 +725,23 @@ export function goalPiece(b: Build): { goal: { pos: Vec3; size: Vec3; label: str
   const pos = b.f.p(0, 0.7, -L / 2);
   const across = Math.abs(b.f.heading) === 90;
   const goal = { pos, size: (across ? [3.2, 1.4, 3.6] : [3.6, 1.4, 3.2]) as Vec3, label: 'DROP-OFF' };
-  // a pane can't stand on its own: lean it on a rack (bar on the far side) instead of a bare pad
-  if (b.g.cargo === 'glass') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], -L / 2 - o.pos[2] - 0.35] });
+  // a pane can't stand on its own: lean it on a rack, bar on the far side. Pushed in, its foot meets a ledge
+  // first while the top carries on to the bar, so it ends up leaning forward onto the bar (pushed straight
+  // into a bar alone, the top stops and the foot swings on: it leans back and falls)
+  if (b.g.cargo === 'glass') {
+    const zc = -L / 2 - 0.35;
+    b.add(
+      { type: 'box', pos: [0, 0.06, zc], size: [2.6, 0.12, 0.8], surface: 'wood', color: 0x8a5a36 },
+      { type: 'box', pos: [0, 0.18, zc + 0.14], size: [2.0, 0.12, 0.05], color: 0x2a2a30, radius: 0.01 },
+      { type: 'box', pos: [-1.08, 0.6, zc - 0.12], size: [0.08, 0.96, 0.08], color: 0x8a5a36, radius: 0.035, grabbable: false },
+      { type: 'box', pos: [1.08, 0.6, zc - 0.12], size: [0.08, 0.96, 0.08], color: 0x8a5a36, radius: 0.035, grabbable: false },
+      { type: 'box', pos: [0, 1.0, zc - 0.104], size: [2.3, 0.06, 0.06], color: 0x3d6fb0, radius: 0.028, grabbable: false, friction: 0.05 },
+    );
+  }
   // things that start on a stand are set down on one too (nobody can lower a cake gently all the way to the floor)
   else if (b.g.cargo === 'cake' || b.g.cargo === 'swan' || b.g.cargo === 'egg') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] - L / 2] });
   b.add({ type: 'sign', pos: [W / 2 + 1.2, 2.2, -L / 2], rot: [0, -20, 0], size: [2.6, 0.7, 0.06], text: 'DELIVERIES', color: 0x2a6f4a, post: true });
-  // glass: walk it right up against the bar (the bot stops within 0.2 m of its target, so aim past it) so it leans there
-  b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.55 : -L / 2);
+  // glass: push it right in (the bot stops within 0.2 m of its target, so aim past the bar)
+  b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.6 : -L / 2);
   return { goal };
 }

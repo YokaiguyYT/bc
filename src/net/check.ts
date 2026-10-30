@@ -36,11 +36,17 @@ export async function checkNetwork(onUpdate: (items: CheckItem[]) => void): Prom
   const server = async (key: 'peerjs' | 'mqtt', url: string | null, open: (id: string, url: string) => Promise<Signal>) => {
     if (!url) return set(key, 'warn', 'turned off on this page');
     const t0 = performance.now();
+    const pending = open(id, url);
     try {
-      const sig = await withTimeout(open(id, url), TIMEOUT);
+      const sig = await withTimeout(pending, TIMEOUT);
       sig.close();
       set(key, 'ok', `reachable (${Math.round(performance.now() - t0)} ms)`);
     } catch (e) {
+      // (if it answers after all, hang up)
+      pending.then(
+        (sig) => sig.close(),
+        () => {},
+      );
       const why = e instanceof Error && e.message === 'timeout' ? 'no answer' : 'blocked or down';
       set(key, 'bad', `${why}: this network may block it`);
     }
