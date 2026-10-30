@@ -60,6 +60,13 @@ export abstract class Cargo {
   readonly snug: boolean = false;
   /** false: it rolls on its own wheels; movers push and pull it but never try to lift it. */
   readonly liftable: boolean = true;
+  /**
+   * Carried upright with its origin this far above the carriers' torso centres
+   * (m); each hand's height follows from where on it the hand grips. null: each
+   * hand lifts from where it latched, which on a small light load can leave one
+   * hand up before the other closes lower down, wrenching it crooked.
+   */
+  readonly holdHeight: number | null = null;
   /** A line about the cargo's state for the HUD ("💧 melting!"), or null. */
   status: string | null = null;
 

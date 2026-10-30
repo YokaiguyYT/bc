@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { LevelDef, LevelObject, Vec3 } from '../types';
 import { eulerDeg, wall } from '../helpers';
 import { bush, counter, fence, island, rug } from '../props';
+import { Balloons } from '../../entities/cargo/Balloons';
 
 /**
  * JOB 10 — Up, Up and Away (a balloon bouquet for a birthday party)
@@ -13,7 +14,7 @@ import { bush, counter, fence, island, rug } from '../props';
  * a balloon stand or the party table and the bouquet floats off.
  */
 const STAND = 0.86; // top of a balloon stand
-const BOUQUET_Y = STAND + 0.13 + 0.005; // the bouquet's present, sitting on a stand
+const BOUQUET_Y = STAND + Balloons.sitHeight + 0.005; // the bouquet's present, sitting on a stand
 const PATH = 0xeadcc2;
 const TUNNEL: [number, number] = [-7, -25]; // z: in, out
 const TW = 2.4; // tunnel wall line (x = ±TW)
@@ -25,11 +26,17 @@ const CP1_STAND: [number, number] = [3.7, -4.4];
 const CP2_STAND: [number, number] = [-3.7, -28.4];
 const UP = new THREE.Vector3(0, 1, 0);
 
+/**
+ * The movers start either side of a stand, turned toward the bouquet: their
+ * mittens close on the present while they face it, so they hold it square.
+ */
+const standSpawn = (x: number, z: number) => ({ p1: [x - 0.64, 0, z] as Vec3, p2: [x + 0.64, 0, z] as Vec3, cargo: [x, BOUQUET_Y, z] as Vec3, yaw: 180, yaws: [90, -90] as [number, number] });
+
 /** A balloon stand: a slim post with a little plate the bouquet's present gets tied to. */
 const stand = (x: number, z: number): LevelObject[] => [
   { type: 'cylinder', pos: [x, 0.03, z], radius: 0.28, height: 0.06, color: 0x5b3a22, segments: 18 },
   { type: 'cylinder', pos: [x, STAND / 2, z], radius: 0.05, height: STAND, color: 0xe9e4da, segments: 10 },
-  { type: 'box', pos: [x, STAND - 0.02, z], size: [0.48, 0.04, 0.38], color: 0xff8fab, radius: 0.012, tie: true },
+  { type: 'box', pos: [x, STAND - 0.02, z], size: [0.44, 0.04, 0.38], color: 0xff8fab, radius: 0.012, tie: true },
 ];
 
 /** A thin pointy cone from `base` toward `dir` (decor). */
@@ -306,12 +313,12 @@ const level: LevelDef = {
   order: 10,
   cargo: 'balloons',
   cameraYaw: 0,
-  spawn: { p1: [-0.75, 0, 21.5], p2: [0.75, 0, 21.5], cargo: [0, BOUQUET_Y, 21.5], yaw: 180 },
+  spawn: standSpawn(0, 21.5),
   goal: { pos: [0, TABLE_TOP + 0.3, TABLE_Z + 0.55], size: [0.72, 0.8, 1.5], label: 'ON THE PARTY TABLE' },
   checkpoints: [
     // after cactus corner; out of the Tunnel of Love
-    { pos: [0, 1, -4.2], size: [6, 2, 2.4], spawn: { p1: [CP1_STAND[0] - 0.75, 0, CP1_STAND[1]], p2: [CP1_STAND[0] + 0.75, 0, CP1_STAND[1]], cargo: [CP1_STAND[0], BOUQUET_Y, CP1_STAND[1]], yaw: 180 } },
-    { pos: [0, 1, -28.2], size: [6, 2, 2.4], spawn: { p1: [CP2_STAND[0] - 0.75, 0, CP2_STAND[1]], p2: [CP2_STAND[0] + 0.75, 0, CP2_STAND[1]], cargo: [CP2_STAND[0], BOUQUET_Y, CP2_STAND[1]], yaw: 180 } },
+    { pos: [0, 1, -4.2], size: [6, 2, 2.4], spawn: standSpawn(...CP1_STAND) },
+    { pos: [0, 1, -28.2], size: [6, 2, 2.4], spawn: standSpawn(...CP2_STAND) },
   ],
   killY: -6,
   // let go and it's gone: it rises past here (the movers carry it at about 1.1 m)

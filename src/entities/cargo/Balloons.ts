@@ -10,10 +10,15 @@ import { glossy } from '../../render/materials';
 import { tuning } from '../../config/tuning';
 import { Wobble } from '../../util/wobble';
 
-/** The weight the strings are tied to: a little wrapped present (body origin = its centre). */
-const BW = 0.42;
-const BH = 0.26;
-const BD = 0.32;
+/**
+ * The weight the strings are tied to: a wrapped present (body origin = its
+ * centre). It's tall for its size so mittens close on its sides, not its edges:
+ * one hand on the top edge and one under the bottom would each lift to a
+ * different height and wrench it crooked.
+ */
+const BW = 0.36;
+const BH = 0.4;
+const BD = 0.3;
 const BOX_MASS = 1.6;
 /** Every string is tied to the bow on top. */
 const TIE = new THREE.Vector3(0, BH / 2 + 0.05, 0);
@@ -25,9 +30,9 @@ const COLORS = [0xff4d5e, 0xffd23f, 0x3d9bff, 0x52d39a, 0xff8fab, 0xff8a3d, 0xb0
 
 /** Where each balloon floats (body frame): a ring of six, three above them, one on top. */
 const SPOTS: THREE.Vector3[] = [
-  ...Array.from({ length: 6 }, (_, i) => new THREE.Vector3(Math.cos(((i + 0.5) * Math.PI) / 3) * 0.34, 1.0, Math.sin(((i + 0.5) * Math.PI) / 3) * 0.34)),
-  ...Array.from({ length: 3 }, (_, i) => new THREE.Vector3(Math.cos((i * 2 * Math.PI) / 3) * 0.19, 1.28, Math.sin((i * 2 * Math.PI) / 3) * 0.19)),
-  new THREE.Vector3(0, 1.56, 0),
+  ...Array.from({ length: 6 }, (_, i) => new THREE.Vector3(Math.cos(((i + 0.5) * Math.PI) / 3) * 0.34, 1.07, Math.sin(((i + 0.5) * Math.PI) / 3) * 0.34)),
+  ...Array.from({ length: 3 }, (_, i) => new THREE.Vector3(Math.cos((i * 2 * Math.PI) / 3) * 0.19, 1.35, Math.sin((i * 2 * Math.PI) / 3) * 0.19)),
+  new THREE.Vector3(0, 1.63, 0),
 ];
 const N = SPOTS.length;
 /** Lift per balloon as a share of the whole bouquet's weight: all ten lift it 1.4×; with seven left it sinks. */
@@ -74,6 +79,14 @@ export class Balloons extends Cargo {
   readonly value = 500;
   readonly tip = 'Never let go: it floats off! Keep it away from anything pointy.';
   readonly fragility: Fragility = { safeShock: 3.0, perShock: 0.16, maxPerHit: 0.35, spinLimit: 0, spinDamage: 0 };
+  /**
+   * Four mittens on one small present: each holds where it grips. A hand that
+   * latched out wide would keep tugging sideways, and the pair would slowly
+   * waltz round and round the bouquet.
+   */
+  readonly snug = true;
+  /** …and carried upright, the present a little above the carriers' middles. */
+  readonly holdHeight = 0.3;
 
   private boxCol!: Collider;
   /** One per balloon; null once it has popped. */
@@ -96,6 +109,9 @@ export class Balloons extends Cargo {
   private vel = new THREE.Vector3();
   private lastPos = new THREE.Vector3();
   private seen = false;
+
+  /** A bouquet set on a stand whose top is at y has its present's centre this far up. */
+  static readonly sitHeight = BH / 2;
 
   constructor(sim: Sim, opts: CargoOptions) {
     super(sim);

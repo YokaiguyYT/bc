@@ -152,6 +152,8 @@ export interface SpawnSet {
   cargo: Vec3;
   /** Facing yaw for the players (degrees). */
   yaw: number;
+  /** Each mover's own facing (degrees), instead of `yaw`: e.g. both turned toward the cargo between them. */
+  yaws?: [number, number];
   cargoYaw?: number;
   /**
    * Full cargo rotation in degrees [tilt X, turn Y, roll Z]; the tilt/roll is

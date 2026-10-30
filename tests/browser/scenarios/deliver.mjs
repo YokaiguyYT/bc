@@ -8,6 +8,9 @@
 // Waypoints are [x, z, formation?]: 'inline' (one mover leads), 'broad'
 // (side by side), 'front' (both movers on the same side, load in front).
 // Without a formation both movers just push the same direction.
+// the balloon bouquet's way through the Tunnel of Love and Hedgehog Hollow (job 10)
+const FUNFAIR_TUNNEL = [[0, -6.4], [-0.75, -8.6], [-0.75, -12.0], [0.75, -13.6], [0.75, -15.6], [-0.75, -17.2], [-0.75, -19.2], [0.75, -20.8], [0.75, -22.8], [0, -25.6], [0, -28.4]].map(([x, z]) => [x, z, 'broad']);
+const FUNFAIR_HOLLOW = [[0, -30.2], [1.5, -32.0], [1.5, -35.2], [-1.5, -37.0], [-1.5, -40.2], [1.5, -42.0], [1.5, -45.2], [0, -47.6], [0, -51.0], [0, -53.0], [0, -55.6]].map(([x, z]) => [x, z, 'broad']);
 const ROUTES = {
   // one continuous run, no teleports after the first grab
   'delivery-full': {
@@ -213,9 +216,9 @@ const ROUTES = {
       place: true,
     },
   },
-  // balloon bouquet: side by side the whole way, the balloons kept clear of the giant darts, round
-  // the cacti, weaving between the spiky glitter balls in the Tunnel of Love and the topiary
-  // hedgehogs, then up either side of the party table
+  // balloon bouquet: side by side the whole way (they start either side of its stand),
+  // the balloons kept clear of the giant darts, round the cacti, weaving between the spiky glitter
+  // balls in the Tunnel of Love and the topiary hedgehogs, then onto the end of the party table
   'funfair-full': {
     broad: [0.6, 0.72],
     midway: {
@@ -234,18 +237,23 @@ const ROUTES = {
         [0, -4.4, 'broad'],
       ],
     },
-    tunnel: { keep: true, path: [[0, -6.4, 'broad'], [-0.75, -8.6, 'broad'], [-0.75, -12.0, 'broad'], [0.75, -13.6, 'broad'], [0.75, -15.6, 'broad'], [-0.75, -17.2, 'broad'], [-0.75, -19.2, 'broad'], [0.75, -20.8, 'broad'], [0.75, -22.8, 'broad'], [0, -25.6, 'broad'], [0, -28.4, 'broad']] },
-    hollow: { keep: true, path: [[0, -30.2, 'broad'], [1.5, -32.0, 'broad'], [1.5, -35.2, 'broad'], [-1.5, -37.0, 'broad'], [-1.5, -40.2, 'broad'], [1.5, -42.0, 'broad'], [1.5, -45.2, 'broad'], [0, -47.6, 'broad'], [0, -51.0, 'broad'], [0, -54.2, 'broad'], [0, -55.6, 'broad']], place: true },
+    tunnel: { keep: true, path: FUNFAIR_TUNNEL },
+    hollow: { keep: true, path: FUNFAIR_HOLLOW, place: true },
+  },
+  // just the start: off the balloon stand and under the arch
+  'funfair-start': {
+    broad: [0.6, 0.72],
+    midway: { start: true, path: [[0, 19.4, 'broad'], [0.7, 15.0, 'broad']] },
   },
   // just the Tunnel of Love, from checkpoint 1
   'funfair-tunnel': {
     broad: [0.6, 0.72],
-    tunnel: { cargo: [0, 1.3, -4.6], yaw: 180, half: 0.62, path: [[0, -6.4, 'broad'], [-0.75, -8.6, 'broad'], [-0.75, -12.0, 'broad'], [0.75, -13.6, 'broad'], [0.75, -15.6, 'broad'], [-0.75, -17.2, 'broad'], [-0.75, -19.2, 'broad'], [0.75, -20.8, 'broad'], [0.75, -22.8, 'broad'], [0, -25.6, 'broad'], [0, -28.4, 'broad']] },
+    tunnel: { cargo: [0, 1.3, -4.6], yaw: 180, half: 0.62, path: FUNFAIR_TUNNEL },
   },
   // just the hedgehogs and the party table, from checkpoint 2
   'funfair-party': {
     broad: [0.6, 0.72],
-    hollow: { cargo: [0, 1.3, -28.6], yaw: 180, half: 0.62, path: [[0, -30.2, 'broad'], [1.5, -32.0, 'broad'], [1.5, -35.2, 'broad'], [-1.5, -37.0, 'broad'], [-1.5, -40.2, 'broad'], [1.5, -42.0, 'broad'], [1.5, -45.2, 'broad'], [0, -47.6, 'broad'], [0, -51.0, 'broad'], [0, -54.2, 'broad'], [0, -55.6, 'broad']], place: true },
+    hollow: { cargo: [0, 1.3, -28.6], yaw: 180, half: 0.62, path: FUNFAIR_HOLLOW, place: true },
   },
   // just the start: grab and out of the shop door
   'hills-start': {
