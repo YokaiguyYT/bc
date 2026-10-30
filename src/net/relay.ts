@@ -36,7 +36,8 @@ export class RelayLink implements Pipe {
   onFast: ((m: CtlMsg | ArrayBuffer) => void) | null = null;
   onOpen: (() => void) | null = null;
   onLost: ((why: string) => void) | null = null;
-  private lastHeard = performance.now();
+  /** When we last heard anything from the other side (performance.now()). */
+  lastHeard = performance.now();
   private timer: number;
   private beat = 0;
 

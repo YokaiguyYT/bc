@@ -40,6 +40,16 @@ export default async function ({ page, base, out }) {
   check('third player: game is full', busy, await status(b));
   check('first friend still in', (await a.evaluate(() => window.__FF.app.screen)) === 'guest', await a.evaluate(() => window.__FF.app.screen));
 
+  // the friend's Wi-Fi drops (no goodbye): they're offered Rejoin, and the host lets them straight back in
+  await a.evaluate(() => window.__FF.app.guest.conn.lose('timeout'));
+  const lost = await until(a, () => window.__FF.app.screen === 'guest-lost' && !!document.querySelector('#gl-again'), 10000);
+  check('dropped: Rejoin offered', lost, await a.evaluate(() => [window.__FF.app.screen, document.querySelector('#gl-again')?.textContent]));
+  await a.waitForTimeout(5000); // the host notices the silence
+  await a.click('#gl-again');
+  const back = await until(a, () => window.__FF.app.screen === 'guest', 30000);
+  check('Rejoin: back in the game', back, await a.evaluate(() => [window.__FF.app.screen, document.querySelector('.net-status')?.textContent]));
+  check('host has its friend again', await until(host, () => window.__FF.app.host?.connected === true, 15000), null);
+
   // the host stops: the guest is told
   await host.evaluate(() => window.__FF.app.showMenu());
   await host.click('#m-online');

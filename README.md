@@ -40,10 +40,12 @@ No more four hands on one keyboard. Both of you need the game: the same link (be
 
 - **How it works:** the game runs on the host's laptop. The friend's laptop draws the same scene itself from a stream of positions (a couple of kilobytes, many times a second), so it stays sharp and needs very little Wi-Fi.
 - **School networks:** if the network won't let the laptops connect directly, the game passes its messages through the matchmaking server instead. It's a little slower, but it works. The friend's `Esc` menu shows which way you're connected.
+- **Won't connect?** **Play Online → Check this network** (on both laptops) tests the two matchmaking servers and whether a direct link looks possible, and says in plain words whether online play will work there. If the network blocks both servers, a phone's hotspot works.
+- **Both laptops need the same version of the game** (the same link, or files from the same day): a random job's number only makes the same course in the same version.
 - **Keys:** online, each of you can use **WASD** *or* the **arrows** (with either player's jump and grab keys), whichever is comfier. Each of you has your own camera (`Q`/`E` to spin it).
 - **The friend's `Esc`** opens a small menu: keep playing, pause the game, graphics quality, the picture mode, or leave. The host runs the pause menu and picks the jobs.
 - **A slow Chromebook?** In the friend's `Esc` menu, try **Graphics: Fast**, or **Picture: stream it from my friend** (the host's laptop sends a video instead; that needs a direct connection).
-- If your friend drops out, the game pauses. They can rejoin with the same code.
+- If your friend's Wi-Fi drops, the line at the bottom says so within a few seconds. Their screen offers **Rejoin**, straight back in with the same code.
 - **It's free.** Free public servers (PeerJS, with EMQX's MQTT server as a backup) introduce the two laptops. There's no account and nothing to pay.
 - If your Mac asks whether the browser may **find devices on your local network**, say **Allow**.
 
@@ -93,12 +95,12 @@ There's also a **Practice Yard** to learn the controls.
 
 At the top of the job list:
 
-- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
+- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, bridges with no railings, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
 - **📅 Today's job:** the same course for everyone all day; a new one tomorrow. Your best today is kept.
 - **🔢 By number:** type a job number from someone's results card to play that exact course.
 - **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
 
-Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
+Some jobs happen at sunset or at night. Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
 
 ## Settings
 

@@ -31,7 +31,7 @@ export default async function ({ page, base, shot }) {
 
   await page.evaluate(() => window.__FF.app.showLevels());
   const cards = await page.evaluate(() => [...document.querySelectorAll('.level-card.special')].map((c) => c.dataset.gen));
-  check('three generated-job cards', cards.join() === 'random,daily,shift', cards);
+  check('four generated-job cards', cards.join() === 'random,daily,number,shift', cards);
   await shot('genflow_levels');
 
   // random

@@ -639,7 +639,9 @@ const ferry: Piece = {
     }
     // end to end, the bot steers the leader: put the load in the middle of the car
     b.go(0, c0 - (k.form === 'inline' ? 1.4 : 0));
-    b.wait({ wait: 'rise', at: [f.p(0, 0, c0)[0], f.p(0, 0, c0)[2]] });
+    const lead = k.form === 'inline' ? 1.4 : 0;
+    const land = f.p(0, 0, c0 - travel - lead);
+    b.wait({ wait: 'rise', at: [f.p(0, 0, c0)[0], f.p(0, 0, c0)[2]], land: [land[0], land[2]] });
     b.go(0, z1 - 2.2);
     b.go(0, -L);
     b.tip(0, z0 + 2, 'All aboard the cable car: step on together and it carries you over.', 3);
@@ -647,7 +649,42 @@ const ferry: Piece = {
   },
 };
 
-export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift, swingDoors, bridge, ferry];
+const seesaw: Piece = {
+  id: 'seesaw',
+  // nothing on castors, and no tiered cake or egg on a tipping plank
+  weight: (g) => (g.cargo === 'piano' || g.cargo === 'cake' || g.cargo === 'egg' ? 0 : 0.4),
+  build(b) {
+    const r = b.g.rng;
+    const k = b.g.kit;
+    const f = b.f;
+    const len = r.range(6.4, 7.4);
+    // tips no steeper than the load can take on a ramp
+    const maxA = Math.min(12, k.maxSlope + 1);
+    const reach = k.form === 'inline' ? 0.4 : (k.broad?.[1] ?? Math.abs(k.movers[0][0])) + 0.35;
+    const width = Math.max(2.4, 2 * reach + 0.8);
+    const z0 = -1.2;
+    const zc = z0 - len / 2;
+    const z1 = z0 - len;
+    const L = len + 3.6;
+    b.ground(0, -L);
+    // pivot high enough that each end just rests on the ground when it's down; it starts with our end down
+    const h = (len / 2) * Math.sin((maxA * Math.PI) / 180);
+    b.world({ type: 'hazard', kind: 'seesaw', pos: f.p(0, h, zc), rot: [0, f.yaw(90), 0], params: { length: len, width, maxAngle: maxA, mass: 55, tilt: maxA } });
+    // a little wedge at each end to step up onto the plank
+    const wedge = (z: number, dir: 1 | -1) => b.add({ type: 'box', pos: [0, 0.06, z], size: [width, 0.12, 0.9], rot: [dir * 7, 0, 0], color: 0xb98a5a, surface: 'wood', radius: 0.02 });
+    wedge(z0 + 0.4, 1);
+    wedge(z1 - 0.4, -1);
+    b.go(0, z0 + 0.6);
+    b.go(0, zc + 0.9);
+    b.go(0, zc - 1.4);
+    b.go(0, z1 - 1.0);
+    b.go(0, -L);
+    b.tip(0, z0 + 1, 'See-saw! Walk up together and hold on when it tips.', 3);
+    return { length: L };
+  },
+};
+
+export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift, swingDoors, bridge, ferry, seesaw];
 
 // ---------------------------------------------------------------- start, checkpoint, finish
 

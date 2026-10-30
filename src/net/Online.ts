@@ -73,6 +73,10 @@ class Conn {
   get open() {
     return !!this.via;
   }
+  /** Seconds since anything arrived on either route. */
+  get quiet() {
+    return (performance.now() - Math.max(this.direct?.lastHeard ?? 0, this.relay?.lastHeard ?? 0)) / 1000;
+  }
   private best(): Pipe | null {
     return this.direct?.open ? this.direct : this.relay?.open ? this.relay : null;
   }
@@ -202,6 +206,11 @@ export class OnlineHost {
     return this.conn?.rtt ?? null;
   }
 
+  /** Seconds since the guest was last heard from. */
+  get quiet() {
+    return this.conn?.quiet ?? 0;
+  }
+
   /** Whether the picture can be streamed (it needs the direct link). */
   get canVideo() {
     return !!this.conn?.direct?.open && this.conn.direct.canVideo && typeof this.view.canvas.captureStream === 'function';
@@ -217,7 +226,9 @@ export class OnlineHost {
       if (d.k === 'hello') {
         if (d.v !== NET_VERSION) return this.sig.send(m.from, { k: 'version', v: NET_VERSION });
         if (ours) return this.sig.send(m.from, { k: 'welcome', v: NET_VERSION }); // they didn't hear us the first time
-        if (conn && !conn.lost && conn.open) return this.sig.send(m.from, { k: 'busy' });
+        // a second player while ours is still here is turned away; but if ours has gone quiet, this is
+        // most likely them again after their Wi-Fi dropped (with a new id): let them straight back in
+        if (conn && !conn.lost && conn.open && conn.quiet < 4) return this.sig.send(m.from, { k: 'busy' });
         this.accept(m.from);
       } else if (ours && d.k === 'rl') conn.relay?.receive(d);
       else if (ours && (d.k === 'answer' || d.k === 'ice')) conn.direct?.signal(d);
@@ -517,6 +528,11 @@ export class OnlineGuest {
 
   get rtt(): number | null {
     return this.conn.rtt;
+  }
+
+  /** Seconds since the host was last heard from. */
+  get quiet() {
+    return this.conn.quiet;
   }
 
   private takeOffer(sdp: string) {

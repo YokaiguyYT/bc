@@ -127,7 +127,7 @@ registerHazard('wreckingBall', (o, sim) => new WreckingBall(o, sim));
 
 // ------------------------------------------------------------------ see-saw
 
-/** A plank balanced on a fulcrum. params: length, width, maxAngle (deg), mass. */
+/** A plank balanced on a fulcrum. params: length, width, maxAngle (deg), mass, tilt (deg it starts tipped). */
 class SeeSaw implements Hazard {
   private plank: RigidBody;
   private mesh: THREE.Mesh;
@@ -142,10 +142,13 @@ class SeeSaw implements Hazard {
     const world = sim.physics.world;
     const base = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(pos.x, pos.y, pos.z).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }));
     hazardCollider(sim, base, RAPIER.ColliderDesc.cuboid(0.15, 0.35, W / 2 - 0.1).setTranslation(0, -0.35, 0), 'static');
+    // optionally start tipped (deg, + raises the plank's +x end), so one end already rests on the ground
+    const qp = q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), num(p, 'tilt', 0) * DEG));
+    const centre = new THREE.Vector3(0, 0.12, 0).applyQuaternion(qp).add(pos);
     this.plank = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(pos.x, pos.y + 0.12, pos.z)
-        .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
+        .setTranslation(centre.x, centre.y, centre.z)
+        .setRotation({ x: qp.x, y: qp.y, z: qp.z, w: qp.w })
         .setAngularDamping(1.5)
         .setCanSleep(false),
     );

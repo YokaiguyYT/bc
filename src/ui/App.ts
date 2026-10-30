@@ -207,10 +207,10 @@ export class App {
   private badgeT = 0;
 
   private frame(dt: number) {
-    // keep the online line's round-trip time fresh
+    // keep the online line's round-trip time fresh (and say so soon if the other laptop goes quiet)
     this.badgeT -= dt;
     if (this.badgeT <= 0) {
-      this.badgeT = 2;
+      this.badgeT = 1;
       if (this.guest) this.updateBadge(this.guestBadge());
       else if (this.host?.connected) this.updateBadge();
     }
@@ -1053,7 +1053,13 @@ export class App {
     const h = this.host;
     const t =
       text ??
-      (h ? (h.connected ? `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video', h.rtt)}` : `🌐 Hosting · code ${h.code} · waiting for your friend`) : '');
+      (h
+        ? h.connected
+          ? h.quiet > 3
+            ? `⚠️ No word from your friend's laptop for ${Math.round(h.quiet)} s… (their Wi-Fi?)`
+            : `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video', h.rtt)}`
+          : `🌐 Hosting · code ${h.code} · waiting for your friend`
+        : '');
     if (!t) {
       this.netBadge?.remove();
       this.netBadge = null;
@@ -1215,6 +1221,7 @@ export class App {
   private guestBadge() {
     const g = this.guest;
     if (!g) return '';
+    if (g.quiet > 3) return `⚠️ No word from your friend's laptop for ${Math.round(g.quiet)} s… (Wi-Fi?)`;
     return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt)} · Esc: online menu`;
   }
 
@@ -1366,16 +1373,26 @@ export class App {
 
   private showGuestLost(why: string) {
     const text = why === 'left' ? 'Your friend stopped hosting.' : 'Lost the connection to your friend’s game.';
+    // a dropped connection (school Wi-Fi…): the host keeps the same code, so offer to go straight back in
+    const again = why !== 'left' && this.joinCode.length === CODE_LEN;
     this.setScreen(
       'guest-lost',
       `<div class="panel" style="text-align:center">
          <h2>Disconnected</h2>
          <p>${text}</p>
-         <p style="font-size:14px">To play again, join with the code on their screen.</p>
+         <p style="font-size:14px">${again ? 'Your friend’s game waits for you: rejoin with the same code.' : 'To play again, join with the code on their screen.'}</p>
        </div>
-       <div class="row"><button class="btn primary" data-nav data-default id="gl-ok">Back to menu</button></div>`,
+       <div class="row">
+         ${again ? `<button class="btn primary" data-nav data-default id="gl-again">Rejoin ${esc(this.joinCode)}</button>` : ''}
+         <button class="btn ${again ? '' : 'primary'}" data-nav ${again ? '' : 'data-default'} id="gl-ok">Back to menu</button>
+       </div>`,
       { dim: true, back: () => this.leaveGuest() },
     );
+    this.bind('gl-again', () => {
+      this.leaveGuest();
+      this.showJoin('');
+      this.join();
+    });
     this.bind('gl-ok', () => this.leaveGuest());
   }
 

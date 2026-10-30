@@ -3,8 +3,11 @@ import type { Signal } from './signal';
 /** Free public STUN servers: they only tell each laptop its public address. */
 export const ICE: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
 
-/** Bump when host and guest builds can no longer talk to each other. */
-export const NET_VERSION = 2;
+/**
+ * Bump when host and guest builds can no longer talk to each other, or when
+ * random jobs come out differently (the guest rebuilds them from their number).
+ */
+export const NET_VERSION = 3;
 
 /** Messages bigger than this go over the control channel in pieces. */
 const CHUNK = 16000;
@@ -30,6 +33,8 @@ export interface Pipe {
   open: boolean;
   /** Round trip (ms, smoothed), once measured. */
   rtt: number | null;
+  /** When we last heard anything from the other side (performance.now()). */
+  readonly lastHeard: number;
   closed: boolean;
   onCtl: ((m: CtlMsg) => void) | null;
   onFast: ((m: CtlMsg | ArrayBuffer) => void) | null;
@@ -61,7 +66,8 @@ export class PeerLink implements Pipe {
   private pending: RTCIceCandidateInit[] = [];
   private remoteSet = false;
   private parts = new Map<string, string[]>();
-  private lastHeard = performance.now();
+  /** When we last heard anything from the other side (performance.now()). */
+  lastHeard = performance.now();
   private pinger = 0;
 
   constructor(

@@ -1,8 +1,8 @@
-# Roadmap: the next session (parallel work)
+# Roadmap
 
-A plan for a multi-agent session: independent work items, each small enough
-for one agent, each with how to check it. Work on branch
-`claude/brave-meitner-74ar9h`; commit small, run the checks, push.
+Independent work items, each small enough for one agent, each with how to
+check it. Work on branch `claude/brave-meitner-74ar9h`; commit small, run the
+checks, push.
 
 ## Ground rules (from the owner)
 
@@ -15,6 +15,8 @@ for one agent, each with how to check it. Work on branch
   → `play/FragileFreight.html` and `docs/index.html`) in Safari and Chrome, and
   on a **school Chromebook** (Chrome, weak GPU, school Wi-Fi).
 - The owner plays at school: **online play (MacBook + Chromebook) must keep working.**
+  Bump `NET_VERSION` (`src/net/peer.ts`) whenever random jobs come out
+  differently: the online guest rebuilds them from their number.
 
 ## How to check things
 
@@ -25,13 +27,26 @@ FF_URL=http://localhost:5199/ node tests/browser/run.mjs <scenario> [outdir]
 ```
 
 Key scenarios: `online` (also `ONLY=relay`, `ONLY=direct`), `online-errors`,
-`genbuild` (SEEDS=n), `genflow`, `deliver` (ROUTE=<route> or GEN=<number>
-CARGO=<kind>), `pickup`, `carryall`, `coop`, `p2layout`, `levelnav`, `menus`.
-Sweep many random jobs with the bot: see `GEN=` in `tests/browser/scenarios/deliver.mjs`
-(a sweep script loops seeds × cargos and greps each log for `"state":"delivered"`).
-WebKit (Safari's engine): `tests/webkit/run.mjs` through `tests/webkit/bridge.py`
-(see README). The test machine renders on the CPU, so the game runs in slow
-motion there; judge speeds per simulated second, not per real second.
+`online-gen`, `netcheck` (needs local servers, see the file), `genbuild`
+(SEEDS=n), `genflow`, `deliver` (ROUTE=<route> or GEN=<number> CARGO=<kind>
+PIECES=<n>), `pickup`, `carryall`, `coop`, `p2layout`, `levelnav`, `menus`.
+The test machine renders on the CPU, so the game runs in slow motion there;
+judge speeds per simulated second. **Editing source reloads pages on the dev
+server**: run long batches (bot sweeps) against `npm run build` + `npx vite
+preview --port 4199` instead. A sweep loops `GEN=<n> CARGO=<kind> … deliver`
+over many numbers and greps each log for `"state":"delivered"`.
+
+## Done recently
+
+- Random jobs: 18 kinds of course piece (ramps, stairs, doors, slaloms,
+  wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts,
+  lifts, swing doors, a railless bridge, a cable car, corners…), checkpoints,
+  stands at the drop-off, job numbers, daily job, endless shift, and sunset
+  and night versions. Bot sweeps deliver nearly every job; see NOTES.
+- Online: relay + direct, MQTT backup matchmaking, round-trip time in the
+  badges and the guest menu, and **Check this network** on the Play Online
+  screen.
+- Jobs 9 and 10 (painting, balloons): being built (see C).
 
 ## Work items (independent; pick any)
 
@@ -40,37 +55,24 @@ motion there; judge speeds per simulated second, not per real second.
 frame (enter at the origin heading -Z, floor at y 0, +X on the right), says
 where the next one starts, and writes the bot's route (`b.go(x, z)`,
 `b.wait({...})`). Use `b.f.p()/v()/yaw()` for hazard positions and directions.
-Then: `genbuild` passes, and `GEN=` bot runs through jobs that use it deliver.
-Ideas, roughly easiest first:
-1. **See-saw** over a gap (hazard `seesaw`; see job 4 for parameters and the bot's route).
-2. **Sideways conveyor** (hazard `conveyor`; job 4).
-3. **Lift** up or down a storey (hazard `elevator`; job 2 for the bot's `ride`).
-4. **Swing doors** (hazard `swingDoor`, pairs; job 6).
-5. **Fans / gusts** blowing across a bridge with rails (hazard `fan`, `gust`).
-6. **Moving platform** across a gap (hazard `mover`; ride it like job 2's truck).
-7. **Spinner** (hazard `spinner`): a rotating arm to time.
-8. **Pigeons / dog** square (hazards `pigeons`, `dog`).
-9. **Narrow bridge** without rails (a real fall risk; checkpoint right before).
-10. **Revolving door** (hazard `revolvingDoor`; job 2).
-Weight new pieces so each cargo still gets a fair course (`weight(g, heading)`):
-check `KITS` in `kits.ts` (stairs, slopes, door widths per cargo).
+Then: `genbuild` passes, and `GEN=` bot runs through jobs that use it deliver
+(find some with a quick in-page scan of `__FF.gen.generateJob`).
+Ideas: **see-saw** (hazard `seesaw`, job 4; needs a deck wide enough for the
+formation), **fans / gusts** across a railed bridge (`fan`), **moving
+platform** (`mover`), **spinner** to time (`spinner`), **revolving door**
+(`revolvingDoor`, job 2), **dog** square (`dog`), **skiers/riders** crossing
+(snow theme; like traffic). Weight each per cargo (`KITS` in `kits.ts`: stairs,
+slopes, door widths), and keep the piano off anything it rolls off.
 
 ### B. Random-job polish
-1. A **job-number entry** on the job list ("Play job #…": type six digits).
-2. **Themes:** a night theme (dark sky, lamps on), rain/wet floors, a market.
-3. **Landmarks** at the drop-off per theme (a truck to load, a shop door, a stage).
-4. **Generated job names**: more variety; a short "client" line per cargo.
-5. Run a big bot sweep (all cargo × 20 seeds) and fix pieces that fail often.
+1. **Themes:** rain/wet floors, a market, a building site.
+2. **Landmarks** at the drop-off per theme (a truck to load, a shop door, a stage).
+3. **A client line** per job ("Mrs Patel needs her aquarium by noon").
+4. Run a big bot sweep (all cargo × 20 seeds) and fix pieces that fail often.
 
 ### C. Jobs 9 and 10 (hand-made levels, new cargo)
-Cargo kinds `painting` and `balloons` are declared (`CargoKind`, `CARGO_INFO`)
-but have no classes yet. Groundwork exists: `Cargo.windScale()` (sails), fans
-with gusts, `sharp` colliders (pop balloons), `ceilingY` (floating away).
-1. **Gone With the Wind:** a big framed painting (catches the wind), windy
-   cliffs and rooftops, gusting fans/sea breeze, a lighthouse.
-2. **Up, Up and Away:** a balloon bouquet (buoyant: hold it down), a funfair
-   with a ferris wheel and circus tent (models exist), sharp things that pop it.
-Add a bot route in `deliver.mjs` and check `pickup`.
+In progress. Then: add each new cargo to random jobs (a `KITS` entry, which
+pieces suit it) and to the online tests' level list.
 
 ### D. Mobile / touch (optional: only if it stays simple)
 On-screen joystick + jump/grab buttons, shown only on touch devices, feeding
@@ -78,10 +80,9 @@ the same intents as the keyboard. Most useful as an **online guest** on a phone
 or tablet (light mode). Don't change keyboard play.
 
 ### E. Online polish
-1. Show connection quality (route, round-trip time) in the guest's Esc menu.
-2. Emotes (wave, thumbs-up) both players can trigger, shown over their mover.
-3. Let the guest (P2) also pick jobs / open the pause menu actions.
-4. Rejoin automatically after a short drop (keep the same code).
+1. Emotes (wave, thumbs-up) both players can trigger, shown over their mover.
+2. Let the guest (P2) also pick jobs / open the pause menu actions.
+3. Rejoin automatically after a short drop (keep the same code).
 
 ### F. Performance on weak laptops
 1. Measure frame time on "Fast" with a CPU-throttled browser; find the worst
@@ -91,4 +92,4 @@ or tablet (light mode). Don't change keyboard play.
 ### G. Testing and robustness
 1. Make `online` run the guest at a low frame rate (throttle) and check play.
 2. A long soak: host plays three jobs in a row with a guest connected.
-3. WebKit runs of the new menus (`levelnav`, `menus`, `genflow`).
+3. WebKit runs of the new menus (`levelnav`, `menus`, `genflow`, `netcheck`).
