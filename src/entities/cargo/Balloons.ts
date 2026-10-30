@@ -84,7 +84,7 @@ export class Balloons extends Cargo {
   private prick = new Float32Array(N);
   /** Knocks add up: every tenth pops a balloon. */
   private strain = 0;
-  /** Resting on a stand (or settling after a respawn): no lift. */
+  /** On a stand or the party table (or settling after a respawn): no lift. */
   private tied = false;
   /** Where the lift acts (body frame): the middle of the balloons that are left. */
   private liftAt = new THREE.Vector3();
@@ -224,9 +224,11 @@ export class Balloons extends Cargo {
       } else this.prick[i] = 0;
     }
     if (this.destroyed) return;
-    // tied on (or still settling after a respawn), held down by somebody, or free
+    // the present touching a stand or the party table gets its ribbon tied on, even while someone is
+    // still setting it down (with no lift there it sits with its full weight instead of skating
+    // about); it's also left alone while it settles after a respawn
     const held = this.sim.grips.isHeld(this.body);
-    this.tied = !held && (this.grace > 0 || this.touches(this.boxCol, (info) => !!info.tie));
+    this.tied = this.touches(this.boxCol, (info) => !!info.tie) || (!held && this.grace > 0);
     if (this.tied) return;
     const weight = (BOX_MASS + N * BALLOON_MASS) * tuning.physics.gravity;
     // the lift acts up among the balloons, so a free bouquet floats upright

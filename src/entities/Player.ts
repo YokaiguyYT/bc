@@ -860,6 +860,8 @@ export class Player {
       for (let i = 0; i < b.numColliders(); i++) {
         const proj = b.collider(i).projectPoint({ x: p.x, y: p.y, z: p.z }, true);
         if (!proj) continue;
+        // all of it above our head (balloons on strings): nothing to bump into
+        if (proj.point.y > p.y + 0.8) continue;
         const dx = p.x - proj.point.x;
         const dz = p.z - proj.point.z;
         const dh = Math.hypot(dx, dz);
