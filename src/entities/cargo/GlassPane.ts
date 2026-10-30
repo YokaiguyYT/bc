@@ -162,6 +162,14 @@ export class GlassPane extends Cargo {
     if (amp > 0.1 && this.grace <= 0) this.damage((amp - 0.1) * dt * 1.2);
   }
 
+  netState() {
+    return [this.flex];
+  }
+
+  applyNetState(s: number[]) {
+    this.flex = s[0];
+  }
+
   update() {
     this.flexU.value = this.destroyed ? 0 : this.flex * 0.8;
   }

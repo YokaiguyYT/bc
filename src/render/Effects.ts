@@ -77,7 +77,14 @@ export class Effects {
   groundAt: ((x: number, y: number, z: number) => number) | null = null;
   private offs: (() => void)[] = [];
 
+  /** Online host: sees bursts the game makes directly (not ones made in reaction to an event). */
+  tap: ((kind: ParticleKind, at: THREE.Vector3, o: BurstOptions) => void) | null = null;
+  /** Online guest: ignore bursts for a moment (the host's copies are on their way). */
+  muted = false;
+  private bus: EventBus;
+
   constructor(parent: THREE.Object3D, events: EventBus) {
+    this.bus = events;
     parent.add(this.root);
     const lambert = (c: number, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
     this.pool('dust', new THREE.IcosahedronGeometry(1, 0), lambert(0xf3ece2), 160, true);
@@ -148,6 +155,8 @@ export class Effects {
   }
 
   burst(kind: ParticleKind, at: THREE.Vector3, o: BurstOptions) {
+    if (this.muted) return;
+    if (this.tap && this.bus.dispatching === 0) this.tap(kind, at, o);
     const pool = this.pools.get(kind);
     if (!pool) return;
     const ground = o.ground ?? (this.groundAt ? this.groundAt(at.x, at.y + 0.2, at.z) : at.y - 2);

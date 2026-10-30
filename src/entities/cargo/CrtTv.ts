@@ -231,6 +231,14 @@ export class CrtTv extends Cargo {
     this.antennaWobble.step(dt, clamp(-this.gEff.x / g, -1, 1) * 0.9, clamp(-this.gEff.z / g, -1, 1) * 0.9);
   }
 
+  netState() {
+    return [this.antennaWobble.x, this.antennaWobble.y];
+  }
+
+  applyNetState(s: number[]) {
+    [this.antennaWobble.x, this.antennaWobble.y] = s;
+  }
+
   update(dt: number, time: number) {
     const u = this.uniforms;
     u.uTime.value = time;

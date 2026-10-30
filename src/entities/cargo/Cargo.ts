@@ -140,6 +140,29 @@ export abstract class Cargo {
     return 1;
   }
 
+  /** Online: numbers for how it looks right now (water, wobbles…), copied to the other laptop. */
+  netState(): number[] {
+    return [];
+  }
+  /** Online guest: take the host's numbers. */
+  applyNetState(_s: number[]) {}
+
+  /** Online guest: show a knock the host's cargo took (cracks, chips), leaving health to the host. */
+  mirrorDamage(amount: number, point: THREE.Vector3, shock = 0) {
+    if (this.destroyed) return;
+    this.lastHitPos.copy(point);
+    this.hitFlash = Math.min(1, this.hitFlash + amount * 6 + 0.2);
+    this.onDamage(amount, point, shock);
+  }
+
+  /** Online guest: the host's cargo broke. */
+  mirrorBreak() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.health = 0;
+    this.onBreak();
+  }
+
   /** Called when health drops; `amount` is 0..1 health lost. */
   protected onDamage(_amount: number, _point: THREE.Vector3, _shock: number) {}
   /** Called once when health hits 0. */
@@ -201,7 +224,7 @@ export abstract class Cargo {
     const p = at ? this.lastHitPos.copy(at) : this.contactPoint(this.lastHitPos);
     this.hitFlash = Math.min(1, this.hitFlash + amount * 6 + 0.2);
     this.onDamage(amount, p, shock);
-    this.sim.events.emit('cargoDamage', { amount, pos: p.clone(), health: this.health, kind: this.kind });
+    this.sim.events.emit('cargoDamage', { amount, pos: p.clone(), health: this.health, kind: this.kind, shock });
     if (this.health <= 0) this.break();
   }
 

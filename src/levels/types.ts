@@ -164,6 +164,8 @@ export interface SpawnSet {
 export type LevelObject = BoxObj | CylinderObj | BallObj | ModelObj | SignObj | HazardObj;
 
 export interface LevelDef {
+  /** Made by the job generator (online, the guest gets the whole description, not just the id). */
+  generated?: boolean;
   id: string;
   name: string;
   tagline: string;

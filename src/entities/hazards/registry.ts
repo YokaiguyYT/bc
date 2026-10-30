@@ -14,6 +14,12 @@ export interface Hazard {
   postStep?(dt: number): void;
   /** Per rendered frame. */
   update(dt: number, time: number): void;
+  /** Online: numbers for looks the bodies don't show (a dog's mood, a truck's wheels). */
+  netState?(): number[];
+  /** Online guest: take the host's numbers. */
+  applyNetState?(s: number[]): void;
+  /** Online guest: once per frame in place of the physics steps (looks driven by the clock). */
+  mirrorFrame?(time: number): void;
   dispose(): void;
 }
 

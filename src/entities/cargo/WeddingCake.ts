@@ -167,6 +167,23 @@ export class WeddingCake extends Cargo {
     } else this.tiltTimer = 0;
   }
 
+  netState() {
+    const s: number[] = [];
+    for (const t of this.tiers) s.push(t.wobble.x, t.wobble.y);
+    s.push(this.topperWobble.x, this.topperWobble.y);
+    return s;
+  }
+
+  applyNetState(s: number[]) {
+    this.tiers.forEach((t, i) => {
+      t.wobble.x = s[i * 2] ?? 0;
+      t.wobble.y = s[i * 2 + 1] ?? 0;
+    });
+    const n = this.tiers.length * 2;
+    this.topperWobble.x = s[n] ?? 0;
+    this.topperWobble.y = s[n + 1] ?? 0;
+  }
+
   update(dt: number) {
     const k = this.destroyed ? 0 : 1;
     this.tiers.forEach((t, i) => {

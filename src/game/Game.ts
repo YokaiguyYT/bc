@@ -35,8 +35,10 @@ export class Game {
   input: NetInput | null = null;
   /** Online guest: the picture comes from the host, so this laptop runs and draws nothing. */
   halted = false;
-  /** Online: Player 2 is on the other laptop. */
+  /** Online host: Player 2 is on the other laptop. */
   onlineP2 = false;
+  /** Online guest: we're Player 2 and the host's laptop runs the game. */
+  onlineGuest = false;
   /** Called right after each frame is drawn (online: copy the picture while it's still there). */
   afterRender: (() => void) | null = null;
   frameTimes: number[] = [];

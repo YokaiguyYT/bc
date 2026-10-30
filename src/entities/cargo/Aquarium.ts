@@ -245,6 +245,15 @@ export class Aquarium extends Cargo {
     }
   }
 
+  netState() {
+    const w = this.slosh;
+    return [this.water, w.x, w.y, w.vx, w.vy];
+  }
+
+  applyNetState(s: number[]) {
+    [this.water, this.slosh.x, this.slosh.y, this.slosh.vx, this.slosh.vy] = s;
+  }
+
   /** World position of the rim corner the water is piling up against. */
   private cornerWorld(sx: number, sz: number) {
     const local = new THREE.Vector3(Math.sign(sx || 1) * (IW / 2), RIM, Math.sign(sz || 1) * (ID / 2));

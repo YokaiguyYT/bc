@@ -145,6 +145,14 @@ export class DinoEgg extends Cargo {
     }
   }
 
+  netState() {
+    return [this.wobble, this.wobbleV];
+  }
+
+  applyNetState(s: number[]) {
+    [this.wobble, this.wobbleV] = s;
+  }
+
   update(dt: number) {
     // the shell twitches after a kick (purely visual)
     this.wobbleV += (-this.wobble * 160 - this.wobbleV * 9) * dt;

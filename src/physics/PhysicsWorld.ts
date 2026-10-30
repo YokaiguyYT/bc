@@ -145,6 +145,30 @@ export class PhysicsWorld {
     }
   }
 
+  /** Online: how many moving bodies have a visual (made in the same order on both laptops). */
+  get linkCount() {
+    return this.links.length;
+  }
+
+  /** Online host: link i's pose after the last step. */
+  linkPose(i: number) {
+    const l = this.links[i];
+    return { pos: l.currPos, quat: l.currQuat, body: l.body };
+  }
+
+  /** Online guest: put link i (and its body) exactly here, no smoothing. */
+  setLinkPose(i: number, p: THREE.Vector3, q: THREE.Quaternion, v: THREE.Vector3) {
+    const l = this.links[i];
+    if (!l || !l.body.isValid()) return;
+    l.currPos.copy(p);
+    l.prevPos.copy(p);
+    l.currQuat.copy(q);
+    l.prevQuat.copy(q);
+    l.body.setTranslation({ x: p.x, y: p.y, z: p.z }, false);
+    l.body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, false);
+    l.body.setLinvel({ x: v.x, y: v.y, z: v.z }, false);
+  }
+
   /** Interpolated position of a body (for things that aren't linked meshes). */
   interpolatedPosition(body: RigidBody, out: THREE.Vector3) {
     const l = this.links.find((x) => x.body === body);

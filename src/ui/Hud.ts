@@ -124,10 +124,11 @@ export class Hud {
     this.updateTips();
 
     s.players.forEach((p, i) => {
-      p.hands.forEach((hand, j) => {
+      ([0, 1] as const).forEach((j) => {
         const el = this.hands[i][j];
-        el.classList.toggle('grip', !!hand.grip);
-        el.classList.toggle('reach', !hand.grip && !!hand.reach);
+        const look = p.handLook(j);
+        el.classList.toggle('grip', look === 'grip');
+        el.classList.toggle('reach', look === 'reach');
       });
       this.states[i].textContent = p.state === 'knocked' ? 'KNOCKED OUT! (mash jump)' : p.maxGripStretch() > 0.35 ? 'slipping!' : '';
       // name tags above heads
@@ -169,7 +170,13 @@ export class Hud {
 
   private keysHtml(i: number) {
     if (i === 1 && this.game.onlineP2) return '🌐 playing from<br>their own laptop';
+    if (i === 0 && this.game.onlineGuest) return '🌐 your friend,<br>on their laptop';
     const b = this.game.keyboard.bindings;
+    if (i === 1 && this.game.onlineGuest) {
+      // online we can use either layout: show the WASD one, and say so
+      const k = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="p2">${keyLabel(c)}</kbd>`).join('');
+      return `move ${k(b.p1.up)}${k(b.p1.left)}${k(b.p1.down)}${k(b.p1.right)} or arrows<br>jump ${k(b.p1.jump)} grab ${k(b.p1.grab)}`;
+    }
     const pb = i === 0 ? b.p1 : b.p2;
     const cls = i === 0 ? 'p1' : 'p2';
     const k = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="${cls}">${keyLabel(c)}</kbd>`).join('');

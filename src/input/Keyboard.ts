@@ -17,8 +17,10 @@ const SWALLOW = new Set([
 ]);
 
 export interface MoveState {
-  x: number; // -1..1 screen right
-  y: number; // -1..1 screen up
+  x: number; // -1..1 screen right (world X when `world`)
+  y: number; // -1..1 screen up (world Z when `world`)
+  /** Already turned into a world direction (an online guest steers with its own camera). */
+  world?: boolean;
   jump: boolean;
   jumpPressed: boolean;
   grab: boolean;

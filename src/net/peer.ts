@@ -4,29 +4,49 @@ import type { Signal } from './signal';
 const ICE: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
 
 /** Bump when host and guest builds can no longer talk to each other. */
-export const NET_VERSION = 1;
+export const NET_VERSION = 2;
 
 /** Messages bigger than this go over the control channel in pieces. */
 const CHUNK = 16000;
 /** No word from the other side for this long and we call it lost. */
 const TIMEOUT = 9;
+/** More than this queued on the fast channel: drop fast messages rather than send stale ones late. */
+const FAST_BACKLOG = 256 * 1024;
 
 export type CtlMsg = { k: string; [key: string]: unknown };
 
 /**
- * One direct WebRTC connection between host and guest: the host's game
- * picture as a video track, a reliable control channel (UI, events) and an
- * unreliable one for the guest's keys (an old key state is no use once a
- * newer one is on its way).
+ * One way of getting messages between host and guest: a direct WebRTC link
+ * (fast, can carry video) or a relay through the matchmaking server (works on
+ * networks that block direct connections). "ctl" messages always arrive, in
+ * order; "fast" ones may be dropped (keys, snapshots: a newer one is coming).
  */
-export class PeerLink {
+export interface Pipe {
+  readonly via: 'direct' | 'relay';
+  open: boolean;
+  closed: boolean;
+  onCtl: ((m: CtlMsg) => void) | null;
+  onFast: ((m: CtlMsg | ArrayBuffer) => void) | null;
+  onOpen: (() => void) | null;
+  onLost: ((why: string) => void) | null;
+  sendCtl(m: CtlMsg): void;
+  sendFast(m: CtlMsg | ArrayBuffer): void;
+  close(sayBye?: boolean): void;
+}
+
+/**
+ * A direct WebRTC connection: a reliable control channel, an unreliable fast
+ * one, and (from the host) an optional video track of the game picture.
+ */
+export class PeerLink implements Pipe {
+  readonly via = 'direct' as const;
   readonly pc: RTCPeerConnection;
   readonly ctl: RTCDataChannel;
-  readonly inp: RTCDataChannel;
+  readonly fast: RTCDataChannel;
   onCtl: ((m: CtlMsg) => void) | null = null;
-  onInput: ((m: CtlMsg) => void) | null = null;
+  onFast: ((m: CtlMsg | ArrayBuffer) => void) | null = null;
   onStream: ((s: MediaStream) => void) | null = null;
-  /** Fires once: the channels opened, or the connection is gone for good. */
+  /** Fires once: the channels opened. */
   onOpen: (() => void) | null = null;
   onLost: ((why: string) => void) | null = null;
   open = false;
@@ -44,7 +64,8 @@ export class PeerLink {
     this.pc = new RTCPeerConnection({ iceServers: ICE });
     // both sides create the same two channels by id: no extra round trip
     this.ctl = this.pc.createDataChannel('ctl', { negotiated: true, id: 0 });
-    this.inp = this.pc.createDataChannel('in', { negotiated: true, id: 1, ordered: false, maxRetransmits: 0 });
+    this.fast = this.pc.createDataChannel('fast', { negotiated: true, id: 1, ordered: false, maxRetransmits: 0 });
+    this.fast.binaryType = 'arraybuffer';
     this.pc.onicecandidate = (e) => {
       if (e.candidate) this.sig.send(this.remote, { k: 'ice', c: e.candidate.toJSON() });
     };
@@ -73,20 +94,20 @@ export class PeerLink {
     };
     this.ctl.onclose = () => this.lose('closed');
     this.ctl.onmessage = (e) => this.receive(String(e.data));
-    this.inp.onmessage = (e) => {
+    this.fast.onmessage = (e) => {
       this.lastHeard = performance.now();
+      if (e.data instanceof ArrayBuffer) return this.onFast?.(e.data);
       try {
-        this.onInput?.(JSON.parse(String(e.data)));
+        this.onFast?.(JSON.parse(String(e.data)));
       } catch {
         /* garbled */
       }
     };
   }
 
-  /** Host: send the game picture and make the offer. */
-  async offer(stream: MediaStream | null) {
-    const track = stream?.getVideoTracks()[0];
-    if (track && stream) this.pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] });
+  /** Host: make the offer (with a video slot, filled later if the guest wants the picture streamed). */
+  async offer(withVideo: boolean) {
+    if (withVideo) this.videoTx = this.pc.addTransceiver('video', { direction: 'sendonly' });
     await this.pc.setLocalDescription(await this.pc.createOffer());
     this.sig.send(this.remote, { k: 'offer', sdp: this.pc.localDescription!.sdp });
   }
@@ -111,7 +132,7 @@ export class PeerLink {
       } else if (data.k === 'ice' && data.c) {
         this.pending.push(data.c as RTCIceCandidateInit);
         this.flushIce();
-      } else if (data.k === 'bye') this.lose('left');
+      }
     } catch (e) {
       console.warn('signal', e);
     }
@@ -122,10 +143,25 @@ export class PeerLink {
     for (const c of this.pending.splice(0)) this.pc.addIceCandidate(c).catch((e) => console.warn('ice', e));
   }
 
+  private videoTx: RTCRtpTransceiver | null = null;
+  private get videoSender() {
+    return this.videoTx?.sender ?? null;
+  }
+
+  /** Host: whether a video slot was offered (and so the picture can be streamed). */
+  get canVideo() {
+    return !!this.videoTx;
+  }
+
+  /** Host: start (or stop, with null) sending the game picture. */
+  async setVideo(track: MediaStreamTrack | null) {
+    await this.videoSender?.replaceTrack(track);
+  }
+
   /** Host: keep the stream light enough to send smoothly. */
   async tuneVideo(width: number) {
-    const s = this.pc.getSenders().find((x) => x.track?.kind === 'video');
-    if (!s) return;
+    const s = this.videoSender;
+    if (!s?.track) return;
     const p = s.getParameters() as RTCRtpSendParameters & { degradationPreference?: string };
     if (!p.encodings?.length) return;
     const e = p.encodings[0];
@@ -137,12 +173,6 @@ export class PeerLink {
     } catch {
       await s.setParameters(p).catch((err) => console.warn('video params', err));
     }
-  }
-
-  /** Host: swap the picture being sent, without renegotiating. */
-  async replaceVideo(track: MediaStreamTrack) {
-    const s = this.pc.getSenders().find((x) => x.track?.kind === 'video');
-    await s?.replaceTrack(track);
   }
 
   sendCtl(m: CtlMsg) {
@@ -157,8 +187,10 @@ export class PeerLink {
     for (let i = 0; i < n; i++) this.ctl.send(JSON.stringify({ k: 'part', id, i, n, s: s.slice(i * CHUNK, (i + 1) * CHUNK) }));
   }
 
-  sendInput(m: CtlMsg) {
-    if (this.open && this.inp.readyState === 'open') this.inp.send(JSON.stringify(m));
+  sendFast(m: CtlMsg | ArrayBuffer) {
+    if (!this.open || this.fast.readyState !== 'open' || this.fast.bufferedAmount > FAST_BACKLOG) return;
+    if (m instanceof ArrayBuffer) this.fast.send(m);
+    else this.fast.send(JSON.stringify(m));
   }
 
   private receive(raw: string) {
@@ -194,12 +226,10 @@ export class PeerLink {
   /** Hang up (telling the other side, if asked). */
   close(sayBye = true) {
     if (this.closed) return;
+    if (sayBye) this.sendCtl({ k: 'bye' });
     this.closed = true;
+    this.open = false;
     clearInterval(this.pinger);
-    if (sayBye) {
-      this.sendCtl({ k: 'bye' });
-      this.sig.send(this.remote, { k: 'bye' });
-    }
     try {
       this.pc.close();
     } catch {

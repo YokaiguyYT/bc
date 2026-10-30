@@ -182,6 +182,20 @@ export class Player {
     this.armBit = playerArmBit(opts.index);
     this.facingYaw = opts.yaw ?? 0;
     this.build(opts.position, this.facingYaw);
+    sim.actors?.push(this);
+  }
+
+  /**
+   * Online guest: the host runs this mover; these are its hands and strain as
+   * the host last reported them (our own grips stay empty).
+   */
+  mirror: { stretch: number; held: number; grip: [boolean, boolean]; reach: [boolean, boolean] } | null = null;
+
+  /** What a hand looks like it's doing, for the HUD. */
+  handLook(j: 0 | 1): 'grip' | 'reach' | null {
+    if (this.mirror) return this.mirror.grip[j] ? 'grip' : this.mirror.reach[j] ? 'reach' : null;
+    const h = this.hands[j];
+    return h.grip ? 'grip' : h.reach ? 'reach' : null;
   }
 
   // ---------------------------------------------------------------- building
@@ -334,6 +348,7 @@ export class Player {
 
   /** How heavy our share of the held stuff is (kg). */
   heldMass() {
+    if (this.mirror) return this.mirror.held;
     let m = 0;
     for (const b of this.heldBodies()) {
       const holders = Math.max(1, this.sim.grips.holdersOf(b).length);
@@ -343,6 +358,7 @@ export class Player {
   }
 
   maxGripStretch() {
+    if (this.mirror) return this.mirror.stretch;
     let s = 0;
     for (const h of this.hands) if (h.grip) s = Math.max(s, h.grip.stretch);
     return s;

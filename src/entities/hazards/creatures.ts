@@ -341,6 +341,17 @@ class Dog implements Hazard {
     }
   }
 
+  private static readonly STATES = ['idle', 'wander', 'chase', 'retreat'] as const;
+
+  netState() {
+    return [Dog.STATES.indexOf(this.state), this.yaw];
+  }
+
+  applyNetState(s: number[]) {
+    this.state = Dog.STATES[s[0]] ?? 'idle';
+    this.yaw = s[1];
+  }
+
   update(dt: number) {
     const v = this.body.linvel();
     const sp = Math.hypot(v.x, v.z);

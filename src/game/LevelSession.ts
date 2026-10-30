@@ -56,6 +56,16 @@ export interface NetInput {
   cam(): number;
 }
 
+/**
+ * Online guest: the host runs the level; this sets poses, the clock and the
+ * score each frame in place of reading keys and stepping physics.
+ */
+export interface MirrorDriver {
+  frame(s: LevelSession, dt: number): void;
+  /** After the per-frame looks have run (put back anything they guessed wrong). */
+  afterVisuals?(s: LevelSession): void;
+}
+
 /** One attempt at one level. */
 export class LevelSession {
   readonly sim: Sim;
@@ -91,6 +101,10 @@ export class LevelSession {
   scriptedInput = false;
   /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
   input: NetInput | null = null;
+  /** Online guest: the host runs this level and we only show it. */
+  mirror: MirrorDriver | null = null;
+  /** True while the per-frame looks run (online: what happens then isn't sent to the guest). */
+  inVisuals = false;
 
   constructor(
     readonly def: LevelDef,
@@ -105,6 +119,7 @@ export class LevelSession {
       time: () => this.physics.time,
       signals: new Map(),
       heat: [],
+      actors: [],
     };
     renderer.scene.add(this.root);
     renderer.applyTheme({ ...DEFAULT_THEME, ...(def.theme ?? {}) });
@@ -222,27 +237,32 @@ export class LevelSession {
     const camR = this.cameraRig.right(new THREE.Vector3());
     const playing = this.state === 'playing' || this.state === 'delivered';
 
+    if (this.mirror) {
+      this.mirror.frame(this, frameDt);
+    }
+
     // input -> intents
-    if (!this.paused && !this.attractMode && !this.scriptedInput) {
+    if (!this.mirror && !this.paused && !this.attractMode && !this.scriptedInput) {
       const binds = [b.p1, b.p2];
       this.players.forEach((p, i) => {
         const m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
         const ctl = playing && this.state !== 'delivered';
-        p.intent.moveX = ctl ? camR.x * m.x + camF.x * m.y : 0;
-        p.intent.moveZ = ctl ? camR.z * m.x + camF.z * m.y : 0;
+        p.intent.moveX = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
+        p.intent.moveZ = !ctl ? 0 : m.world ? m.y : camR.z * m.x + camF.z * m.y;
         p.intent.jump = ctl && m.jump;
         if (ctl && m.jumpPressed) p.intent.jumpPressed = true;
         p.intent.grab = (ctl || this.state === 'delivered') && m.grab;
       });
     }
 
-    const dt = this.paused ? 0 : frameDt;
+    const dt = this.paused || this.mirror ? 0 : frameDt;
     if (dt > 0) {
       this.physics.advance(dt);
       this.time += this.state === 'playing' ? dt : 0;
       this.stateTime += dt;
       this.checkZones(dt);
     }
+    this.inVisuals = true;
     this.physics.syncVisuals();
     for (const r of this.rigs) r.update(frameDt);
     this.cargo.update(frameDt, this.physics.time);
@@ -250,6 +270,8 @@ export class LevelSession {
     this.goalZone.update(frameDt, this.goalProgress / this.goalNeeded);
     this.cpZones.forEach((z, i) => z.update(frameDt, i <= this.checkpoint ? 1 : 0));
     this.effects.update(frameDt);
+    this.inVisuals = false;
+    this.mirror?.afterVisuals?.(this);
 
     let rot = 0;
     if (!this.paused) {

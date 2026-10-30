@@ -123,6 +123,14 @@ export class IceSwan extends Cargo {
     if (this.health <= 0) this.break();
   }
 
+  netState() {
+    return [this.melted, this.warmth];
+  }
+
+  applyNetState(s: number[]) {
+    [this.melted, this.warmth] = s;
+  }
+
   update(dt: number) {
     // melting shrinks the swan (not the block) and makes it glisten
     const k = 1 - Math.min(0.3, this.melted * 0.6);

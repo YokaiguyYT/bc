@@ -108,6 +108,8 @@ export interface Sim {
   fx?: Effects;
   /** The two movers (for hazards that react to them). */
   players?: Player[];
+  /** Every ragdoll in the level (movers and wandering people), in the order they were made. */
+  actors?: Player[];
   cargo?: Cargo;
   /** Traffic light states by tag: 'green' | 'yellow' | 'red' (for cars). */
   signals?: Map<string, 'green' | 'yellow' | 'red'>;

@@ -12,7 +12,9 @@ import { DevPanel } from './DevPanel';
 import { tuning } from '../config/tuning';
 import { Attract } from '../game/Attract';
 import { CARGO_INFO } from '../entities/cargo/info';
-import { CODE_LEN, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
+import { CODE_LEN, LevelMsg, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
+import { GuestSync } from '../net/sync';
+import type { LevelDef } from '../levels/types';
 import { morph } from '../net/mirror';
 
 type Screen =
@@ -79,7 +81,7 @@ export class App {
     window.addEventListener('blur', () => {
       this.pause();
       // a guest switching away must not leave its mover walking on the host's screen
-      this.guest?.sendKeys(null, 1);
+      this.guest?.sendKeys(null, 1, null);
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
@@ -193,11 +195,21 @@ export class App {
   }
 
   private frame(dt: number) {
-    if (this.guest) {
-      this.guest.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, dt);
+    const g = this.guest;
+    if (g) {
+      const s = this.game.session;
+      g.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, dt, s?.mirror ? s : null);
+      if (g.mode === 'light') {
+        this.attract?.update(dt);
+        if (s?.mirror && this.hud) this.hud.update(dt);
+      }
       return;
     }
-    this.host?.update(dt);
+    if (this.host) {
+      // the host only shares real jobs, not the menu's background scene
+      this.host.level = this.attract ? null : this.game.session;
+      this.host.update(dt);
+    }
     this.watchFrameRate();
     if (this.screen === 'results') this.resultsFor += dt;
     this.attract?.update(dt);
@@ -634,8 +646,8 @@ export class App {
       'online',
       `<div class="logo" style="font-size:44px">PLAY ONLINE</div>
        <div class="panel" style="max-width:min(640px,92vw)">
-         <p>Each of you plays on your <b>own laptop</b>. One of you <b>hosts</b>: the game runs on that laptop and its picture is sent to the other, who <b>joins</b> with a code.</p>
-         <p style="font-size:14px">Free: the laptops connect directly to each other. Works best on the same Wi-Fi; over the internet it usually works too. The host's laptop does the heavy lifting, so the faster laptop should host.</p>
+         <p>Each of you plays on your <b>own laptop</b> (a Chromebook is fine). One of you <b>hosts</b>: the game runs on that laptop. The other <b>joins</b> with a code.</p>
+         <p style="font-size:14px">Free, no accounts. Works on home and school Wi-Fi: if the network won't let the laptops connect directly, the game passes its messages through the matchmaking server instead. The faster laptop should host.</p>
        </div>
        <div class="menu">
          <button class="btn primary" data-nav data-default id="o-host">Host a game</button>
@@ -652,6 +664,13 @@ export class App {
     this.bind('o-back', () => this.showMenu());
   }
 
+  /** How the friend is connected, in words. */
+  private viaText(via: 'direct' | 'relay' | null, video = false) {
+    if (via === 'direct') return video ? 'connected directly · streaming the picture' : 'connected directly';
+    if (via === 'relay') return 'connected through the relay (a little slower)';
+    return 'connecting…';
+  }
+
   /** The host's lobby: the code to share, and whether the friend is in. */
   private showHost(error = '') {
     this.startAttract();
@@ -662,7 +681,7 @@ export class App {
       : !h
         ? 'Getting a code…'
         : h.connected
-          ? '✅ <b>Your friend is in!</b> Pick a job.'
+          ? `✅ <b>Your friend is in!</b> Pick a job. <span style="font-size:14px;opacity:.75">(${this.viaText(h.via, h.mode === 'video')})</span>`
           : h.status === 'connecting'
             ? 'Your friend is connecting…'
             : 'Waiting for your friend…';
@@ -674,7 +693,7 @@ export class App {
          <div class="net-code">${code}</div>
          <p class="net-status">${status}</p>
          <p style="font-size:14px">On your friend's laptop: open Fragile Freight → <b>Play Online</b> → <b>Join a friend</b> → type the code.<br>
-         You're <b style="color:var(--p1)">P1</b> and they're <b style="color:var(--p2)">P2</b>. You can each use <b>WASD</b> or the <b>arrows</b>, whichever you like. You pick the jobs; they see everything you see.</p>
+         You're <b style="color:var(--p1)">P1</b> and they're <b style="color:var(--p2)">P2</b>. You can each use <b>WASD</b> or the <b>arrows</b>, whichever you like. You pick the jobs.</p>
        </div>
        <div class="row">
          ${error ? '<button class="btn primary" data-nav data-default id="h-retry">Try again</button>' : '<button class="btn primary" data-nav data-default id="h-play">Pick a job →</button>'}
@@ -690,7 +709,7 @@ export class App {
     });
     if (!h && !error && !this.joining) {
       this.joining = true;
-      OnlineHost.start(this.game.renderer.renderer.domElement, this.root).then(
+      OnlineHost.start({ canvas: this.game.renderer.renderer.domElement, ui: this.root, menus: this.layer }).then(
         (host) => {
           this.joining = false;
           // gave up waiting (went back to the menu): don't keep a code nobody can see
@@ -727,7 +746,8 @@ export class App {
         }
       : null;
     if (this.game.session) this.game.session.input = this.game.input;
-    this.game.renderer.capWidth = on ? 1600 : null;
+    // streaming the picture: keep it at most 1600 px wide so it's cheap to capture
+    this.game.renderer.capWidth = on && h.mode === 'video' ? 1600 : null;
     this.game.renderer.resize();
     this.hud?.refreshKeys();
     this.updateBadge();
@@ -746,7 +766,6 @@ export class App {
     this.host.stop();
     this.host = null;
     this.game.afterRender = null;
-    this.hostChanged('status');
     this.game.onlineP2 = false;
     this.game.input = null;
     if (this.game.session) this.game.session.input = null;
@@ -758,7 +777,10 @@ export class App {
 
   /** A small line in the corner saying what's going on online (not copied to the guest). */
   private updateBadge(text?: string) {
-    const t = text ?? (this.host ? (this.host.connected ? '🌐 Online · your friend is P2' : `🌐 Hosting · code ${this.host.code} · waiting for your friend`) : '');
+    const h = this.host;
+    const t =
+      text ??
+      (h ? (h.connected ? `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video')}` : `🌐 Hosting · code ${h.code} · waiting for your friend`) : '');
     if (!t) {
       this.netBadge?.remove();
       this.netBadge = null;
@@ -815,7 +837,7 @@ export class App {
     const go = this.layer.querySelector<HTMLButtonElement>('#j-go');
     if (this.screen !== 'join' || !box || !st || !go) return this.showJoin(status, bad);
     box.innerHTML = this.codeBoxes();
-    st.textContent = status || '\u00a0';
+    st.textContent = status || ' ';
     st.style.color = bad ? 'var(--bad)' : '';
     go.disabled = this.joinCode.length !== CODE_LEN || this.joining;
   }
@@ -830,7 +852,7 @@ export class App {
          <p>Type the code on your friend's screen</p>
          <div class="net-code entry">${boxes}</div>
          <p class="net-status" ${bad ? 'style="color:var(--bad)"' : ''}>${esc(status) || '&nbsp;'}</p>
-         <p style="font-size:14px">Their laptop runs the game and sends you the picture. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.</p>
+         <p style="font-size:14px">Their laptop runs the game; yours shows it. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.</p>
        </div>
        <div class="row">
          <button class="btn primary" data-nav data-default id="j-go" ${this.joinCode.length === CODE_LEN && !this.joining ? '' : 'disabled'}>Join</button>
@@ -872,82 +894,181 @@ export class App {
     );
   }
 
-  /** Become the guest: show the host's picture and a copy of its menus/HUD, send our keys. */
+  /** Become the guest: show the host's game (drawn here, or streamed), copy its menus, send our keys. */
   private enterGuest(g: OnlineGuest) {
     this.guest = g;
-    this.attract = null;
-    this.hud?.dispose();
-    this.hud = null;
-    this.game.endLevel();
-    this.game.halted = true;
-    this.game.renderer.renderer.domElement.style.visibility = 'hidden';
-    // the picture
-    const v = document.createElement('video');
-    v.className = 'net-video';
-    v.muted = true;
-    v.autoplay = true;
-    v.playsInline = true;
-    document.body.insertBefore(v, this.root);
-    this.video = v;
-    // our own menus move above the copy of the host's
+    this.game.onlineGuest = true;
+    // our own menus (Esc) move above everything the host sends
     this.localUi = document.createElement('div');
     this.localUi.className = 'net-local';
     this.localUi.append(this.layer);
     document.body.appendChild(this.localUi);
-    this.hudLayer.remove();
-    this.root.innerHTML = '';
-    const fit = () => {
-      const u = g.ui;
-      if (!u) return;
-      const s = Math.min(window.innerWidth / u.w, window.innerHeight / u.h);
-      Object.assign(this.root.style, {
-        inset: 'auto',
-        left: `${(window.innerWidth - u.w * s) / 2}px`,
-        top: `${(window.innerHeight - u.h * s) / 2}px`,
-        width: `${u.w}px`,
-        height: `${u.h}px`,
-        transform: `scale(${s})`,
-        transformOrigin: '0 0',
-      });
+    // the host's menus (light mode) go here, over our own view of the level
+    this.menuMirror = document.createElement('div');
+    this.menuMirror.className = 'net-menus';
+    this.root.append(this.menuMirror);
+    this.fitGuest = () => this.fitVideoUi();
+    window.addEventListener('resize', this.fitGuest);
+    g.onStream = (s) => {
+      if (this.video) {
+        this.video.srcObject = s;
+        this.video.play().catch(() => {});
+      }
     };
-    this.fitGuest = fit;
-    window.addEventListener('resize', fit);
-    const show = (s: MediaStream) => {
-      v.srcObject = s;
-      v.play().catch(() => {});
+    g.onUi = (html, all) => {
+      if (all !== (g.mode === 'video')) return; // from before a mode switch
+      if (all) {
+        morph(this.root, html);
+        this.fitVideoUi();
+      } else if (this.menuMirror) morph(this.menuMirror, html);
     };
-    g.onStream = show;
-    if (g.stream) show(g.stream);
-    g.onUi = (html) => {
-      morph(this.root, html);
-      fit();
-    };
-    if (g.ui) g.onUi(g.ui.html, g.ui.w, g.ui.h);
+    g.onLevel = (m) => this.guestLevel(m);
+    g.onEnd = () => this.guestEnd();
+    g.onMode = (m) => this.presentGuest(m);
+    g.onVia = () => this.updateBadge(this.guestBadge());
     g.onLost = (why) => this.showGuestLost(why);
     this.pictureTimer = window.setInterval(() => this.video && this.guest?.checkPicture(this.video), 2000);
-    this.updateBadge('🌐 Playing on your friend’s game · Esc: online menu');
     this.setScreen('guest', '');
+    this.presentGuest(g.mode);
+  }
+
+  private menuMirror: HTMLDivElement | null = null;
+
+  private guestBadge() {
+    const g = this.guest;
+    if (!g) return '';
+    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video')} · Esc: online menu`;
+  }
+
+  /** Show the host's game the way the current mode says: drawn here (light) or streamed (video). */
+  private presentGuest(mode: 'light' | 'video') {
+    const g = this.guest;
+    if (!g) return;
+    const canvas = this.game.renderer.renderer.domElement;
+    if (mode === 'video') {
+      // stop drawing anything ourselves
+      this.endGuestLevel();
+      this.attract = null;
+      this.game.endLevel();
+      this.game.halted = true;
+      canvas.style.visibility = 'hidden';
+      if (!this.video) {
+        const v = document.createElement('video');
+        v.className = 'net-video';
+        v.muted = true;
+        v.autoplay = true;
+        v.playsInline = true;
+        document.body.insertBefore(v, this.root);
+        this.video = v;
+      }
+      if (g.stream) {
+        this.video.srcObject = g.stream;
+        this.video.play().catch(() => {});
+      }
+      this.hudLayer.remove();
+      this.menuMirror?.remove();
+      this.root.innerHTML = '';
+      if (g.ui?.all) {
+        morph(this.root, g.ui.html);
+        this.fitVideoUi();
+      }
+    } else {
+      this.video?.remove();
+      this.video = null;
+      this.root.innerHTML = '';
+      this.root.removeAttribute('style');
+      this.root.append(this.hudLayer, this.menuMirror ?? document.createElement('div'));
+      if (this.menuMirror) this.menuMirror.innerHTML = '';
+      canvas.style.visibility = '';
+      this.game.halted = false;
+      if (g.lastLevel) this.guestLevel(g.lastLevel);
+      else this.guestEnd();
+      if (g.ui && !g.ui.all && this.menuMirror) morph(this.menuMirror, g.ui.html);
+    }
+    this.updateBadge(this.guestBadge());
+  }
+
+  /** Video mode: the copy of the host's whole UI sits exactly over the video. */
+  private fitVideoUi() {
+    const u = this.guest?.ui;
+    if (!u || !u.all || this.guest?.mode !== 'video') return;
+    const s = Math.min(window.innerWidth / u.w, window.innerHeight / u.h);
+    Object.assign(this.root.style, {
+      inset: 'auto',
+      left: `${(window.innerWidth - u.w * s) / 2}px`,
+      top: `${(window.innerHeight - u.h * s) / 2}px`,
+      width: `${u.w}px`,
+      height: `${u.h}px`,
+      transform: `scale(${s})`,
+      transformOrigin: '0 0',
+    });
+  }
+
+  /** Light mode: the host started a level; build the same one here and follow along. */
+  private guestLevel(m: LevelMsg) {
+    const g = this.guest;
+    if (!g || g.mode !== 'light') return;
+    let def = (m.def as LevelDef | undefined) ?? levelById(m.id);
+    if (!def) {
+      this.toast('Your friend started a job this copy of the game doesn’t have. You both need the same file.');
+      return;
+    }
+    if (m.cargo && m.cargo !== def.cargo) def = { ...def, cargo: m.cargo as LevelDef['cargo'] };
+    this.endGuestLevel();
+    this.attract = null;
+    const s = this.game.startLevel(def);
+    const sync = new GuestSync(s);
+    s.mirror = sync;
+    g.attachSync(sync);
+    this.wireSession(s);
+    this.hud = new Hud(this.hudLayer, this.game, s);
+  }
+
+  /** Light mode: the host is back in the menus. */
+  private guestEnd() {
+    this.endGuestLevel();
+    if (this.guest?.mode === 'light') this.startAttract();
+  }
+
+  private endGuestLevel() {
+    this.guest?.attachSync(null);
+    this.hud?.dispose();
+    this.hud = null;
+    if (this.game.session?.mirror) this.game.endLevel();
   }
 
   private fitGuest: (() => void) | null = null;
   private pictureTimer = 0;
 
   private showGuestMenu() {
-    if (!this.guest) return;
+    const g = this.guest;
+    if (!g) return;
+    const video = g.mode === 'video';
     this.setScreen(
       'guest-menu',
       `<div class="logo" style="font-size:48px">ONLINE</div>
        <div class="menu">
          <button class="btn primary" data-nav data-default id="g-back">Keep playing</button>
          <button class="btn" data-nav id="g-pause">Pause the game</button>
+         <button class="btn" data-nav id="g-mode" ${video || g.canVideo ? '' : 'disabled'}>${video ? 'Picture: draw it on this laptop' : 'Picture: stream it from my friend'}</button>
          <button class="btn" data-nav id="g-leave">Leave</button>
        </div>
-       <div class="hint-line">Your friend picks the jobs and runs the pause menu.</div>`,
+       <div class="hint-line">${esc(this.viaText(g.via, video))}. ${
+         video
+           ? 'Streaming suits a slow laptop on a fast network.'
+           : g.canVideo
+             ? 'Laptop struggling? Streaming the picture is easier on it.'
+             : 'Streaming the picture needs a direct connection (this network doesn’t allow one).'
+       }<br>Your friend picks the jobs and runs the pause menu.</div>`,
       { dim: true, back: () => this.setScreen('guest', '') },
     );
     this.bind('g-back', () => this.setScreen('guest', ''));
     this.bind('g-pause', () => {
       this.guest?.requestPause();
+      this.setScreen('guest', '');
+    });
+    this.bind('g-mode', () => {
+      this.guest?.requestMode(video ? 'light' : 'video');
       this.setScreen('guest', '');
     });
     this.bind('g-leave', () => this.leaveGuest());
@@ -971,13 +1092,17 @@ export class App {
   private leaveGuest() {
     const g = this.guest;
     if (!g) return;
+    this.endGuestLevel();
     this.guest = null;
+    this.game.onlineGuest = false;
     g.leave();
     clearInterval(this.pictureTimer);
     if (this.fitGuest) window.removeEventListener('resize', this.fitGuest);
     this.fitGuest = null;
     this.video?.remove();
     this.video = null;
+    this.menuMirror?.remove();
+    this.menuMirror = null;
     this.root.innerHTML = '';
     this.root.removeAttribute('style');
     this.root.append(this.hudLayer, this.layer);

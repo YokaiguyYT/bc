@@ -208,6 +208,14 @@ export class GrandfatherClock extends Cargo {
     }
   }
 
+  netState() {
+    return [this.phi];
+  }
+
+  applyNetState(s: number[]) {
+    this.phi = s[0];
+  }
+
   update(dt: number) {
     this.pendulum.rotation.z = this.phi;
     // the clock runs very fast; damage makes the hands go haywire

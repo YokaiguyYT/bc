@@ -422,6 +422,14 @@ class Mover implements Hazard {
     }
   }
 
+  netState() {
+    return [this.vel.x, this.vel.y, this.vel.z];
+  }
+
+  applyNetState(s: number[]) {
+    this.vel.set(s[0], s[1], s[2]);
+  }
+
   update(dt: number) {
     const sp = this.vel.length();
     for (const w of this.wheels) w.rotateX(sp * dt / 0.45);
@@ -1015,6 +1023,10 @@ class Fan implements Hazard {
       return true;
     });
   }
+  mirrorFrame(time: number) {
+    this.strength = this.level(time);
+  }
+
   update(dt: number) {
     // the blades spool up a second before a gust arrives: that's the warning
     const t = this.sim.time();

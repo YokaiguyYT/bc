@@ -14,7 +14,7 @@ export interface GameEvents {
   knock: { player: number; pos: THREE.Vector3; strength: number };
   getup: { player: number };
   impact: { pos: THREE.Vector3; speed: number; material: string };
-  cargoDamage: { amount: number; pos: THREE.Vector3; health: number; kind: string };
+  cargoDamage: { amount: number; pos: THREE.Vector3; health: number; kind: string; shock?: number };
   cargoBreak: { pos: THREE.Vector3; kind: string };
   cargoWobble: { amount: number; kind: string };
   checkpoint: { index: number; pos: THREE.Vector3 };
@@ -32,6 +32,13 @@ type Handler<T> = (payload: T) => void;
 
 export class EventBus {
   private handlers = new Map<keyof GameEvents, Set<Handler<unknown>>>();
+  /**
+   * Online host: sees every event raised by the game itself (not the ones
+   * listeners raise in reaction), to send them to the other laptop.
+   */
+  tap: ((type: keyof GameEvents, payload: unknown) => void) | null = null;
+  /** >0 while listeners are running. */
+  dispatching = 0;
 
   on<K extends keyof GameEvents>(type: K, fn: Handler<GameEvents[K]>) {
     let set = this.handlers.get(type);
@@ -41,9 +48,15 @@ export class EventBus {
   }
 
   emit<K extends keyof GameEvents>(type: K, payload: GameEvents[K]) {
+    if (this.tap && this.dispatching === 0) this.tap(type, payload);
     const set = this.handlers.get(type);
     if (!set) return;
-    for (const fn of set) fn(payload);
+    this.dispatching++;
+    try {
+      for (const fn of set) fn(payload);
+    } finally {
+      this.dispatching--;
+    }
   }
 
   clear() {
