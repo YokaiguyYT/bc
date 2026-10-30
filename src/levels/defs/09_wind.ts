@@ -71,12 +71,12 @@ function displayEasel(x: number, y: number, z: number): LevelObject[] {
   const by = fy + 0.72 * Math.cos(back) - 0.04 * Math.sin(back);
   const bz = fz - 0.72 * Math.sin(back) - 0.04 * Math.cos(back);
   return [
-    { type: 'box', pos: [x, y + 0.15, z], size: [2.0, 0.3, 0.8], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
-    { type: 'box', pos: [x, y + 0.33, z], size: [2.0, 0.06, 0.82], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.55, radius: 0.02 },
-    { type: 'box', pos: [x, by, bz], size: [2.0, 1.5, 0.08], rot: [-back / DEG, 0, 0], color: velvet, surface: 'carpet', friction: 0.3, radius: 0.03, grabbable: false },
-    beam([x - 1.04, y, z - 0.42], [x - 1.04, y + 1.62, z - 0.75], 0.07, gold),
-    beam([x + 1.04, y, z - 0.42], [x + 1.04, y + 1.62, z - 0.75], 0.07, gold),
-    beam([x - 1.04, y + 1.6, z - 0.75], [x + 1.04, y + 1.6, z - 0.75], 0.06, gold),
+    { type: 'box', pos: [x, y + 0.15, z], size: [1.5, 0.3, 0.8], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
+    { type: 'box', pos: [x, y + 0.33, z], size: [1.5, 0.06, 0.82], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.55, radius: 0.02 },
+    { type: 'box', pos: [x, by, bz], size: [1.5, 1.5, 0.08], rot: [-back / DEG, 0, 0], color: velvet, surface: 'carpet', friction: 0.3, radius: 0.03, grabbable: false },
+    beam([x - 0.79, y, z - 0.42], [x - 0.79, y + 1.62, z - 0.75], 0.07, gold),
+    beam([x + 0.79, y, z - 0.42], [x + 0.79, y + 1.62, z - 0.75], 0.07, gold),
+    beam([x - 0.79, y + 1.6, z - 0.75], [x + 0.79, y + 1.6, z - 0.75], 0.06, gold),
     { type: 'sign', pos: [x, y + 0.15, z + 0.41], size: [1.1, 0.2, 0.02], text: 'LIGHTHOUSE AT DUSK · M. GALE', color: 0xb8892e, textColor: '#2b1d14' },
   ];
 }
@@ -300,14 +300,14 @@ const level: LevelDef = {
     { pos: [-5.5, HEAD + 1, -42.2], size: [5, 2, 3.2], spawn: { p1: [-2.75, HEAD, -43.25], p2: [-0.05, HEAD, -43.25], cargo: [-1.4, HEAD + PAINT_Y, -43.2 + PAINT_DZ], cargoRot: [-TILT, 0, 0], yaw: 180 } },
   ],
   killY: -6,
-  parTime: 210,
+  parTime: 200,
   objects,
-  hints: ['Lift it off the easel together: one of you at each side'],
+  hints: ['Lift it off its stand together: one of you at each side'],
   tips: [
     { pos: [0, 0, 18.2], radius: 2.2, text: 'Fans! Side by side, its edge cuts through the wind' },
     { pos: [0, 0, 9.6], radius: 2.0, text: 'Too narrow for side by side. Wait till the windsocks droop, then cross!' },
     { pos: [-3.0, 0, -9.6], radius: 2.4, text: 'Sea breeze: turn it so its thin edge points at the sea' },
-    { pos: [-5.5, 0, -27.6], radius: 1.8, text: 'Shelter here behind the lookout if a gust comes' },
+    { pos: [-5.5, 0, -27.6], radius: 1.8, text: 'Out of the wind behind the lookout: a good spot to turn it' },
     { pos: [-6.6, HEAD, -47], radius: 2.2, text: 'The wind blows straight down the causeway: one in front, one behind' },
     { pos: [-25, HEAD, -47], radius: 2.0, text: 'Onto the easel by the far wall, gently' },
   ],
