@@ -22,7 +22,7 @@ const WIND: Vec3 = [1, 0, 0];
 // stands behind it, so it can be lifted out and carried off in any direction
 const TILT = 8;
 const LEDGE = 0.42; // the slot's floor
-const SLOT = 0.12; // the slot's width (the frame is 0.09 deep)
+const SLOT = 0.105; // the slot's width (the frame is 0.09 deep)
 const RAIL = 0.1; // the slot's sides (a pick-up lifts it 0.14 m: clear of them)
 const PH = 1.25;
 const PD = 0.09;
