@@ -21,11 +21,11 @@ const CANVAS_Z = FD / 2 - 0.025;
  * gets: like a sail, it pushes square on the face and grows with the square of
  * how face-on it is. Edge-on there's only a little drag.
  */
-const FACE = 10;
+const FACE = 7;
 const EDGE = 0.4;
 /** A gust on the face beyond this (m/s² of push) tears the canvas, this much health per second per m/s² over. */
-const WEAR_FROM = 8;
-const WEAR = 0.003;
+const WEAR_FROM = 6;
+const WEAR = 0.0025;
 /** Wind damage comes off in bites this big, each one a new rip. */
 const RIP = 0.02;
 /**
@@ -207,7 +207,7 @@ function backTexture() {
   ctx.fillText('MASTERPIECE', 128, 80);
   ctx.font = '700 11px "Fredoka", ui-rounded, system-ui, sans-serif';
   ctx.fillText('handle with care!', 128, 98);
-  ctx.fillText('↑ THIS WAY UP ↑', 128, 113);
+  ctx.fillText('this side to the wall', 128, 113);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;

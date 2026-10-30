@@ -242,7 +242,9 @@ const ROUTES = {
     cliff: {
       keep: true,
       path: [
-        [-2.6, -6.6, 'broad'],
+        // turn back the way it turned for the gangway (a little east first), so the picture still faces out
+        [0.8, -6.4, 'broad'],
+        [-2.6, -9.0, 'broad'],
         [-5.2, -10.6, 'broad'],
         [-5.2, -20.0, 'broad'],
         [-5.1, -28.6, 'broad'],
@@ -251,12 +253,16 @@ const ROUTES = {
         [-5.0, -47.0, 'broad'],
       ],
     },
-    causeway: { keep: true, path: [[-12.0, -47.0, 'inline'], [-22.0, -47.0, 'inline'], [-28.8, -47.0, 'inline']] },
+    causeway: { keep: true, fresh: true, path: [[-12.0, -47.0, 'inline'], [-22.0, -47.0, 'inline'], [-28.8, -47.0, 'inline']] },
     easel: { keep: true, path: [[-27.5, -50.0, 'broad'], [-27.5, -52.7, 'broad']], place: true },
   },
   // just the gangway, from the calm spot before it
   'wind-gangway': {
     gangway: { cargo: [0, 1.15, 10.2], yaw: 0, half: 1.32, path: [[0, 9.2, 'inline'], { wait: 'calm', at: [0, 4] }, [0, 3.0, 'inline'], [0, -3.4, 'inline']] },
+  },
+  // just the causeway, from the headland
+  'wind-causeway': {
+    causeway: { cargo: [-5.0, 2.3, -47.0], yaw: 0, half: 1.32, path: [[-12.0, -47.0, 'inline'], [-22.0, -47.0, 'inline'], [-28.8, -47.0, 'inline']] },
   },
   // just the easel in the cottage
   'wind-easel': {
@@ -792,7 +798,8 @@ export default async function ({ page, base, shot }) {
     if (Array.isArray(seg)) continue; // route-wide settings (broad)
     if (only.length && !only.includes(name)) continue;
     if (seg.wait) await adv(seg.wait);
-    if (!seg.keep) await page.evaluate(() => { window.__snake = null; });
+    // fresh: a new single-file stretch (a new leader) even though the carry keeps going
+    if (!seg.keep || seg.fresh) await page.evaluate(() => { window.__snake = null; });
     // broad: how close either side of the load the movers stay [min, max] (small loads want them close)
     await page.evaluate((b) => { window.__broad = b; }, seg.broad ?? route.broad ?? null);
     if (seg.start) {

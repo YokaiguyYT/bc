@@ -179,7 +179,7 @@ const objects: LevelObject[] = [
   ...railing([1.15, 0, 8], [1.15, 0, 0], { color: 0xd8c8a0, spacing: 1.35 }),
   ...[-1.15, 1.15].flatMap((x) => [2, 6].map((z) => beam([x, -0.1, z], [x, -1.6, z + (z < 4 ? -2 : 2)], 0.12, 0x8a6a48))),
   // the sea wind funnels up the gully in gusts; the windsocks fill a second before each one
-  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 8.6], dir: WIND, force: 4.5, gust: [3, 6.5], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
+  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 6.4], dir: WIND, force: 4.5, gust: [3, 9], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
   // house fronts down the gully, and a washing line across it
   ...[-4.6, -1.6, 2.6, 5.4].flatMap((x) => windowPane([x, -2.4, 0.04], 0, 1.0, 1.2)),
   ...[-4.6, 2.6].flatMap((x) => windowPane([x, -5.6, 0.04], 0, 1.0, 1.2)),
@@ -313,7 +313,7 @@ const level: LevelDef = {
     { pos: [-3.0, 0, -9.6], radius: 2.4, text: 'Sea breeze: turn it so its thin edge points at the sea' },
     { pos: [-5.5, 0, -27.6], radius: 1.8, text: 'Out of the wind behind the lookout: a good spot to turn it' },
     { pos: [-6.6, HEAD, -47], radius: 2.2, text: 'The wind blows straight down the causeway: one in front, one behind' },
-    { pos: [-25, HEAD, -47], radius: 2.0, text: 'Onto the easel by the far wall, gently' },
+    { pos: [-25, HEAD, -47], radius: 2.0, text: 'Onto the easel by the far wall, picture facing out' },
   ],
   theme: {
     sunDir: [-0.7, 0.5, 0.35],
