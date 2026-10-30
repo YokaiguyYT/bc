@@ -109,6 +109,7 @@ export class App {
     this.screen = s;
     this.layer.innerHTML = html ? `<div class="screen ${opts.dim ? 'dim' : ''}">${html}</div>` : '';
     this.back = opts.back ?? null;
+    this.game.touch.show(this.touchShow()); // (at once: the controls mustn't sit over a menu for a frame)
     this.focusables = [...this.layer.querySelectorAll<HTMLElement>('[data-nav]')];
     this.focusIndex = Math.max(
       0,
@@ -261,6 +262,11 @@ export class App {
     // the guest is in a job when its HUD is up, and the host isn't showing a menu over it
     const job = g.mode === 'light' ? !!this.game.session?.mirror && !this.menuMirror?.firstElementChild : !!this.root.querySelector('.hud') && !this.root.querySelector('.screen');
     return job ? 'play' : 'menu';
+  }
+
+  /** How to open the menu, in a hint. */
+  private escWord() {
+    return this.game.touch.active ? 'Tap ❚❚' : 'Press Esc';
   }
 
   // ------------------------------------------------------------ screens
@@ -639,10 +645,10 @@ export class App {
       const fast = this.game.settings.quality === 'low';
       this.hud?.say(
         this.guest?.canVideo
-          ? `Choppy? Press Esc: ${fast ? '' : 'Graphics: Fast, or '}Picture: stream it.`
+          ? `Choppy? ${this.escWord()}: ${fast ? '' : 'Graphics: Fast, or '}Picture: stream it.`
           : fast
             ? 'Choppy? Close other tabs and apps; this laptop is drawing the whole game.'
-            : 'Choppy? Press Esc, then Graphics: Fast.',
+            : `Choppy? ${this.escWord()}, then Graphics: Fast.`,
         9,
       );
     }
@@ -667,7 +673,7 @@ export class App {
     if (now - p.from < 5) return;
     if (p.frames / (now - p.from) < 40) {
       p.hinted = true;
-      this.hud?.say('Choppy? Press Esc, then Settings → Graphics: Fast.', 8);
+      this.hud?.say(`Choppy? ${this.escWord()}, then Settings → Graphics: Fast.`, 8);
     }
     p.from = now;
     p.frames = 0;
@@ -841,8 +847,7 @@ export class App {
       `<div class="logo" style="font-size:44px">JOB NUMBER</div>
        <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
          <p>Type the six-digit job number</p>
-         <div class="net-code entry job-digits">${this.jobBoxes()}</div>
-         ${typeBox('jn-type', 'Tap here to type it', true)}
+         <div class="type-over"><div class="net-code entry job-digits">${this.jobBoxes()}</div>${typeBox('jn-type', true)}</div>
          <p style="font-size:14px">It's on the results card of every random job. Same number, same course (and the same cargo).</p>
        </div>
        <div class="row">
@@ -1161,10 +1166,9 @@ export class App {
       `<div class="logo" style="font-size:44px">JOIN A FRIEND</div>
        <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
          <p>Type the code on your friend's screen</p>
-         <div class="net-code entry">${boxes}</div>
-         ${typeBox('j-type', 'Tap here to type the code', false, this.joinCode)}
+         <div class="type-over"><div class="net-code entry">${boxes}</div>${typeBox('j-type', false, this.joinCode)}</div>
          <p class="net-status" ${bad ? 'style="color:var(--bad)"' : ''}>${esc(status) || '&nbsp;'}</p>
-         <p style="font-size:14px">Their laptop runs the game; yours shows it. You're <b style="color:var(--p2)">P2</b>: move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.<span class="touch-only"><br>On a phone or tablet: the stick and buttons on screen, and the button in the corner for the menu.</span></p>
+         <p style="font-size:14px">Their laptop runs the game; yours shows it. You're <b style="color:var(--p2)">P2</b>: <span class="keys-only">move with <b>WASD</b> or the <b>arrows</b>, whichever you like. <kbd>Esc</kbd> for the online menu.</span><span class="touch-only">play with the stick and buttons on screen; the button in the corner opens the online menu.</span></p>
        </div>
        <div class="row">
          <button class="btn primary" data-nav data-default id="j-go" ${this.joinCode.length === CODE_LEN && !this.joining ? '' : 'disabled'}>Join</button>
@@ -1260,7 +1264,7 @@ export class App {
     const g = this.guest;
     if (!g) return '';
     if (g.quiet > 3) return `⚠️ No word from your friend's laptop for ${Math.round(g.quiet)} s… (Wi-Fi?)`;
-    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt)} · Esc: online menu`;
+    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt)}${this.game.touch.active ? '' : ' · Esc: online menu'}`;
   }
 
   /** Show the host's game the way the current mode says: drawn here (light) or streamed (video). */
@@ -1483,9 +1487,9 @@ function dailyId(d = new Date()) {
   return `daily-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
-/** A text box for typing a code on a phone or tablet (hidden on a keyboard). */
-function typeBox(id: string, placeholder: string, digits: boolean, value = '') {
-  return `<input class="type-box touch-only" id="${id}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}" ${digits ? 'inputmode="numeric" pattern="[0-9]*"' : 'autocapitalize="characters"'} autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">`;
+/** An invisible text box over a code's boxes: on a phone or tablet, tapping them brings up the on-screen keyboard (hidden on a keyboard). */
+function typeBox(id: string, digits: boolean, value = '') {
+  return `<input class="type-box touch-only" id="${id}" type="text" value="${esc(value)}" aria-label="Code" ${digits ? 'inputmode="numeric" pattern="[0-9]*"' : 'autocapitalize="characters"'} autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">`;
 }
 
 /** Keep a code's text box showing the code (keys typed on a real keyboard go straight to the code). */

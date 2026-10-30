@@ -54,7 +54,14 @@ export class Touch {
     this.el.addEventListener('pointermove', this.move);
     this.el.addEventListener('pointerup', this.up);
     this.el.addEventListener('pointercancel', this.up);
+    this.el.addEventListener('lostpointercapture', this.up);
     this.el.addEventListener('contextmenu', (e) => e.preventDefault()); // a long press on GRAB
+    // no finger left on the screen: nothing can still be held, whatever events went missing
+    const lifted = (e: TouchEvent) => {
+      if (e.touches.length === 0 && this.holds.size) this.release(false);
+    };
+    document.addEventListener('touchend', lifted, true);
+    document.addEventListener('touchcancel', lifted, true);
     this.setActive(!!window.matchMedia?.('(pointer: coarse)').matches);
     window.addEventListener('pointerdown', (e) => e.pointerType === 'touch' && this.setActive(true), true);
     window.addEventListener('keydown', this.key, true);
@@ -120,15 +127,15 @@ export class Touch {
     if (s !== 'play') this.release();
   }
 
-  /** Let go of everything (hidden, tab switched…). */
-  private release() {
+  /** Let go of everything (hidden, tab switched…); a jump tap not yet read goes too, unless kept. */
+  private release(dropJumps = true) {
     for (const h of this.holds.values()) h.el.classList.remove('on');
     this.holds.clear();
     this.stick = null;
     this.base.classList.remove('on');
     this.base.style.left = this.base.style.top = '';
     this.knob.style.transform = '';
-    this.usedJumps = this.jumps;
+    if (dropJumps) this.usedJumps = this.jumps;
   }
 
   /** A key press means a keyboard is being used: off they go (typing in a text box doesn't count). */

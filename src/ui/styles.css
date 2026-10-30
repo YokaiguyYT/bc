@@ -1073,28 +1073,56 @@ html.touch body {
   background: var(--ink);
 }
 
-/* the HUD keeps clear of the thumbs: player cards go up top (no keys to show), the hint between the thumbs */
+/* the HUD keeps clear of the thumbs: player cards go up top as small chips (no keys to show), the hint between the thumbs */
 html.touch .hud .player-card {
   top: 124px;
   bottom: auto;
+  gap: 6px;
+  padding: 4px 9px 4px 5px;
+}
+html.touch .hud .player-card.p2 {
+  padding: 4px 5px 4px 9px;
+}
+html.touch .hud .player-card .badge {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
 }
 html.touch .hud .player-card .keys {
   display: none;
+}
+/* "KNOCKED OUT!" hangs under the chip instead of widening it */
+html.touch .hud .player-card > div:last-child {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  white-space: nowrap;
+}
+html.touch .hud .player-card.p2 > div:last-child {
+  left: auto;
+  right: 0;
+}
+html.touch .hud .player-card .state:not(:empty) {
+  background: rgba(255, 248, 236, 0.94);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  padding: 1px 8px;
 }
 html.touch .hud .status-card {
   right: calc(28px + var(--tc-small));
 }
 html.touch .hud .hint {
-  bottom: var(--tc-bottom);
+  bottom: calc(var(--tc-bottom) + 22px); /* (clear of the online line at the very bottom) */
   width: max-content;
   max-width: calc(100% - 2 * var(--tc-cluster-w) - 24px);
   white-space: normal;
   text-align: center;
   font-size: 16px;
 }
+/* upright: no room between the thumbs, so the hint goes above them */
 @media (orientation: portrait) {
   html.touch .hud .hint {
-    bottom: calc(var(--tc-cluster-h) + 18px);
+    bottom: max(calc(var(--tc-cluster-h) + 24px), 30%);
     max-width: 94%;
   }
 }
@@ -1132,30 +1160,26 @@ html.touch .hud .hint {
   }
 }
 
-/* typing a code on a phone or tablet */
+html.touch .keys-only {
+  display: none !important;
+}
+
+/* typing a code on a phone or tablet: an invisible text box lies over the code's boxes, so tapping them brings up the keyboard */
+.type-over {
+  position: relative;
+}
 input.type-box {
-  display: block;
-  margin: 0 auto 10px;
-  width: min(330px, 86%);
-  font-family: var(--font);
-  font-size: 22px;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  background: #fff;
-  border: 4px solid var(--ink);
-  border-radius: 14px;
-  padding: 8px 12px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 18px; /* (16 px or more, or iPhones zoom in on it) */
   -webkit-user-select: text;
   user-select: text;
-}
-input.type-box::placeholder {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 600;
-  color: #9a96a3;
 }
 
 /* short screens (a phone on its side): a menu that doesn't fit scrolls instead of spilling off both ends */
@@ -1172,14 +1196,19 @@ input.type-box::placeholder {
 }
 @media (max-height: 500px) {
   .screen {
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 12px;
   }
   .menu {
-    gap: 8px;
+    gap: 7px;
   }
   button.btn {
-    font-size: 19px;
-    padding: 7px 18px;
+    font-size: 18px;
+    padding: 5px 16px;
+    border-width: 4px;
+    border-radius: 14px;
+  }
+  .panel {
+    padding: 14px 18px;
   }
 }
