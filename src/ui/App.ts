@@ -150,6 +150,7 @@ export class App {
     if (this.screen === 'join' && this.typeCode(code, e)) return;
     if (this.screen === 'guest') {
       if (b.pause.includes(code)) this.showGuestMenu();
+      else if (b.p1.jump.includes(code) || b.p2.jump.includes(code)) this.guest?.tapJump();
       return;
     }
     if (this.screen === 'title') {
@@ -198,7 +199,6 @@ export class App {
     const g = this.guest;
     if (g) {
       const s = this.game.session;
-      g.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, dt, s?.mirror ? s : null);
       if (g.mode === 'light') {
         this.attract?.update(dt);
         if (s?.mirror && this.hud) this.hud.update(dt);
@@ -928,6 +928,11 @@ export class App {
     g.onVia = () => this.updateBadge(this.guestBadge());
     g.onLost = (why) => this.showGuestLost(why);
     this.pictureTimer = window.setInterval(() => this.video && this.guest?.checkPicture(this.video), 2000);
+    // keys go out on a steady beat, however slowly this laptop draws frames
+    this.keysTimer = window.setInterval(() => {
+      const s = this.game.session;
+      this.guest?.sendKeys(this.screen === 'guest' ? this.game.keyboard : null, 1 / 30, s?.mirror ? s : null);
+    }, 1000 / 30);
     this.setScreen('guest', '');
     this.presentGuest(g.mode);
   }
@@ -1039,6 +1044,7 @@ export class App {
 
   private fitGuest: (() => void) | null = null;
   private pictureTimer = 0;
+  private keysTimer = 0;
 
   private showGuestMenu() {
     const g = this.guest;
@@ -1097,6 +1103,7 @@ export class App {
     this.game.onlineGuest = false;
     g.leave();
     clearInterval(this.pictureTimer);
+    clearInterval(this.keysTimer);
     if (this.fitGuest) window.removeEventListener('resize', this.fitGuest);
     this.fitGuest = null;
     this.video?.remove();

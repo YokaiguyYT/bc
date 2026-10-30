@@ -606,7 +606,12 @@ export class OnlineGuest {
     });
   }
 
-  /** Per frame: send this laptop's keys (either layout drives our mover). */
+  /** A jump key went down (counted, so a quick tap is never lost however slowly frames come). */
+  tapJump() {
+    this.jumps++;
+  }
+
+  /** Send this laptop's keys, about 30 times a second (either layout drives our mover). */
   sendKeys(kb: Keyboard | null, dt: number, session: LevelSession | null) {
     let m: MoveState = { x: 0, y: 0, jump: false, jumpPressed: false, grab: false };
     let cam = 0;
@@ -626,7 +631,6 @@ export class OnlineGuest {
         cam = 0; // our camera is our own business
       }
     }
-    if (m.jumpPressed) this.jumps++;
     const state = `${m.x},${m.y},${+world},${+m.jump},${this.jumps},${+m.grab},${cam}`;
     // changes go at once; otherwise a reminder every so often (packets can get lost)
     this.resend -= dt;

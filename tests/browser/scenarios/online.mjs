@@ -7,12 +7,14 @@
 // ONLY=relay runs it with the direct link switched off (as on a school network
 // that blocks it); ONLY=direct with the relay off.
 // NET=ws://127.0.0.1:9000/peerjs uses a PeerJS server run locally instead of the
-// BroadcastChannel; NET=peerjs the real public one.
+// BroadcastChannel; NET=peerjs the real public one; NET=mqtt with
+// MQTT=ws://127.0.0.1:8888 an MQTT broker run locally (both: NET=ws://… MQTT=ws://…).
 export default async function ({ page, base, out }) {
   const params = new URLSearchParams();
   const net = process.env.NET;
   if (!net) params.set('net', 'local');
   else if (net !== 'peerjs') params.set('net', net);
+  if (process.env.MQTT) params.set('mqtt', process.env.MQTT);
   if (process.env.ONLY === 'relay') params.set('p2p', '0');
   if (process.env.ONLY === 'direct') params.set('relay', '0');
   const q = params.toString() ? '?' + params : '';
@@ -97,9 +99,10 @@ export default async function ({ page, base, out }) {
   check("guest's keys move P2 (m/s)", speed(after, before, 1) > 0.8, +speed(after, before, 1).toFixed(2));
   check('…and not P1', speed(after, before, 0) < 0.3, +speed(after, before, 0).toFixed(2));
   const b2 = await hostPos();
-  await guest.keyboard.down('KeyS');
+  // (back up the yard: down there is the fence)
+  await guest.keyboard.down('KeyW');
   await guest.waitForTimeout(1000);
-  await guest.keyboard.up('KeyS');
+  await guest.keyboard.up('KeyW');
   await host.waitForTimeout(400);
   const a2 = await hostPos();
   check('guest WASD moves P2 too (m/s)', speed(a2, b2, 1) > 0.8, +speed(a2, b2, 1).toFixed(2));
