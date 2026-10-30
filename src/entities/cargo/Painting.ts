@@ -25,9 +25,18 @@ const FACE = 10;
 const EDGE = 0.4;
 /** A gust on the face beyond this (m/s² of push) tears the canvas, this much health per second per m/s² over. */
 const WEAR_FROM = 8;
-const WEAR = 0.0035;
+const WEAR = 0.003;
 /** Wind damage comes off in bites this big, each one a new rip. */
 const RIP = 0.02;
+/**
+ * Whoever carries it keeps it upright, leaning back a touch (so it settles back
+ * against whatever it's set down on): N·m per radian off, its cap, and
+ * damping (N·m·s). Held by the sides, it would otherwise flip over the hands.
+ */
+const UPRIGHT_K = 160;
+const UPRIGHT_MAX = 80;
+const UPRIGHT_DAMP = 8;
+const LEAN = 6 * (Math.PI / 180);
 /** Canvas texture size (px). */
 const TW = 512;
 const TH = 336;
@@ -36,6 +45,8 @@ const _n = new THREE.Vector3();
 const _l = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
+const _up = new THREE.Vector3();
+const _ax = new THREE.Vector3();
 
 /** "Lighthouse at Dusk": sunset sky, the sea, a lighthouse on its rock, a boat and some gulls. */
 function drawSeascape(ctx: CanvasRenderingContext2D, w: number, h: number) {
@@ -246,10 +257,20 @@ export class Painting extends Cargo {
   }
 
   protected buildColliders() {
-    // four frame bars (hands hold these) and the canvas between them (nobody grabs a painting by its picture)
-    const bar = (hx: number, hy: number, x: number, y: number, mass: number) => this.addCollider(RAPIER.ColliderDesc.cuboid(hx, hy, FD / 2).setTranslation(x, y, 0).setMass(mass), 0.65);
-    for (const s of [-1, 1]) bar(W / 2, FW / 2, 0, s * (H / 2 - FW / 2), 3);
-    for (const s of [-1, 1]) bar(FW / 2, H / 2 - FW, s * (W / 2 - FW / 2), 0, 2.2);
+    // the frame bars and the canvas between them. Hands hold the top and the
+    // upper half of each side: held above its middle it hangs steady (held
+    // lower, it would flip over the hands). Nobody grabs it by its picture.
+    const bar = (hx: number, hy: number, x: number, y: number, mass: number, grab = true) => {
+      const c = this.addCollider(RAPIER.ColliderDesc.cuboid(hx, hy, FD / 2).setTranslation(x, y, 0).setMass(mass), 0.65);
+      if (!grab) this.sim.physics.info(c)!.grabbable = false;
+    };
+    bar(W / 2, FW / 2, 0, H / 2 - FW / 2, 3);
+    bar(W / 2, FW / 2, 0, -H / 2 + FW / 2, 3, false);
+    const side = H / 2 - FW;
+    for (const s of [-1, 1]) {
+      bar(FW / 2, side / 2, s * (W / 2 - FW / 2), side / 2, 1.1);
+      bar(FW / 2, side / 2, s * (W / 2 - FW / 2), -side / 2, 1.1, false);
+    }
     const canvas = this.addCollider(RAPIER.ColliderDesc.cuboid(CW / 2, CH / 2, 0.012).setTranslation(0, 0, CANVAS_Z - 0.012).setMass(1.6), 0.6);
     this.sim.physics.info(canvas)!.grabbable = false;
   }
@@ -319,6 +340,7 @@ export class Painting extends Cargo {
   }
 
   preStep(dt: number) {
+    if (!this.destroyed && this.sim.grips.isHeld(this.body)) this.keepUpright(dt);
     if (this.across.lengthSq() > 1e-8) {
       const m = this.body.mass() * dt;
       this.body.applyImpulse({ x: this.across.x * m, y: this.across.y * m, z: this.across.z * m }, true);
@@ -340,6 +362,25 @@ export class Painting extends Cargo {
       const at = _v.set((r() - 0.5) * CW * 0.8, (r() - 0.5) * CH * 0.8, CANVAS_Z).applyQuaternion(_q.set(q.x, q.y, q.z, q.w)).add(_l.set(t.x, t.y, t.z));
       this.damage(RIP, 0, at.clone());
     }
+  }
+
+  /** Turn it (not about the vertical) so it stands upright, leaning back LEAN. */
+  private keepUpright(dt: number) {
+    const r = this.body.rotation();
+    _q.set(r.x, r.y, r.z, r.w);
+    const up = _up.set(0, 1, 0).applyQuaternion(_q);
+    // where up should point: straight up, tipped back away from the face
+    const n = _n.set(0, 0, 1).applyQuaternion(_q).setY(0);
+    const want = _l.set(0, Math.cos(LEAN), 0);
+    if (n.lengthSq() > 1e-6) want.addScaledVector(n.normalize(), -Math.sin(LEAN));
+    const axis = _ax.crossVectors(up, want);
+    const sn = axis.length();
+    const w = this.body.angvel();
+    const ang = Math.atan2(sn, up.dot(want));
+    const tau = sn > 1e-5 ? axis.multiplyScalar(Math.min(UPRIGHT_MAX, ang * UPRIGHT_K) / sn) : axis.set(0, 0, 0);
+    tau.x -= w.x * UPRIGHT_DAMP;
+    tau.z -= w.z * UPRIGHT_DAMP;
+    this.body.applyTorqueImpulse({ x: tau.x * dt, y: 0, z: tau.z * dt }, true);
   }
 
   netState() {

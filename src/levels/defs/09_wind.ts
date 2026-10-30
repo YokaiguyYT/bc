@@ -18,12 +18,13 @@ const ROCK = 0x8d8275;
 const STONE = 0xa59a8a;
 const WIND: Vec3 = [1, 0, 0];
 
-// the painting waits in a padded slot on a stand, leaning back a little; nothing
-// stands behind it, so it can be lifted out and carried off in any direction
+// the painting waits in a padded slot on a low stand, leaning back a little: its
+// middle is below the movers' hands, so they hold it above its middle and it hangs
+// steady; nothing stands behind it, so it can be carried off in any direction
 const TILT = 8;
-const LEDGE = 0.42; // the slot's floor
+const LEDGE = 0.1; // the slot's floor
 const SLOT = 0.105; // the slot's width (the frame is 0.09 deep)
-const RAIL = 0.1; // the slot's sides (a pick-up lifts it 0.14 m: clear of them)
+const RAIL = 0.1; // the slot's sides (a pick-up lifts it well clear of them)
 const PH = 1.25;
 const PD = 0.09;
 const PAINT_Y = LEDGE + (PH / 2) * Math.cos(TILT * DEG) + (PD / 2) * Math.sin(TILT * DEG) + 0.01;
@@ -40,44 +41,44 @@ function beam(a: Vec3, b: Vec3, t: number, color: number, extra: Partial<LevelOb
 }
 
 /**
- * The painter's display stand at floor point (x, y, z): a trestle with a padded
- * slot along its top that the painting (facing +Z) stands in. The painting's
+ * A painting stand at floor point (x, y, z): a low board with a padded slot that
+ * the painting (facing +Z) stands in, and a knob at each end. The painting's
  * centre goes at [x, y + PAINT_Y, z + PAINT_DZ], tilted back TILT degrees.
  */
-function easel(x: number, y: number, z: number, color = 0x8a5a36): LevelObject[] {
+function stand(x: number, y: number, z: number, color = 0x8a5a36): LevelObject[] {
   const felt = 0x3d6fb0;
   const top = y + LEDGE;
   return [
-    { type: 'box', pos: [x, top - 0.03, z], size: [1.2, 0.06, 0.42], color, radius: 0.015 },
+    { type: 'box', pos: [x, y + LEDGE / 2, z], size: [1.3, LEDGE, 0.46], color, radius: 0.02 },
     ...[-1, 1].map((s): LevelObject => ({ type: 'box', pos: [x, top + RAIL / 2, z + s * (SLOT / 2 + 0.025)], size: [1.2, RAIL, 0.05], color: felt, radius: 0.02, grabbable: false })),
-    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => beam([x + sx * 0.52, top - 0.05, z + sz * 0.15], [x + sx * 0.66, y, z + sz * 0.34], 0.06, color))),
-    beam([x - 0.6, y + 0.16, z + 0.27], [x + 0.6, y + 0.16, z + 0.27], 0.04, color),
-    beam([x - 0.6, y + 0.16, z - 0.27], [x + 0.6, y + 0.16, z - 0.27], 0.04, color),
+    ...[-1, 1].map((s): LevelObject => ({ type: 'ball', pos: [x + s * 0.62, top + RAIL + 0.04, z], radius: 0.05, color: 0xd9a93f, collide: false })),
   ];
 }
 
 /**
  * The gallery easel in the keeper's cottage (floor point x, y, z; the painting
- * faces +Z): a padded ledge that slopes down to a padded backboard, so a
- * painting set down anywhere on it slides back and leans there.
+ * faces +Z): a deep padded ledge in front of a padded backboard, so a painting
+ * set down anywhere on it, even skewed, falls back and leans there.
  */
 function displayEasel(x: number, y: number, z: number): LevelObject[] {
   const velvet = 0x7a2a3a;
   const gold = 0xd9a93f;
   const back = 12 * DEG;
   // the backboard's foot is just behind the ledge's low back edge
-  const fy = y + 0.27;
+  const fy = y + 0.1;
   const fz = z - 0.41;
   const by = fy + 0.72 * Math.cos(back) - 0.04 * Math.sin(back);
   const bz = fz - 0.72 * Math.sin(back) - 0.04 * Math.cos(back);
   return [
-    { type: 'box', pos: [x, y + 0.15, z], size: [1.5, 0.3, 0.8], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
-    { type: 'box', pos: [x, y + 0.33, z], size: [1.5, 0.06, 0.82], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.55, radius: 0.02 },
+    { type: 'box', pos: [x, y + 0.075, z + 0.15], size: [1.5, 0.15, 1.1], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
+    { type: 'box', pos: [x, y + 0.16, z + 0.15], size: [1.5, 0.06, 1.12], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.4, radius: 0.02 },
     { type: 'box', pos: [x, by, bz], size: [1.5, 1.5, 0.08], rot: [-back / DEG, 0, 0], color: velvet, surface: 'carpet', friction: 0.3, radius: 0.03, grabbable: false },
     beam([x - 0.79, y, z - 0.42], [x - 0.79, y + 1.62, z - 0.75], 0.07, gold),
     beam([x + 0.79, y, z - 0.42], [x + 0.79, y + 1.62, z - 0.75], 0.07, gold),
     beam([x - 0.79, y + 1.6, z - 0.75], [x + 0.79, y + 1.6, z - 0.75], 0.06, gold),
-    { type: 'sign', pos: [x, y + 0.15, z + 0.41], size: [1.1, 0.2, 0.02], text: 'LIGHTHOUSE AT DUSK · M. GALE', color: 0xb8892e, textColor: '#2b1d14' },
+    { type: 'sign', pos: [x, y + 0.08, z + 0.71], size: [1.1, 0.12, 0.02], text: 'LIGHTHOUSE AT DUSK · M. GALE', color: 0xb8892e, textColor: '#2b1d14' },
+    // a potted plant each side, level with the backboard: whoever sets it down stops beside it, not behind it
+    ...[-1, 1].map((s): LevelObject => ({ type: 'model', model: 'plant', pos: [x + s * 1.3, y, z - 0.8] })),
   ];
 }
 
@@ -112,7 +113,7 @@ const chimney = (x: number, z: number, h = 1.6, gull = false): LevelObject[] => 
 
 /** A rooftop extractor fan blowing +X, on the west parapet: zone z0..z1, its duct behind. */
 const extractor = (z0: number, z1: number, phase: number): LevelObject[] => [
-  { type: 'hazard', kind: 'fan', pos: [0.5, 1.4, (z0 + z1) / 2], params: { size: [13, 2.8, z1 - z0], dir: WIND, force: 5, gust: [3, 3.6], phase } },
+  { type: 'hazard', kind: 'fan', pos: [0.5, 1.4, (z0 + z1) / 2], params: { size: [13, 2.8, z1 - z0], dir: WIND, force: 4.5, gust: [3, 3.6], phase } },
   { type: 'box', pos: [-6.75, 1.4, (z0 + z1) / 2], size: [0.7, 2.7, 2.7], surface: 'metal', color: 0x8d9aa6, radius: 0.08 },
   { type: 'box', pos: [-6.75, 0.25, (z0 + z1) / 2], size: [0.9, 0.5, 3.0], surface: 'metal', color: 0x6c7480, radius: 0.04 },
 ];
@@ -131,6 +132,9 @@ const gulls = (x: number, y: number, z: number, count = 4, radius = 1.2): LevelO
 const objects: LevelObject[] = [
   // ---- the sea, far below
   { type: 'box', pos: [-40, SEA - 0.5, -30], size: [260, 1, 240], color: 0x2f6f9f, collide: false, castShadow: false },
+  // rocky buttresses down the cliffs, and boulders in the surf
+  ...([[-8.9, -15, 5], [-9.0, -24.5, 3.5], [-8.8, -35, 6], [-8.9, -51, 4], [-35.4, -45, 5], [-35.3, -59, 3.5]] as const).map(([x, z, h], i) => ({ type: 'box' as const, pos: [x, SEA + (h - 1) / 2 + 2, z] as Vec3, size: [2.2, h + 3, 3.2 + (i % 3)] as Vec3, rot: [0, 18 - i * 11, 0] as Vec3, color: i % 2 ? STONE : ROCK, collide: false, radius: 0.4 })),
+  ...([[-11.5, -29, 1.3], [-10.2, -18, 0.9], [-24, -36.4, 1.5], [-37.2, -50, 1.2], [-10.6, -56, 1.4], [-30, -67.6, 1.1]] as const).map(([x, z, r]) => ({ type: 'ball' as const, pos: [x, SEA + r * 0.3, z] as Vec3, radius: r, color: ROCK, collide: false })),
   // surf along the foot of the cliffs
   ...([[-8.7, -14, 1.2, 84], [-35.7, -52, 1.2, 28], [-28, -37.3, 14, 1.2], [-28, -66.7, 14, 1.2]] as const).map(([x, z, w, d]) => ({ type: 'box' as const, pos: [x, SEA + 0.02, z] as Vec3, size: [w, 0.08, d] as Vec3, color: 0xe6f3f8, collide: false, castShadow: false, radius: 0.03 })),
 
@@ -148,7 +152,7 @@ const objects: LevelObject[] = [
   ...wall([4.5, 0, 20], [4.5, 0, 27], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true }),
   ...wall([-4.5, 0, 20], [4.5, 0, 20], 2.6, { surface: 'plaster', color: 0xd9e4ea, fade: true, doors: [[0.5, 3.8, 2.3]] }),
   { type: 'sign', pos: [0, 2.45, 19.86], size: [3.2, 0.42, 0.05], text: 'M. GALE · PAINTER', color: 0x3d6fb0 },
-  ...easel(0, 0, 23.6),
+  ...stand(0, 0, 23.6),
   rug([0, 0, 23.4], [3.4, 2.2], 0xc8648a),
   ...table([-3.4, 0, 25.6], [1.6, 0.8, 0.8], 0x8a5a36),
   ...([[-3.9, 0xd6453a], [-3.55, 0x3d6fb0], [-3.2, 0xffd23f], [-2.85, 0x52d39a]] as const).map(([x, color]) => ({ type: 'cylinder' as const, pos: [x, 0.86, 25.5] as Vec3, radius: 0.07, height: 0.12, color, collide: false })),
@@ -175,7 +179,7 @@ const objects: LevelObject[] = [
   ...railing([1.15, 0, 8], [1.15, 0, 0], { color: 0xd8c8a0, spacing: 1.35 }),
   ...[-1.15, 1.15].flatMap((x) => [2, 6].map((z) => beam([x, -0.1, z], [x, -1.6, z + (z < 4 ? -2 : 2)], 0.12, 0x8a6a48))),
   // the sea wind funnels up the gully in gusts; the windsocks fill a second before each one
-  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 8.6], dir: WIND, force: 5, gust: [3, 6.5], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
+  { type: 'hazard', kind: 'fan', pos: [0, 1.5, 4], params: { size: [9, 3, 8.6], dir: WIND, force: 4.5, gust: [3, 6.5], phase: 1.5, housing: false, socks: [[-1.9, 0, 9.0], [1.8, 0, -0.9]] } },
   // house fronts down the gully, and a washing line across it
   ...[-4.6, -1.6, 2.6, 5.4].flatMap((x) => windowPane([x, -2.4, 0.04], 0, 1.0, 1.2)),
   ...[-4.6, 2.6].flatMap((x) => windowPane([x, -5.6, 0.04], 0, 1.0, 1.2)),
@@ -196,7 +200,7 @@ const objects: LevelObject[] = [
   bench(7.3, 0, -8.4, -90),
   ...([[6.2, -11.2], [6.9, -11.3], [6.55, -10.6]] as const).map(([x, z], i) => ({ type: 'cylinder' as const, pos: [x, 0.25 + (i === 2 ? 0.5 : 0), z] as Vec3, radius: 0.3, height: 0.5, color: 0xc97a4a, segments: 10 })),
   gulls(2.4, 0, -9.4, 5, 1.3),
-  ...easel(4.6, 0, -5.6),
+  ...stand(4.6, 0, -5.6),
   { type: 'sign', pos: [-1.8, 1.9, -11.2], size: [2.4, 0.55, 0.06], text: 'CLIFF PATH · LIGHTHOUSE', color: 0x2f5d4a, post: true },
 
   // ---- the cliff path (x -8..-3, z -40..-12): railing on the sea side, a stone wall inland
@@ -235,7 +239,7 @@ const objects: LevelObject[] = [
   ...railing([-7.9, HEAD, -48.9], [-7.9, HEAD, -54]),
   ...railing([-7.9, HEAD, -54], [6, HEAD, -54]),
   ...railing([6, HEAD, -54], [6, HEAD, -40]),
-  ...easel(-1.4, HEAD, -43.2),
+  ...stand(-1.4, HEAD, -43.2),
   bench(3.6, HEAD, -51.8, 180),
   gulls(1.4, HEAD, -49.6, 4, 1.1),
   ...bush([4.8, HEAD, -42], 0.7),
@@ -247,7 +251,7 @@ const objects: LevelObject[] = [
   ...[-11, -15, -19].map((x) => ({ type: 'box' as const, pos: [x, (HEAD + SEA) / 2 - 0.4, -47] as Vec3, size: [1.6, HEAD - SEA - 0.8, 3.2] as Vec3, color: ROCK, collide: false, radius: 0.3 })),
   ...railing([-21.2, HEAD, -45.15], [-7.9, HEAD, -45.15], { color: 0xf2f2ee }),
   ...railing([-21.2, HEAD, -48.85], [-7.9, HEAD, -48.85], { color: 0xf2f2ee }),
-  { type: 'hazard', kind: 'fan', pos: [-14.5, HEAD + 1.5, -47], params: { size: [14.6, 3, 4.2], dir: WIND, force: 5, gust: [6, 2.4], phase: 0, housing: false, socks: [[-7.3, HEAD, -49.6], [-22.0, HEAD, -44.4]] } },
+  { type: 'hazard', kind: 'fan', pos: [-14.5, HEAD + 1.5, -47], params: { size: [14.6, 3, 4.2], dir: WIND, force: 4.5, gust: [5, 2.5], phase: 0, housing: false, socks: [[-7.3, HEAD, -49.6], [-22.0, HEAD, -44.4]] } },
 
   // ---- the lighthouse rock (x -35..-21, z -66..-38)
   ground(-35, -21, -66, -38, HEAD, 'grass', 0x8fb86a),
@@ -292,9 +296,9 @@ const level: LevelDef = {
   cameraYaw: 0,
   // one of you at each side of the frame, the picture facing you
   spawn: { p1: [-1.35, 0, 23.55], p2: [1.35, 0, 23.55], cargo: [0, PAINT_Y, 23.6 + PAINT_DZ], cargoRot: [-TILT, 0, 0], yaw: 180 },
-  goal: { pos: [-27.5, HEAD + 0.95, -52.85], size: [2.4, 1.9, 1.3], label: 'ON THE EASEL' },
+  goal: { pos: [-27.5, HEAD + 0.85, -52.6], size: [2.4, 1.7, 1.8], label: 'ON THE EASEL' },
   checkpoints: [
-    // over the gangway: it waits on an easel by the fish & chip shop
+    // over the gangway: it waits on a stand by the fish & chip shop
     { pos: [0, 1, -2.6], size: [5, 2, 3], spawn: { p1: [3.25, 0, -5.65], p2: [5.95, 0, -5.65], cargo: [4.6, PAINT_Y, -5.6 + PAINT_DZ], cargoRot: [-TILT, 0, 0], yaw: 180 } },
     // on the headland, before the causeway
     { pos: [-5.5, HEAD + 1, -42.2], size: [5, 2, 3.2], spawn: { p1: [-2.75, HEAD, -43.25], p2: [-0.05, HEAD, -43.25], cargo: [-1.4, HEAD + PAINT_Y, -43.2 + PAINT_DZ], cargoRot: [-TILT, 0, 0], yaw: 180 } },
