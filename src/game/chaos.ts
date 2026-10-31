@@ -32,8 +32,8 @@ export interface ChaosKind {
 
 export const CHAOS_KINDS: ChaosKind[] = [
   { bit: 1, name: 'From the sky', icon: '☄️', text: 'meteors, beach balls, boxes, money' },
-  { bit: 2, name: 'Ground & weather', icon: '🌪️', text: 'earthquakes, hurricanes, ice, barrels' },
-  { bit: 4, name: 'Weird physics', icon: '🌙', text: 'moon gravity, speed shoes, super jumps' },
+  { bit: 2, name: 'Ground & weather', icon: '🌪️', text: 'earthquakes, hurricanes, ice, barrels, fog' },
+  { bit: 4, name: 'Weird physics', icon: '🌙', text: 'moon gravity, speed shoes, super jumps, a UFO' },
   { bit: 8, name: 'Critters', icon: '🐔', text: 'chicken stampedes, chicken rain' },
 ];
 
@@ -62,6 +62,8 @@ export const CHAOS_EVENTS: ChaosEvent[] = [
   { id: 'jump', kind: 4, text: '🦘 SUPER JUMPS!', dur: 8 },
   { id: 'stampede', kind: 8, text: '🐔 CHICKEN STAMPEDE!', dur: 6 },
   { id: 'chickenRain', kind: 8, text: "🐔 IT'S RAINING CHICKENS!", dur: 9 },
+  { id: 'ufo', kind: 4, text: '🛸 UFO! HOLD ON TO IT!', dur: 7 },
+  { id: 'fog', kind: 2, text: '🌫️ PEA-SOUPER FOG!', dur: 10 },
 ];
 
 export const chaosLevel = (n: number | undefined) => CHAOS_LEVELS[Math.max(1, Math.min(5, Math.round(n ?? 1))) - 1];

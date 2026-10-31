@@ -115,8 +115,8 @@ There's also a **Practice Yard** to learn the controls.
 Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and which kinds (switch any off):
 
 - **☄️ From the sky:** meteor showers (a red ring shows where each one lands), beach-ball barrages, raining boxes, and **money rain** (grab the notes!)
-- **🌪️ Ground & weather:** earthquakes, hurricanes, flash freezes (every floor turns to ice), rolling barrels
-- **🌙 Weird physics:** moon gravity, speed shoes, super jumps
+- **🌪️ Ground & weather:** earthquakes, hurricanes, flash freezes (every floor turns to ice), rolling barrels, a pea-souper fog
+- **🌙 Weird physics:** moon gravity, speed shoes, super jumps, and a **UFO** that beams your load up (hold on to it!)
 - **🐔 Critters:** chicken stampedes and chicken rain (you can pick the chickens up)
 
 The higher the slider, the more often (on ULTRA, sometimes two at once) and the closer to your load. A banner and a line under the cargo card say what's going on. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. It works online too.

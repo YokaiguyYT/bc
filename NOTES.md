@@ -15,7 +15,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Play screen (Jobs, Daily, Quick job, Chaos, Endless shift) | Done |
 | Daily (Wordle-style: number, twist, streak, shareable squares) | Done |
 | Cash tips on random courses | Done |
-| Chaos jobs (slider Mild → ULTRA, 13 kinds of chaos) | Done; online too |
+| Chaos jobs (slider Mild → ULTRA, 15 kinds of chaos) | Done; online too |
 | The Locker (outfits, wallet, 10 quests) | Done; online too |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
@@ -155,7 +155,7 @@ Sweeps (the bot plays a batch of numbered jobs, cycling the cargo): the first on
 
 `src/game/chaos.ts` (the levels, kinds and events) and `src/entities/hazards/chaos.ts` (the director). A chaos job is a random course (4 + level obstacles, a bit harder) with one `chaos` hazard holding the course's stretch points, so it knows which way is ahead. On the host, every few seconds (16 s on Mild, 4.5 s on ULTRA, sometimes two at once from Mayhem) it starts one of the enabled events around the cargo (or the movers if the cargo's far off). Meteors aim 4.5 m+ away on Mild and, on Mayhem and ULTRA, sometimes right at the load; spawns look for floor near the movers' level so nothing lands in the void or behind a kerb.
 
-Online: every body it can throw (8 rocks, 4 beach balls, 8 boxes, 4 barrels, 8 chickens) is made up front, disabled and parked far below, in the same order on both laptops, so the guest's copy moves them from the host's snapshots like any other body. What bodies don't show (the quake, the wind, the money notes, what's on) is in `netState`; banners are a game event. Moon gravity and super jumps change the shared tuning while they last; the director puts it back when the event ends and when the job is left. New events stop once the job is delivered or lost. `trigger(id)` starts one on demand (tests).
+Online: every body it can throw (8 rocks, 4 beach balls, 8 boxes, 4 barrels, 8 chickens) is made up front, disabled and parked far below, in the same order on both laptops, so the guest's copy moves them from the host's snapshots like any other body. What bodies don't show (the quake, the wind, the UFO, the fog, the money notes, what's on) is in `netState`; banners are a game event. Moon gravity and super jumps change the shared tuning while they last; the director puts it back when the event ends and when the job is left. New events stop once the job is delivered or lost. `trigger(id)` starts one on demand (tests).
 
 The bot isn't made for chaos (it doesn't dodge), so sweeps only check that Mild chaos jobs stay deliverable; see the chaos and online-gen scenarios for the rest.
 

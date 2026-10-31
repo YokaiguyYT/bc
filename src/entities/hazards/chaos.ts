@@ -218,6 +218,13 @@ export class ChaosDirector implements Hazard {
   private time = 0;
   /** How many surprises so far (the results card counts them). */
   fired = 0;
+  // the UFO (where it hovers) and the fog (how thick, 0..1, eased on each laptop)
+  private ufo: THREE.Vector3 | null = null;
+  private ufoObj = new THREE.Group();
+  private beam: THREE.Mesh;
+  private fog = false;
+  private fogK = 0;
+  private fogWas: { near: number; far: number; color: THREE.Color } | null = null;
 
   constructor(
     o: HazardObj,
@@ -247,6 +254,27 @@ export class ChaosDirector implements Hazard {
       this.root.add(g);
       this.noteObjs.push(g);
     }
+    // a flying saucer with a little green pilot, and its tractor beam
+    const hull = mesh(new THREE.SphereGeometry(1.5, 28, 12), glossy(0xb8c2cc, 0.25, 0.7));
+    hull.scale.set(1, 0.28, 1);
+    const dome = mesh(new THREE.SphereGeometry(0.62, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1 }), false);
+    dome.position.y = 0.25;
+    const pilot = mesh(new THREE.SphereGeometry(0.22, 12, 10), jelly(0x7bdc4a, 0.5), false);
+    pilot.position.y = 0.42;
+    this.ufoObj.add(hull, dome, pilot);
+    for (let i = 0; i < 8; i++) {
+      const light = mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffe14a : 0xff5a4f }), false);
+      const a = (i / 8) * Math.PI * 2;
+      light.position.set(Math.cos(a) * 1.35, -0.05, Math.sin(a) * 1.35);
+      this.ufoObj.add(light);
+    }
+    this.beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 1.6, 1, 24, 1, true).translate(0, -0.5, 0),
+      new THREE.MeshBasicMaterial({ color: 0xc8ffb0, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    this.ufoObj.add(this.beam);
+    this.ufoObj.visible = false;
+    this.root.add(this.ufoObj);
   }
 
   private make(kind: Kind, park: THREE.Vector3): Thing {
@@ -482,6 +510,12 @@ export class ChaosDirector implements Hazard {
       case 'speed':
         for (const p of this.sim.players ?? []) p.speedScale = 1.7;
         break;
+      case 'ufo':
+        this.ufo = a.center.clone().add(new THREE.Vector3(0, 7, 0));
+        break;
+      case 'fog':
+        this.fog = true;
+        break;
     }
   }
 
@@ -505,6 +539,12 @@ export class ChaosDirector implements Hazard {
         break;
       case 'speed':
         for (const p of this.sim.players ?? []) p.speedScale = 1;
+        break;
+      case 'ufo':
+        this.ufo = null;
+        break;
+      case 'fog':
+        this.fog = false;
         break;
     }
   }
@@ -540,6 +580,31 @@ export class ChaosDirector implements Hazard {
           cargo.body.applyImpulse({ x: (this.rand() - 0.5) * hop * m, y: hop * m, z: (this.rand() - 0.5) * hop * m }, true);
         }
         for (const t of this.things) if (t.live && t.kind !== 'rock' && t.kind !== 'chicken') t.body.applyImpulse({ x: 0, y: 1.5 * t.body.mass(), z: 0 }, true);
+        break;
+      }
+      case 'ufo': {
+        const u = this.ufo;
+        if (!u) break;
+        // it drifts after the load and beams it up: on Mild it only makes it light, on ULTRA it lifts it away
+        const c = this.center();
+        u.x += (c.x - u.x) * Math.min(1, dt * 1.2);
+        u.z += (c.z - u.z) * Math.min(1, dt * 1.2);
+        const g = tuning.physics.gravity;
+        const lift = (0.8 + 0.08 * L) * g;
+        const pull = (b: RigidBody, k = 1) => {
+          const p = b.translation();
+          if (Math.hypot(p.x - u.x, p.z - u.z) > 1.9 || p.y > u.y - 1.6) return;
+          const m = b.mass() * k;
+          b.applyImpulse({ x: (u.x - p.x) * m * dt * 0.6, y: lift * m * dt, z: (u.z - p.z) * m * dt * 0.6 }, true);
+        };
+        const cargo = this.sim.cargo;
+        if (cargo) pull(cargo.body);
+        for (const t of this.things) if (t.live) pull(t.body);
+        // movers in the beam go light-footed (not quite floating)
+        for (const p of this.sim.players ?? []) for (const name of ['body', 'head'] as const) {
+          const part = (p as unknown as { parts: Record<string, RigidBody> }).parts[name];
+          if (part) pull(part, 0.5);
+        }
         break;
       }
       case 'money': {
@@ -793,6 +858,24 @@ export class ChaosDirector implements Hazard {
     }
     // the ground shakes
     if (this.quake > 0) this.sim.shake?.(this.quake * dt * 2.2);
+    // the UFO glides in, hums about and its beam reaches the floor
+    const u = this.ufo;
+    this.ufoObj.visible = !!u;
+    if (u) {
+      const o = this.ufoObj.position;
+      if (o.y < -50 || o.distanceTo(u) > 20) o.copy(u).add(new THREE.Vector3(0, 6, 0));
+      o.lerp(u, Math.min(1, dt * 3));
+      o.y += Math.sin(time * 2.5) * 0.004;
+      this.ufoObj.rotation.y += dt * 1.8;
+      const floor = this.groundAt(o.x, o.y - 13, o.z);
+      const h = floor === null ? 8 : Math.max(0.5, o.y - 0.2 - floor);
+      this.beam.scale.set(1, h, 1);
+      this.beam.position.y = -0.2;
+      (this.beam.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(time * 9) * 0.06;
+    }
+    // fog rolls in and out
+    this.fogK += ((this.fog ? 1 : 0) - this.fogK) * Math.min(1, dt * 0.9);
+    this.applyFog();
     // wind streaks blowing past
     const focus = this.sim.cargo?.position(new THREE.Vector3());
     this.windT -= dt;
@@ -817,6 +900,29 @@ export class ChaosDirector implements Hazard {
     });
   }
 
+  /** Thicken the scene's fog by fogK (and put it back as it clears). */
+  private applyFog() {
+    let sc: THREE.Object3D | null = this.root;
+    while (sc && !(sc instanceof THREE.Scene)) sc = sc.parent;
+    const fog = (sc as THREE.Scene | null)?.fog as THREE.Fog | undefined;
+    if (!fog || !(fog instanceof THREE.Fog)) return;
+    if (this.fogK < 0.002) {
+      if (this.fogWas) {
+        fog.near = this.fogWas.near;
+        fog.far = this.fogWas.far;
+        fog.color.copy(this.fogWas.color);
+        this.fogWas = null;
+      }
+      return;
+    }
+    this.fogWas ??= { near: fog.near, far: fog.far, color: fog.color.clone() };
+    const k = this.fogK;
+    const w = this.fogWas;
+    fog.near = w.near + (3 - w.near) * k;
+    fog.far = w.far + (21 - w.far) * k;
+    fog.color.copy(w.color).lerp(new THREE.Color(0xdfe3e6), k);
+  }
+
   /** The HUD's chaos line: what's going on right now. */
   hudLine() {
     const lv = chaosLevel(this.level);
@@ -833,6 +939,7 @@ export class ChaosDirector implements Hazard {
     const m = this.money;
     const s = [this.quake, this.gust?.x ?? 0, this.gust?.z ?? 0, this.gust ? 1 : 0, this.ice ? 1 : 0];
     for (let i = 0; i < 2; i++) s.push(this.shown[i]?.ev ?? -1, this.shown[i]?.end ?? 0);
+    s.push(this.ufo ? 1 : 0, this.ufo?.x ?? 0, this.ufo?.y ?? 0, this.ufo?.z ?? 0, this.fog ? 1 : 0);
     if (m) {
       s.push(m.t0, m.end, m.got, m.notes.length);
       for (const n of m.notes) s.push(n.x, n.z, n.y0, n.ground);
@@ -846,11 +953,13 @@ export class ChaosDirector implements Hazard {
     this.ice = !!s[4];
     this.shown = [];
     for (let i = 0; i < 2; i++) if ((s[5 + i * 2] ?? -1) >= 0) this.shown.push({ ev: s[5 + i * 2], end: s[6 + i * 2] });
-    if (s.length > 9) {
-      const n = s[12] ?? 0;
+    this.ufo = s[9] ? new THREE.Vector3(s[10], s[11], s[12]) : null;
+    this.fog = !!s[13];
+    if (s.length > 14) {
+      const n = s[17] ?? 0;
       const notes: Note[] = [];
-      for (let i = 0; i < n; i++) notes.push({ x: s[13 + i * 4], z: s[14 + i * 4], y0: s[15 + i * 4], ground: s[16 + i * 4] });
-      this.money = { t0: s[9], end: s[10], got: s[11], notes };
+      for (let i = 0; i < n; i++) notes.push({ x: s[18 + i * 4], z: s[19 + i * 4], y0: s[20 + i * 4], ground: s[21 + i * 4] });
+      this.money = { t0: s[14], end: s[15], got: s[16], notes };
     } else this.money = null;
   }
 
@@ -862,6 +971,8 @@ export class ChaosDirector implements Hazard {
       p.speedScale = 1;
       p.slippery = false;
     }
+    this.fogK = 0;
+    this.applyFog();
     this.root.removeFromParent();
   }
 }

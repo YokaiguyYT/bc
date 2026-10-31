@@ -165,6 +165,32 @@ export default async function ({ page, base, shot }) {
   check('hurricane', gust, gust);
   await adv(5);
 
+  // the UFO: it beams the load up (on ULTRA it floats away if nobody holds it)
+  await page.evaluate(() => {
+    const s = window.__FF.game.session;
+    for (const p of s.players) for (const h of p.hands) if (h.grip) p.release(h);
+  });
+  const y0 = await page.evaluate(() => window.__FF.game.session.cargo.body.translation().y);
+  await trigger('ufo');
+  await adv(3);
+  const y1 = await page.evaluate(() => window.__FF.game.session.cargo.body.translation().y);
+  const ufoSeen = await page.evaluate(`(${D}).ufoObj.visible`);
+  check('UFO: the load is beamed up', ufoSeen && y1 > y0 + 0.8, [+y0.toFixed(2), +y1.toFixed(2), ufoSeen]);
+  await shot('chaos_ufo');
+  await adv(6);
+  check('…and the UFO leaves', !(await page.evaluate(`(${D}).ufoObj.visible`)), null);
+
+  // fog rolls in, and out again
+  const far0 = await page.evaluate(() => window.__FF.game.renderer.scene.fog.far);
+  await trigger('fog');
+  await adv(4);
+  const far1 = await page.evaluate(() => window.__FF.game.renderer.scene.fog.far);
+  check('fog: thick', far1 < 40 && far1 < far0, [far0, +far1.toFixed(1)]);
+  await shot('chaos_fog');
+  await adv(16);
+  const far2 = await page.evaluate(() => window.__FF.game.renderer.scene.fog.far);
+  check('…and clears', Math.abs(far2 - far0) < 1, [far0, far2]);
+
   // left alone, things just happen
   await page.evaluate(`(${D}).nextAt = 0`);
   await page.evaluate(() => {

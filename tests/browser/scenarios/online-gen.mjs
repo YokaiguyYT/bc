@@ -60,7 +60,7 @@ export default async function ({ page, base }) {
   // (the guest is a snapshot or two behind: give it a moment to catch up)
   let hb = 0;
   let gb = 0;
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 40; i++) {
     hb = await host.evaluate(`(${D}).things.filter((t) => t.kind === 'box' && t.live).length`);
     gb = await guest.evaluate(`(${D}).things.filter((t) => t.kind === 'box' && t.obj.visible).length`);
     if (hb > 0 && gb === hb) break;
@@ -69,8 +69,19 @@ export default async function ({ page, base }) {
   check('guest sees the falling boxes', hb > 0 && gb === hb, [hb, gb]);
   const notes = await guest.evaluate(`(${D}).noteObjs.filter((o) => o.visible).length`);
   check('guest sees the money raining', notes > 0, notes);
+  // the UFO hovers over the same spot on the guest's screen
+  await host.evaluate(`(${D}).trigger('ufo')`);
+  let uh = null;
+  let ug = null;
+  for (let i = 0; i < 40; i++) {
+    await host.waitForTimeout(500);
+    uh = await host.evaluate(`(() => { const u = (${D}).ufo; return u && [u.x, u.z]; })()`);
+    ug = await guest.evaluate(`(() => { const d = ${D}; return d.ufoObj.visible ? [d.ufoObj.position.x, d.ufoObj.position.z] : null; })()`);
+    if (uh && ug && Math.hypot(uh[0] - ug[0], uh[1] - ug[1]) < 1.5) break;
+  }
+  check('guest sees the UFO over the same spot', !!uh && !!ug && Math.hypot(uh[0] - ug[0], uh[1] - ug[1]) < 1.5, [uh, ug]);
   const line = await guest.evaluate(() => document.querySelector('.hud .chaos-line')?.textContent ?? '');
-  check("guest's HUD says what's going on", /MONEY|BOXES/.test(line), line);
+  check("guest's HUD says what's going on", /MONEY|BOXES|UFO/.test(line), line);
   const mm2 = await guest.evaluate(() => window.__FF.game.session.mirror.mismatch);
   check('snapshots fit the chaos job', !mm2, mm2);
   if (checks.some((c) => !c)) throw new Error('online random job failed');
