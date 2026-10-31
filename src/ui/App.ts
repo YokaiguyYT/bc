@@ -15,10 +15,11 @@ import { CARGO_INFO } from '../entities/cargo/info';
 import { CODE_LEN, LevelMsg, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
 import { GuestSync } from '../net/sync';
 import type { GenParams, LevelDef } from '../levels/types';
-import { dailySeed, generateJob, hashSeed, randomSeed } from '../levels/gen/generate';
+import { dailySeed, generateJob, hashSeed, randomSeed, TWISTS } from '../levels/gen/generate';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
+import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, untilNext } from '../game/daily';
 
 type Screen =
   | 'title'
@@ -276,6 +277,10 @@ export class App {
     this.attract?.update(dt);
     const s = this.game.session;
     if (s && this.hud && (this.screen === 'playing' || this.screen === 'paused')) this.hud.update(dt);
+    if (s && this.stretches && this.screen === 'playing') {
+      const c = s.cargo.body.translation();
+      this.stretches.update(c.x, c.z, s.cargo.health);
+    }
     if (s && this.screen === 'playing' && s.result) this.showResults(s.result);
     if (this.screen === 'controls') {
       this.keytestTimer -= dt;
@@ -369,12 +374,15 @@ export class App {
     const stars = jobs.reduce((n, l) => n + (prog[l.id]?.stars ?? 0), 0);
     const fresh = !Object.values(prog).some((p) => p?.completed);
     const next = jobs.find((l) => !prog[l.id]?.completed);
-    const daily = generateJob({ seed: dailySeed(), label: 'Daily job' });
+    const daily = generateJob({ seed: dailySeed(), label: 'Daily job', twist: dailyTwist() });
     const dInfo = CARGO_INFO[daily.cargo];
     const dBest = prog[dailyId()];
+    const today = todaysResult();
+    const twist = TWISTS[dailyTwist()];
+    const st = streak();
     const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
     // returning players land on today's job until it's done; newcomers on the jobs
-    const dailyFirst = !fresh && !dBest?.completed;
+    const dailyFirst = !fresh && !dBest?.completed && !today?.delivered;
     this.setScreen(
       'play',
       `<div class="logo" style="font-size:44px">PLAY</div>
@@ -388,9 +396,12 @@ export class App {
          </button>
          <button class="hub-tile daily" data-nav ${dailyFirst ? 'data-default' : ''} id="p-daily">
            <div class="icon">📅</div>
-           <div class="name">Today's job</div>
-           <div class="sub">${dInfo.icon} ${esc(dInfo.name)} · the same course for everyone today</div>
-           <div class="best">${dBest?.completed ? `✅ done today · ${formatMoney(dBest.bestPayout)}` : 'not done yet today'}</div>
+           <div class="name">Daily #${dailyNumber()}</div>
+           <div class="sub">${dInfo.icon} ${esc(dInfo.name)} · ${twist.icon} ${twist.name}<br>The same course for everyone today</div>
+           <div class="week" title="the last seven days">${lastWeek()
+             .map((d) => `<span class="${d}">${d === 'done' ? '✓' : d === 'tried' ? '✗' : ''}</span>`)
+             .join('')}${st.current ? `<b>🔥 ${st.current}</b>` : ''}</div>
+           <div class="best">${dBest?.completed || today?.delivered ? `✅ done today · next in ${untilNext()}` : 'not done yet today'}</div>
          </button>
          <button class="hub-tile" data-nav id="p-quick">
            <div class="icon">🎲</div>
@@ -409,7 +420,7 @@ export class App {
       { back: () => this.showMenu() },
     );
     this.bind('p-jobs', () => this.showLevels());
-    this.bind('p-daily', () => this.playGenerated('daily', { seed: dailySeed() }));
+    this.bind('p-daily', () => this.playGenerated('daily', { seed: dailySeed(), twist: dailyTwist() }));
     this.bind('p-quick', () => this.showQuick());
     this.bind('p-shift', () => this.startShift());
     this.bind('p-back', () => this.showMenu());
@@ -698,9 +709,14 @@ export class App {
     this.playDef(def);
   }
 
+  /** Generated jobs: the cargo's health stretch by stretch, for the share card. */
+  private stretches: StretchTracker | null = null;
+  private shareCard = '';
+
   private playDef(def: LevelDef) {
     this.attract = null;
     this.audio.unlock();
+    this.stretches = def.stretches ? new StretchTracker(def.stretches) : null;
     // restart / retry / next job: the old HUD goes with the old session
     this.hud?.dispose();
     const s = this.game.startLevel(def);
@@ -834,6 +850,22 @@ export class App {
     const beat = kept ? recordResult(kept) : { payout: false, time: false };
     const stars = starsFor(r);
     const nextLevel = job.kind === 'level' ? PLAYABLE_LEVELS.find((l) => l.order > def.order) : undefined;
+    // generated jobs: how the cargo fared stretch by stretch; today's job keeps its best go and a card to share
+    const squares = this.stretches?.squares(r.condition, r.success, s.cargo.destroyed) ?? '';
+    let shareBlock = squares ? `<div class="share"><div class="squares" title="each square is a stretch of the course: 🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating">${squares}</div></div>` : '';
+    if (job.kind === 'daily') {
+      const info = CARGO_INFO[def.cargo];
+      recordDaily({ delivered: r.success, condition: r.condition, time: r.time, payout: r.payout, stars, cargo: def.cargo, squares, twist: def.gen?.twist ?? null });
+      const best = todaysResult();
+      this.shareCard = best ? shareText(best, `${info.icon} ${info.name}`) : '';
+      const st = streak();
+      shareBlock = `<div class="share">
+          <div class="squares" title="each square is a stretch of the course: 🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating">${squares}</div>
+          <p>${st.current ? `🔥 <b>${st.current}</b>-day streak${st.best > st.current ? ` (best ${st.best})` : ''}` : "Deliver today's job to start a streak."} · next daily in ${untilNext()}</p>
+          <pre class="share-text">${esc(this.shareCard)}</pre>
+          <button class="btn small" data-nav id="r-share">📋 Copy today's result</button>
+        </div>`;
+    }
     let shiftLine = '';
     if (job.kind === 'shift') {
       if (r.success) job.total += r.payout;
@@ -856,7 +888,13 @@ export class App {
       : ['Total loss!', `The ${r.cargoName.toLowerCase()} did not survive the move.`];
     const row = (label: string, v: string) => `<tr><td>${label}</td><td>${v}</td></tr>`;
     // (a shift job's number alone doesn't make the same course: shifts also set how hard it is)
-    const seedLine = def.gen && job.kind !== 'shift' ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>` : '';
+    const twist = def.gen?.twist ? TWISTS[def.gen.twist] : null;
+    const seedLine =
+      job.kind === 'daily'
+        ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
+        : def.gen && job.kind !== 'shift'
+          ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>`
+          : '';
     // the buttons depend on what's being played
     let buttons: string;
     if (job.kind === 'shift')
@@ -891,6 +929,7 @@ export class App {
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
+        ${shareBlock}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
         <div class="row">${buttons}</div>
       </div>`,
@@ -899,6 +938,12 @@ export class App {
     this.audio.sfx(r.success ? 'payout' : 'fail');
     this.bind('r-next', () => nextLevel && this.playLevel(nextLevel.id));
     this.bind('r-retry', () => this.replay(def));
+    this.bind('r-share', () => {
+      void copyText(this.shareCard).then((ok) => {
+        const b = this.layer.querySelector('#r-share');
+        if (b) b.textContent = ok ? '✅ Copied! Paste it anywhere' : 'Select the text above to copy it';
+      });
+    });
     this.bind('r-random', () => this.playGenerated('random', { seed: randomSeed() }));
     this.bind('r-shift', () => {
       if (this.job?.kind !== 'shift') return;
@@ -1580,6 +1625,28 @@ interface ShiftBest {
 }
 
 /** Today's job's key in the saved bests. */
+/** Put text on the clipboard (the API, or the old way where it isn't allowed, like some file:// pages). */
+async function copyText(t: string) {
+  try {
+    await navigator.clipboard.writeText(t);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = t;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function dailyId(d = new Date()) {
   return `daily-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }

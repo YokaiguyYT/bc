@@ -30,6 +30,15 @@ const ORDERS: Partial<Record<CargoKind, string[]>> = {
   balloons: ['It’s {who}’s birthday at {place}! Whatever you do, don’t let go.', 'Balloons for {who} at {place}. Pointy things are the enemy.', '{who}’s party at {place} needs every one of these balloons.'],
 };
 
+/** Twists on the usual, for today's job (one a day, the same for everyone). */
+export const TWISTS: Record<string, { icon: string; name: string; text: string }> = {
+  night: { icon: '🌙', name: 'Night shift', text: 'It happens after dark.' },
+  rush: { icon: '⏱️', name: 'Rush job', text: 'Par time is a third shorter.' },
+  tips: { icon: '💵', name: 'Big tippers', text: 'Every tip pays double.' },
+  long: { icon: '🛣️', name: 'Long haul', text: 'Three more obstacles than usual.' },
+  busy: { icon: '🚦', name: 'Busy streets', text: 'More traffic, more pedestrians.' },
+};
+
 /** Some jobs happen at sunset or at night (the look only; the course is the same kind). */
 const SUNSET: Partial<Theme> = { sunDir: [-0.75, 0.42, 0.3], skyTop: 0x5a78c8, skyHorizon: 0xffbe8a, fog: 0xffd2a8, sun: 0xffc890, sunIntensity: 2.5, hemiSky: 0xffdcb8, hemiGround: 0x8a6a58, cloudColor: 0xffd8c4 };
 const NIGHT: Partial<Theme> = { skyTop: 0x16203a, skyHorizon: 0x3a4670, fog: 0x2a3358, sun: 0xc8d6ff, sunIntensity: 1.6, sunDir: [0.3, 0.85, 0.45], hemiSky: 0xa8b4e0, hemiGround: 0x5a5068, hemiIntensity: 1.1, cloudColor: 0x5a6488, exposure: 1.08 };
@@ -43,12 +52,13 @@ export function generateJob(p: GenParams): LevelDef {
   // the cargo (as the online guest's copy does) would shift everything after it
   const rolled = { cargo: rng.pick(GEN_CARGO), theme: rng.pick(THEMES), difficulty: rng.range(0.25, 0.7), extra: rng.range(0, 2), hour: rng.next() };
   const cargo: CargoKind = p.cargo && KITS[p.cargo] ? p.cargo : rolled.cargo;
+  const twist = p.twist && TWISTS[p.twist] ? p.twist : null;
   const kit = KITS[cargo]!;
   const theme = rolled.theme;
   const difficulty = Math.max(0, Math.min(1, p.difficulty ?? rolled.difficulty));
-  const count = p.pieces ?? Math.round(4 + difficulty * 6 + rolled.extra);
-  const g: GenCtx = { rng, kit, theme, difficulty, cargo };
-  const when = rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
+  const count = p.pieces ?? Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0);
+  const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1 };
+  const when = twist === 'night' ? 'night' : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
   const opener = rng.pick(OPENERS);
   const lead = when === 'night' ? rng.pick(NIGHT_OPENERS) : opener;
   const place = rng.pick(theme.places);
@@ -58,6 +68,7 @@ export function generateJob(p: GenParams): LevelDef {
   const path: BotStep[] = [];
   const tips: { pos: Vec3; radius: number; text: string }[] = [];
   const checkpoints: LevelDef['checkpoints'] = [];
+  const stretches: [number, number][] = [];
   let low = 0;
   let high = 0;
   let par = 20;
@@ -80,8 +91,10 @@ export function generateJob(p: GenParams): LevelDef {
   let last = '';
   const used: string[] = [];
   for (let i = 0; i < count; i++) {
+    stretches.push([f.origin[0], f.origin[2]]);
+    const busy = (id: string) => twist === 'busy' && (id === 'traffic' || id === 'people');
     const choices = PIECES.filter((x) => x.id !== last && !kit.avoid?.includes(x.id))
-      .map((x) => ({ w: x.weight(g, f.heading, corners), v: x }))
+      .map((x) => ({ w: x.weight(g, f.heading, corners) * (busy(x.id) ? 3 : 1), v: x }))
       .filter((c) => c.w > 0);
     const piece = rng.weighted(choices);
     b = new Build(f, g);
@@ -108,6 +121,8 @@ export function generateJob(p: GenParams): LevelDef {
   const fin = goalPiece(b);
   take(b);
   par += 10;
+  stretches.push([fin.goal.pos[0], fin.goal.pos[2]]);
+  if (twist === 'rush') par *= 0.67;
 
   const info = CARGO_INFO[cargo];
   const label = p.label ?? 'Random job';
@@ -119,7 +134,7 @@ export function generateJob(p: GenParams): LevelDef {
     .replace('{place}', place);
   return {
     generated: true,
-    gen: { seed: p.seed, cargo, difficulty, pieces: count, label },
+    gen: { seed: p.seed, cargo, difficulty, pieces: count, label, ...(twist ? { twist } : {}) },
     id: `gen-${p.seed}-${cargo}`,
     name: title,
     tagline: `${label} #${p.seed}`,
@@ -144,6 +159,7 @@ export function generateJob(p: GenParams): LevelDef {
       run: { cargo: [start.spawn.cargo[0], start.spawn.cargo[1] + 0.03, start.spawn.cargo[2]], yaw: 180, ...(kit.bot ?? {}), path: fineSteps(path, start.spawn.cargo), place: true },
     },
     pieces: used,
+    stretches,
   };
 }
 

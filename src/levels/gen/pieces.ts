@@ -24,6 +24,8 @@ export interface GenCtx {
   /** 0 (gentle) .. 1 (nasty). */
   difficulty: number;
   cargo: CargoKind;
+  /** Tips pay this much more (a twist doubles them). */
+  tipScale?: number;
 }
 
 /** Bot steps: [x, z, formation] waypoints (level coordinates), or a wait. */
@@ -80,7 +82,7 @@ export class Build {
   cash(x: number, z: number, o: { y?: number; risky?: boolean } = {}) {
     const r = this.g.rng;
     const base = o.risky ? r.range(30, 45) : r.range(10, 20);
-    const amount = Math.round((base * (1 + this.g.difficulty * 0.5)) / 5) * 5;
+    const amount = Math.round((base * (1 + this.g.difficulty * 0.5) * (this.g.tipScale ?? 1)) / 5) * 5;
     this.world({ type: 'hazard', kind: 'tip', pos: this.f.p(x, (o.y ?? 0) + 0.95, z), params: { amount } });
   }
 

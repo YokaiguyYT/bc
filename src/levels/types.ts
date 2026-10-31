@@ -178,6 +178,8 @@ export interface GenParams {
   pieces?: number;
   /** 'Random job', 'Daily job', 'Shift job 3'… */
   label?: string;
+  /** A twist on the usual (today's job has one): see TWISTS in levels/gen/generate.ts. */
+  twist?: string;
 }
 
 export interface LevelDef {
@@ -188,6 +190,8 @@ export interface LevelDef {
   bot?: unknown;
   /** Tests: which pieces a generated job is made of. */
   pieces?: string[];
+  /** Generated jobs: where each stretch of the course starts ([x, z], in order; the last is the drop-off). */
+  stretches?: [number, number][];
   id: string;
   name: string;
   tagline: string;

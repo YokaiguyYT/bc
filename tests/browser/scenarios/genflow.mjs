@@ -58,8 +58,11 @@ export default async function ({ page, base, shot }) {
   await page.evaluate(() => window.__FF.app.showPlay());
   await click('#p-daily');
   s = await st();
-  check('daily job starts', s.def?.gen?.label === 'Daily job', s.def?.gen);
+  check('daily job starts, with a twist', s.def?.gen?.label === 'Daily job' && !!s.def?.gen?.twist, s.def?.gen);
   await finish(true);
+  const share = await page.evaluate(() => ({ squares: document.querySelector('.results .squares')?.textContent ?? '', card: document.querySelector('.share-text')?.textContent ?? '', button: !!document.querySelector('#r-share') }));
+  check('daily results: squares and a card to share', share.button && /Daily #\d+/.test(share.card) && share.squares.length > 0, share);
+  await shot('genflow_daily');
   await click('#r-levels');
   const dailyBest = await page.evaluate(() => document.querySelector('#p-daily .best')?.textContent);
   check("daily tile shows it's done today", /done today/.test(dailyBest ?? ''), dailyBest);
