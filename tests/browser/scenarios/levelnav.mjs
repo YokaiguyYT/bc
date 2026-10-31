@@ -3,6 +3,8 @@
 export default async function ({ page, base, shot }) {
   await page.goto(base + '?manual=1');
   await page.waitForFunction(() => window.__FF && window.__FF.app && !document.getElementById('loading'), null, { timeout: 90000 });
+  // a fresh save (WebKit runs share storage with the scenario before)
+  await page.evaluate(() => localStorage.removeItem('ff.progress.v1'));
   await page.evaluate(() => window.__FF.app.showLevels());
   const state = () =>
     page.evaluate(() => {

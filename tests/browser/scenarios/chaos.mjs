@@ -55,6 +55,17 @@ export default async function ({ page, base, shot }) {
   await click('#ch-k8');
   check('…and on again', (await saved())?.mask === 15, await saved());
 
+  // a friend's chaos job number, played at the slider's level
+  await click('#ch-num');
+  const title = await page.evaluate(() => document.querySelector('.logo')?.textContent ?? '');
+  check("a friend's chaos number screen", /CHAOS JOB NUMBER/.test(title), title);
+  for (const d of '186876') await key('Digit' + d);
+  await key('Enter');
+  const fj = await page.evaluate(() => window.__FF.game.session?.def.gen);
+  check('…plays that chaos job on ULTRA', fj?.seed === 186876 && fj?.chaos === 5, fj);
+  await page.evaluate(() => window.__FF.app.showChaos());
+  await adv(0.1);
+
   // a chaos job on ULTRA
   await click('#ch-go');
   const st = await page.evaluate(() => {
@@ -81,7 +92,14 @@ export default async function ({ page, base, shot }) {
   // pick the load up off the stand first? no: leave it; chaos happens around it either way
   const g0 = await page.evaluate(() => window.__FF.tuning?.physics.gravity ?? null);
   const grav = () => page.evaluate(`(${D}).sim.physics.world.gravity.y`);
-  const banners = () => page.evaluate(() => [...document.querySelectorAll('.hud .banner.chaos')].map((b) => b.textContent));
+  // (banners only stay up for two real seconds: note each one as it appears)
+  await page.evaluate(() => {
+    window.__banners = [];
+    new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n.classList?.contains('chaos')) window.__banners.push(n.textContent);
+    }).observe(document.querySelector('.hud'), { childList: true });
+  });
+  const banners = () => page.evaluate(() => window.__banners);
 
   await trigger('meteors');
   await adv(1.6);
@@ -195,7 +213,7 @@ export default async function ({ page, base, shot }) {
   await page.evaluate(`(${D}).nextAt = 0`);
   await page.evaluate(() => {
     window.__seen = [];
-    return window.__FF.game.session.events.on('chaos', (e) => window.__seen.push(e.kind));
+    window.__FF.game.session.events.on('chaos', (e) => window.__seen.push(e.kind));
   });
   await adv(30);
   const happened = await page.evaluate(() => window.__seen);

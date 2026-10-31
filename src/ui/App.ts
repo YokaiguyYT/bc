@@ -534,6 +534,7 @@ export class App {
          ${best ? `<p class="hint-line" style="margin:0">Best chaos delivery: <b>${formatMoney(best.payout)}</b> on ${chaosLevel(best.level).name}</p>` : ''}
          <div class="row">
            <button class="btn primary" data-nav ${focus ? '' : 'data-default'} id="ch-go">Start a chaos job →</button>
+           <button class="btn small" data-nav id="ch-num" title="play the same chaos job as a friend">🔢 A friend's number</button>
            <button class="btn small" data-nav id="ch-back">← Back</button>
          </div>
        </div>`,
@@ -574,6 +575,7 @@ export class App {
         this.showChaos(`ch-k${k.bit}`);
       });
     this.bind('ch-go', () => this.playGenerated('chaos', { seed: randomSeed(), chaos: c.level, chaosMask: c.mask }));
+    this.bind('ch-num', () => this.showJobNumber({ level: c.level, mask: c.mask }));
     this.bind('ch-back', () => this.showPlay());
   }
 
@@ -1185,7 +1187,7 @@ export class App {
       job.kind === 'daily'
         ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
         : def.gen?.chaos
-          ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b>${surprises ? ` · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'}` : ''}</p>`
+          ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b>${surprises ? ` · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'}` : ''}<br>Challenge a friend: Chaos → 🔢 A friend's number, on ${chaosLevel(def.gen.chaos).name}</p>`
           : def.gen && job.kind !== 'shift'
           ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>`
           : '';
@@ -1293,30 +1295,40 @@ export class App {
 
   private jobNumber = '';
 
+  /** A chaos job number is played at this chaos (from the Chaos screen); null: a plain random job. */
+  private jobChaos: { level: number; mask: number } | null = null;
+
   /** Type a six-digit job number (from a friend's results card) and play that very course. */
-  private showJobNumber() {
+  private showJobNumber(chaos: { level: number; mask: number } | null = null) {
     this.startAttract();
     this.jobNumber = '';
+    this.jobChaos = chaos;
+    const lv = chaos ? chaosLevel(chaos.level) : null;
+    const back = () => (chaos ? this.showChaos() : this.showQuick());
     this.setScreen(
       'jobnum',
-      `<div class="logo" style="font-size:44px">JOB NUMBER</div>
+      `<div class="logo" style="font-size:44px">${lv ? '💥 CHAOS JOB NUMBER' : 'JOB NUMBER'}</div>
        <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
          <p>Type the six-digit job number</p>
          <div class="type-over"><div class="net-code entry job-digits">${this.jobBoxes()}</div>${typeBox('jn-type', true)}</div>
-         <p style="font-size:14px">It's on the results card of every random job. Same number, same course (and the same cargo).</p>
+         <p style="font-size:14px">${
+           lv
+             ? `It's on the results card of every chaos job. It'll be played on <b>${lv.icon} ${lv.name}</b> (your slider): set the slider to your friend's level for the very same chaos.`
+             : "It's on the results card of every random job. Same number, same course (and the same cargo)."
+         }</p>
        </div>
        <div class="row">
          <button class="btn primary" data-nav data-default id="jn-go" disabled>Play it</button>
          <button class="btn small" data-nav id="jn-back">← Back</button>
        </div>`,
-      { back: () => this.showQuick() },
+      { back },
     );
     this.bind('jn-go', () => this.playJobNumber());
     this.typeBox('jn-type', (t) => {
       this.jobNumber = t.replace(/[^0-9]/g, '').slice(0, 6);
       this.updateJobNumber();
     });
-    this.bind('jn-back', () => this.showQuick());
+    this.bind('jn-back', back);
   }
 
   private jobBoxes() {
@@ -1358,7 +1370,9 @@ export class App {
 
   private playJobNumber() {
     if (this.jobNumber.length !== 6) return;
-    this.playGenerated('random', { seed: Number(this.jobNumber) });
+    const c = this.jobChaos;
+    if (c) this.playGenerated('chaos', { seed: Number(this.jobNumber), chaos: c.level, chaosMask: c.mask });
+    else this.playGenerated('random', { seed: Number(this.jobNumber) });
   }
 
   // ------------------------------------------------------------ online
