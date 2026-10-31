@@ -17,7 +17,10 @@ export default async function ({ page, base, shot }) {
   await adv(0.6);
   await shot('ui_menu');
   await click('#m-play');
+  await shot('ui_play');
+  await click('#p-jobs');
   await shot('ui_levels');
+  await back();
   await back();
   await click('#m-howto');
   await shot('ui_howto');
@@ -38,6 +41,7 @@ export default async function ({ page, base, shot }) {
   await back();
   // play job 1, pause, then finish it to see the results card
   await click('#m-play');
+  await click('#p-jobs');
   await click('[data-level="moveout"]');
   await adv(2.0);
   await shot('ui_hud');

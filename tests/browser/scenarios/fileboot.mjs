@@ -14,6 +14,8 @@ export default async function ({ page, base, shot }) {
   await page.waitForTimeout(800);
   await page.click('#m-play');
   await page.waitForTimeout(800);
+  await page.click('#p-jobs');
+  await page.waitForTimeout(800);
   await page.click('[data-level="city"]');
   await page.waitForTimeout(4000);
   const s = await page.evaluate(() => {

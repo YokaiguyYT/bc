@@ -955,6 +955,100 @@ kbd.p2 {
   pointer-events: auto;
 }
 
+/* ---------- the Play hub: a few big choices ---------- */
+.hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  width: min(1040px, 94vw);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding: 8px 10px 14px;
+}
+.hub-tile {
+  position: relative;
+  font-family: var(--font);
+  text-align: left;
+  background: #fff;
+  border: 5px solid var(--ink);
+  border-radius: 24px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 6px 0 var(--ink);
+  cursor: pointer;
+  color: var(--ink);
+  transition: transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 190px;
+}
+.hub-tile:hover,
+.hub-tile.focus {
+  transform: translateY(-3px) rotate(-0.8deg);
+  background: #fff4cc;
+}
+.hub-tile .icon {
+  font-size: 44px;
+  line-height: 1;
+}
+.hub-tile .name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.hub-tile .sub {
+  font-size: 15px;
+  color: var(--ink-soft);
+  line-height: 1.25;
+  flex: 1;
+}
+.hub-tile .best {
+  font-size: 15px;
+  font-weight: 700;
+  border-top: 3px dashed #e5dccb;
+  padding-top: 6px;
+}
+.hub-tile.daily {
+  background: linear-gradient(160deg, #e9f6ff, #fff7e0);
+}
+.hub-tile.daily:hover,
+.hub-tile.daily.focus {
+  background: linear-gradient(160deg, #d6efff, #fff1b8);
+}
+.hub-tile.chaos {
+  background: linear-gradient(160deg, #ffe3e3, #f3e6ff);
+}
+.hub-tile.chaos:hover,
+.hub-tile.chaos.focus {
+  background: linear-gradient(160deg, #ffd0d0, #ead6ff);
+}
+/* the place to start, for a first-time player */
+.ribbon {
+  position: absolute;
+  top: -12px;
+  right: 14px;
+  background: var(--good);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  transform: rotate(3deg);
+}
+.level-card {
+  position: relative;
+}
+.hub-tile.start,
+.level-card.start {
+  border-color: #1f9d63;
+  box-shadow: 0 6px 0 #1f9d63;
+}
+.menu-small {
+  margin-top: 4px;
+}
+
 /* ---------- generated jobs ---------- */
 .level-card.special {
   background: linear-gradient(160deg, #fff7e0, #ffe9f1);

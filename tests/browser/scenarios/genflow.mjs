@@ -29,13 +29,14 @@ export default async function ({ page, base, shot }) {
     await adv(0.1);
   };
 
-  await page.evaluate(() => window.__FF.app.showLevels());
-  const cards = await page.evaluate(() => [...document.querySelectorAll('.level-card.special')].map((c) => c.dataset.gen));
-  check('four generated-job cards', cards.join() === 'random,daily,number,shift', cards);
-  await shot('genflow_levels');
+  await page.evaluate(() => window.__FF.app.showPlay());
+  const tiles = await page.evaluate(() => [...document.querySelectorAll('.hub-tile')].map((c) => c.id));
+  check('the Play screen: jobs, daily, quick, shift', ['p-jobs', 'p-daily', 'p-quick', 'p-shift'].every((t) => tiles.includes(t)), tiles);
+  await shot('genflow_play');
 
-  // random
-  await click('[data-gen="random"]');
+  // random (Quick job → Random job)
+  await click('#p-quick');
+  await click('#q-random');
   let s = await st();
   check('random job starts', s.screen === 'playing' && s.def?.gen?.label === 'Random job', s);
   const seed1 = s.def.gen.seed;
@@ -54,17 +55,17 @@ export default async function ({ page, base, shot }) {
   check('new random job: a different number', s.def?.gen?.seed !== seed1, s.def?.gen?.seed);
 
   // daily
-  await page.evaluate(() => window.__FF.app.showLevels());
-  await click('[data-gen="daily"]');
+  await page.evaluate(() => window.__FF.app.showPlay());
+  await click('#p-daily');
   s = await st();
   check('daily job starts', s.def?.gen?.label === 'Daily job', s.def?.gen);
   await finish(true);
   await click('#r-levels');
-  const dailyBest = await page.evaluate(() => document.querySelector('[data-gen="daily"] .best')?.textContent);
-  check("daily card shows today's best", /today's best/.test(dailyBest ?? ''), dailyBest);
+  const dailyBest = await page.evaluate(() => document.querySelector('#p-daily .best')?.textContent);
+  check("daily tile shows it's done today", /done today/.test(dailyBest ?? ''), dailyBest);
 
   // shift
-  await click('[data-gen="shift"]');
+  await click('#p-shift');
   s = await st();
   check('shift job 1', s.def?.gen?.label === 'Shift job 1', s.def?.gen);
   const d1 = s.def.gen.difficulty;

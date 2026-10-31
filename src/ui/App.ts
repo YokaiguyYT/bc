@@ -38,7 +38,9 @@ type Screen =
   | 'guest-menu'
   | 'guest-lost'
   | 'jobnum'
-  | 'netcheck';
+  | 'netcheck'
+  | 'play'
+  | 'quick';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -336,15 +338,17 @@ export class App {
        <div class="menu">
          <button class="btn primary" data-nav data-default id="m-play">Play</button>
          <button class="btn" data-nav id="m-online">${this.host ? `Online: ${this.host.connected ? 'friend connected' : 'hosting'}` : 'Play Online'}</button>
-         <button class="btn" data-nav id="m-howto">How to Play</button>
-         <button class="btn" data-nav id="m-controls">Controls</button>
-         <button class="btn" data-nav id="m-settings">Settings</button>
-         <button class="btn" data-nav id="m-credits">Credits</button>
+       </div>
+       <div class="row menu-small">
+         <button class="btn small" data-nav id="m-howto">How to Play</button>
+         <button class="btn small" data-nav id="m-controls">Controls</button>
+         <button class="btn small" data-nav id="m-settings">Settings</button>
+         <button class="btn small" data-nav id="m-credits">Credits</button>
        </div>
        ${this.game.keyboard.movedP2 ? '<div class="hint-line" style="color:var(--ink)"><b>New for Player 2:</b> arrows to move, <b>K</b> to jump, <b>L</b> to grab. Other layouts are under Controls.</div>' : ''}
        <div class="hint-line">${earned > 0 ? `Company earnings so far: <b>${formatMoney(earned)}</b> · ` : ''}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
-    this.bind('m-play', () => this.showLevels());
+    this.bind('m-play', () => this.showPlay());
     this.bind('m-online', () => (this.host ? this.showHost() : this.showOnline()));
     this.bind('m-howto', () => this.showHowTo(() => this.showMenu()));
     this.bind('m-controls', () => this.showControls(() => this.showMenu()));
@@ -356,16 +360,106 @@ export class App {
     this.layer.querySelector('#' + id)?.addEventListener('click', fn);
   }
 
+  /** Play: a few big choices (the hand-made jobs, today's job, a quick random one, the endless shift), not everything at once. */
+  showPlay() {
+    this.startAttract();
+    const prog = loadProgress();
+    const jobs = PLAYABLE_LEVELS.filter((l) => !l.hidden);
+    const done = jobs.filter((l) => prog[l.id]?.completed).length;
+    const stars = jobs.reduce((n, l) => n + (prog[l.id]?.stars ?? 0), 0);
+    const fresh = !Object.values(prog).some((p) => p?.completed);
+    const next = jobs.find((l) => !prog[l.id]?.completed);
+    const daily = generateJob({ seed: dailySeed(), label: 'Daily job' });
+    const dInfo = CARGO_INFO[daily.cargo];
+    const dBest = prog[dailyId()];
+    const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
+    // returning players land on today's job until it's done; newcomers on the jobs
+    const dailyFirst = !fresh && !dBest?.completed;
+    this.setScreen(
+      'play',
+      `<div class="logo" style="font-size:44px">PLAY</div>
+       <div class="hub">
+         <button class="hub-tile ${fresh ? 'start' : ''}" data-nav ${dailyFirst ? '' : 'data-default'} id="p-jobs">
+           ${fresh ? '<div class="ribbon">START HERE</div>' : ''}
+           <div class="icon">🚚</div>
+           <div class="name">Jobs</div>
+           <div class="sub">${jobs.length} hand-made deliveries, from a crate to a piano</div>
+           <div class="best">${fresh ? 'Start with the <b>Practice Yard</b>' : `${done} of ${jobs.length} delivered · ${stars} ★${next ? ` · next: ${esc(next.name)}` : ''}`}</div>
+         </button>
+         <button class="hub-tile daily" data-nav ${dailyFirst ? 'data-default' : ''} id="p-daily">
+           <div class="icon">📅</div>
+           <div class="name">Today's job</div>
+           <div class="sub">${dInfo.icon} ${esc(dInfo.name)} · the same course for everyone today</div>
+           <div class="best">${dBest?.completed ? `✅ done today · ${formatMoney(dBest.bestPayout)}` : 'not done yet today'}</div>
+         </button>
+         <button class="hub-tile" data-nav id="p-quick">
+           <div class="icon">🎲</div>
+           <div class="name">Quick job</div>
+           <div class="sub">A brand-new random course, or a friend's job number</div>
+           <div class="best">never the same twice</div>
+         </button>
+         <button class="hub-tile" data-nav id="p-shift">
+           <div class="icon">♾️</div>
+           <div class="name">Endless shift</div>
+           <div class="sub">Job after job, each one harder, until something breaks</div>
+           <div class="best">${shiftBest ? `best: ${formatMoney(shiftBest.total)} in ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</div>
+         </button>
+       </div>
+       <div class="row"><button class="btn small" data-nav id="p-back">← Back</button></div>`,
+      { back: () => this.showMenu() },
+    );
+    this.bind('p-jobs', () => this.showLevels());
+    this.bind('p-daily', () => this.playGenerated('daily', { seed: dailySeed() }));
+    this.bind('p-quick', () => this.showQuick());
+    this.bind('p-shift', () => this.startShift());
+    this.bind('p-back', () => this.showMenu());
+  }
+
+  /** Quick job: a random course now, or a friend's job number. */
+  private showQuick() {
+    this.startAttract();
+    this.setScreen(
+      'quick',
+      `<div class="logo" style="font-size:44px">QUICK JOB</div>
+       <div class="hub">
+         <button class="hub-tile" data-nav data-default id="q-random">
+           <div class="icon">🎲</div>
+           <div class="name">Random job</div>
+           <div class="sub">Any cargo, any place: a new course every time</div>
+           <div class="best">each one has a job number you can share</div>
+         </button>
+         <button class="hub-tile" data-nav id="q-number">
+           <div class="icon">🔢</div>
+           <div class="name">Play a job number</div>
+           <div class="sub">Type the number from a friend's results card</div>
+           <div class="best">same number, same course</div>
+         </button>
+       </div>
+       <div class="row"><button class="btn small" data-nav id="q-back">← Back</button></div>`,
+      { back: () => this.showPlay() },
+    );
+    this.bind('q-random', () => this.playGenerated('random', { seed: randomSeed() }));
+    this.bind('q-number', () => this.showJobNumber());
+    this.bind('q-back', () => this.showPlay());
+  }
+
+  /** The hand-made jobs (and the Practice Yard). */
   showLevels() {
     this.startAttract();
     const prog = loadProgress();
-    const cards = [...PLAYABLE_LEVELS, ...LEVELS.filter((l) => l.hidden)]
-      .map((l, i) => {
+    const fresh = !Object.values(prog).some((p) => p?.completed);
+    const list = [...LEVELS.filter((l) => l.hidden && !l.generated), ...PLAYABLE_LEVELS];
+    const next = PLAYABLE_LEVELS.find((l) => !prog[l.id]?.completed);
+    // newcomers start on the Practice Yard; everyone else on the next job they haven't delivered
+    const pick = fresh ? list[0] : (next ?? list[1] ?? list[0]);
+    const cards = list
+      .map((l) => {
         const b = prog[l.id];
         const info = CARGO_INFO[l.cargo];
         const earned = b?.stars ?? 0;
         const stars = [0, 1, 2].map((i) => `<span class="${i < earned ? '' : 'off'}">★</span>`).join('');
-        return `<button class="level-card" data-nav ${i === 0 ? 'data-default' : ''} data-level="${l.id}">
+        return `<button class="level-card ${fresh && l === pick ? 'start' : ''}" data-nav ${l === pick ? 'data-default' : ''} data-level="${l.id}">
+          ${fresh && l === pick ? '<div class="ribbon">START HERE</div>' : ''}
           <div class="num">${l.hidden ? 'PRACTICE' : `JOB ${l.order}`}</div>
           <div class="name">${esc(l.name)}</div>
           <div class="cargo">${info.icon} ${esc(info.name)} · ${formatMoney(info.value)}</div>
@@ -374,58 +468,16 @@ export class App {
         </button>`;
       })
       .join('');
-    const daily = generateJob({ seed: dailySeed(), label: 'Daily job' });
-    const dInfo = CARGO_INFO[daily.cargo];
-    const dBest = prog[dailyId()];
-    const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
-    const special = `
-      <button class="level-card special" data-nav data-gen="random">
-        <div class="num">🎲 RANDOM</div>
-        <div class="name">Random job</div>
-        <div class="cargo">A brand-new course every time</div>
-        <div class="tag">Any cargo, any place. Each one has a job number you can share.</div>
-        <div class="best"><span>never the same twice</span></div>
-      </button>
-      <button class="level-card special" data-nav data-gen="daily">
-        <div class="num">📅 DAILY</div>
-        <div class="name">Today's job</div>
-        <div class="cargo">${dInfo.icon} ${esc(dInfo.name)} · ${formatMoney(dInfo.value)}</div>
-        <div class="tag">The same course for everyone today. A new one tomorrow.</div>
-        <div class="best"><span>${dBest?.completed ? `today's best ${formatMoney(dBest.bestPayout)} · ${formatTime(dBest.bestTime ?? 0)}` : 'not delivered yet today'}</span></div>
-      </button>
-      <button class="level-card special" data-nav data-gen="number">
-        <div class="num">🔢 BY NUMBER</div>
-        <div class="name">Play a job number</div>
-        <div class="cargo">Type a friend's job number</div>
-        <div class="tag">Every random job has a number on its results card. Same number, same course.</div>
-        <div class="best"><span>six digits</span></div>
-      </button>
-      <button class="level-card special" data-nav data-gen="shift">
-        <div class="num">♾️ ENDLESS SHIFT</div>
-        <div class="name">Endless shift</div>
-        <div class="cargo">Job after job, each one harder</div>
-        <div class="tag">Keep delivering until something breaks. How much can you earn?</div>
-        <div class="best"><span>${shiftBest ? `best shift ${formatMoney(shiftBest.total)} · ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</span></div>
-      </button>`;
     this.setScreen(
       'levels',
-      `<div class="logo" style="font-size:44px">PICK A JOB</div>
-       <div class="levels">${special}${cards}</div>
-       ${Object.values(prog).some((p) => p?.completed) ? '' : '<div class="hint-line">First time? The <b>Practice Yard</b> is a good place to learn the ropes.</div>'}
+      `<div class="logo" style="font-size:44px">JOBS</div>
+       <div class="levels">${cards}</div>
+       ${fresh ? '<div class="hint-line">First time? The <b>Practice Yard</b> is a good place to learn the ropes.</div>' : ''}
        <div class="row"><button class="btn small" data-nav id="l-back">← Back</button></div>`,
-      { back: () => this.showMenu() },
+      { back: () => this.showPlay() },
     );
     this.layer.querySelectorAll<HTMLElement>('[data-level]').forEach((el) => el.addEventListener('click', () => this.playLevel(el.dataset.level!)));
-    this.layer.querySelectorAll<HTMLElement>('[data-gen]').forEach((el) =>
-      el.addEventListener('click', () => {
-        const kind = el.dataset.gen;
-        if (kind === 'random') this.playGenerated('random', { seed: randomSeed() });
-        else if (kind === 'daily') this.playGenerated('daily', { seed: dailySeed() });
-        else if (kind === 'number') this.showJobNumber();
-        else this.startShift();
-      }),
-    );
-    this.bind('l-back', () => this.showMenu());
+    this.bind('l-back', () => this.showPlay());
   }
 
   showHowTo(back: () => void) {
@@ -812,15 +864,15 @@ export class App {
         ? `<button class="btn primary" data-nav data-default id="r-shift">Next job in the shift →</button>
            <button class="btn" data-nav id="r-shift-stop">End the shift here</button>`
         : `<button class="btn primary" data-nav data-default id="r-shift-new">Start a new shift</button>
-           <button class="btn" data-nav id="r-levels">Job list</button>`;
+           <button class="btn" data-nav id="r-levels">Back to Play</button>`;
     else if (job.kind === 'random')
       buttons = `<button class="btn primary" data-nav data-default id="r-random">New random job →</button>
            <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
-           <button class="btn" data-nav id="r-levels">Job list</button>`;
+           <button class="btn" data-nav id="r-levels">Back to Play</button>`;
     else
       buttons = `${r.success && nextLevel ? `<button class="btn primary" data-nav data-default id="r-next">Next job →</button>` : ''}
            <button class="btn ${r.success && nextLevel ? '' : 'primary'}" data-nav ${r.success && nextLevel ? '' : 'data-default'} id="r-retry">${r.success ? 'Play again' : 'Retry'}</button>
-           <button class="btn" data-nav id="r-levels">Job list</button>`;
+           <button class="btn" data-nav id="r-levels">${job.kind === 'level' ? 'Job list' : 'Back to Play'}</button>`;
     this.setScreen(
       'results',
       `<div class="panel results">
@@ -841,7 +893,7 @@ export class App {
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
         <div class="row">${buttons}</div>
       </div>`,
-      { dim: true, back: () => this.showLevels() },
+      { dim: true, back: () => this.backToList() },
     );
     this.audio.sfx(r.success ? 'payout' : 'fail');
     this.bind('r-next', () => nextLevel && this.playLevel(nextLevel.id));
@@ -860,15 +912,21 @@ export class App {
       }
       this.hud?.dispose();
       this.hud = null;
-      this.showLevels();
+      this.showPlay();
     };
     this.bind('r-shift-stop', endShift);
     this.bind('r-shift-new', () => this.startShift());
     this.bind('r-levels', () => {
       this.hud?.dispose();
       this.hud = null;
-      this.showLevels();
+      this.backToList();
     });
+  }
+
+  /** Back from a job to where it was picked: the job list for a hand-made job, the Play screen otherwise. */
+  private backToList() {
+    if (this.job?.kind === 'level') this.showLevels();
+    else this.showPlay();
   }
 
   // ------------------------------------------------------------ job by number
@@ -891,14 +949,14 @@ export class App {
          <button class="btn primary" data-nav data-default id="jn-go" disabled>Play it</button>
          <button class="btn small" data-nav id="jn-back">← Back</button>
        </div>`,
-      { back: () => this.showLevels() },
+      { back: () => this.showQuick() },
     );
     this.bind('jn-go', () => this.playJobNumber());
     this.typeBox('jn-type', (t) => {
       this.jobNumber = t.replace(/[^0-9]/g, '').slice(0, 6);
       this.updateJobNumber();
     });
-    this.bind('jn-back', () => this.showLevels());
+    this.bind('jn-back', () => this.showQuick());
   }
 
   private jobBoxes() {
@@ -1046,7 +1104,7 @@ export class App {
        </div>`,
       { back: () => this.showMenu() },
     );
-    this.bind('h-play', () => this.showLevels());
+    this.bind('h-play', () => this.showPlay());
     this.bind('h-retry', () => this.showHost());
     this.bind('h-check', () => this.showNetCheck());
     this.bind('h-stop', () => {
