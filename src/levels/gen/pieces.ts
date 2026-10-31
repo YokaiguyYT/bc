@@ -76,6 +76,14 @@ export class Build {
     this.bot.push(w);
   }
 
+  /** A cash tip floating at chest height over (x, z), floor at height y; risky spots pay more. */
+  cash(x: number, z: number, o: { y?: number; risky?: boolean } = {}) {
+    const r = this.g.rng;
+    const base = o.risky ? r.range(30, 45) : r.range(10, 20);
+    const amount = Math.round((base * (1 + this.g.difficulty * 0.5)) / 5) * 5;
+    this.world({ type: 'hazard', kind: 'tip', pos: this.f.p(x, (o.y ?? 0) + 0.95, z), params: { amount } });
+  }
+
   tip(x: number, z: number, text: string, radius = 3) {
     this.tips.push({ pos: this.f.p(x, 0, z), radius, text });
   }
@@ -157,7 +165,8 @@ const north = (h: number) => h === 0;
 
 const flat: Piece = {
   id: 'flat',
-  weight: () => 1,
+  // filler: rarer than the obstacles
+  weight: () => 0.35,
   build(b) {
     const r = b.g.rng;
     const L = r.range(8, 12);
@@ -170,6 +179,8 @@ const flat: Piece = {
       if (r.chance(0.5)) b.add({ type: 'model', model: 'cone', pos: [x, 0, z], dynamic: { mass: 2 } });
       else b.add({ type: 'box', pos: [x, 0.3, z], size: [0.7, 0.6, 0.6], surface: 'cardboard', dynamic: { mass: 6 } });
     }
+    b.cash(r.range(-1, 1), -L * 0.35);
+    b.cash((r.chance(0.5) ? -1 : 1) * 2.6, -L * 0.75);
     b.go(0, -L);
     return { length: L, calm: true };
   },
@@ -177,7 +188,7 @@ const flat: Piece = {
 
 const rampPiece: Piece = {
   id: 'ramp',
-  weight: () => 1.2,
+  weight: () => 0.75,
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;
@@ -195,6 +206,7 @@ const rampPiece: Piece = {
       b.world(...railing(f.p(x, 0, -0.1), f.p(x, rise, -L + 0.1), { color: t.edgeColor, height: 0.95 }));
     }
     b.low = Math.min(b.low, f.origin[1] + Math.min(0, rise));
+    b.cash(0, -L - 0.8, { y: rise });
     b.go(0, -L * 0.5);
     b.go(0, -L);
     if (b.g.kit.stairs === false && b.g.cargo === 'piano') b.tip(0, -L * 0.3, up ? 'Push together up the slope!' : 'Hold it back on the way down!', 3);
@@ -226,6 +238,7 @@ const stairsPiece: Piece = {
       b.world(...railing(f.p(x, up ? 0 : 0, 0), f.p(x, dy, -L), { color: t.edgeColor, height: 0.95 }));
     }
     b.low = Math.min(b.low, f.origin[1] + Math.min(0, dy));
+    b.cash(0, -L - 0.8, { y: dy });
     b.go(0, -L);
     b.tip(0, 0, up ? 'Stairs: up together, one step at a time' : 'Stairs down: slowly does it', 3);
     return { length: L, dy };
@@ -248,6 +261,7 @@ const door: Piece = {
     const frac = (dx + half) / (2 * half);
     b.world(...wall(b.f.p(-half, 0, z), b.f.p(half, 0, z), 2.8, { surface: t.wall.surface, color: t.wall.color, thickness: 0.25, fade: true, doors: [[frac, gap, 2.45]] }));
     // line up with the doorway in good time (a sharp sideways jink swings a wide load into the frame)
+    b.cash(dx, z - 1.6);
     b.go(dx * 0.6, -1.5);
     b.go(dx, z + 1.8, k.tight);
     b.go(dx, z - 1.8, k.tight);
@@ -276,6 +290,7 @@ const slalom: Piece = {
       if (t.edge === 'hedge' || t.name === 'park' || t.name === 'snow') b.add({ type: 'box', pos: [cx, 0.45, z], size: [len, 0.9, 0.7], color: t.name === 'snow' ? 0xf2f5fa : 0x3f7f3a, radius: 0.3 });
       else b.add({ type: 'box', pos: [cx, 0.5, z], size: [len, 1.0, 0.4], surface: t.wall.surface, color: t.wall.color, radius: 0.05 });
       const pc = -side * (W / 2 - pass / 2);
+      if (i !== 2) b.cash(pc * 0.7, z);
       b.go(pc * 0.7, z + 1.2, k.tight);
       b.go(pc * 0.7, z - 1.2, k.tight);
       side = -side;
@@ -305,6 +320,7 @@ const wreckingBall: Piece = {
       // a slow, wide swing: about three seconds clear after each pass, enough to carry something heavy across
       params: { length: 7.2, amp: 52, period: (slow ? 11.8 : 8.8) - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
     });
+    b.cash(r.range(-0.8, 0.8), z, { risky: true });
     // wait well clear (a wide load sways when it stops), go the moment it has swung past
     b.go(0, z + 1.8);
     b.wait({ wait: 'ball', at: [pivot[0], pivot[2]] });
@@ -362,6 +378,7 @@ const traffic: Piece = {
     // one lane at a time, waiting on the island in between
     // a gap means the next car is at least three seconds of carrying away (and the last one well past)
     const ahead = 6 + speed * 3.4;
+    b.cash((r.chance(0.5) ? -1 : 1) * 1.6, (medA + medB) / 2, { risky: true });
     b.go(0, z0 + 0.7);
     b.wait({ wait: 'gap', x, z: zr(laneA), ahead, behind: 5 });
     b.go(0, (medA + medB) / 2);
@@ -386,6 +403,7 @@ const lasers: Piece = {
     zs.forEach((z, i) => {
       b.world({ type: 'hazard', kind: 'laser', pos: b.f.p(0, 0, z), rot: [0, b.f.yaw(0), 0], params: { width: W, beams: 4, on: 2.2, off: 3.2, phase: i * 1.7 + r.range(0, 1) } });
     });
+    b.cash(r.range(-1.5, 1.5), (zs[0] + zs[1]) / 2, { risky: true });
     for (const z of zs) {
       b.go(0, z + 1.4);
       b.wait({ wait: 'laser', z: b.f.p(0, 0, z)[2] });
@@ -406,6 +424,7 @@ const ice: Piece = {
     const L = r.range(9, 13);
     b.ground(0, -L);
     b.add({ type: 'box', pos: [0, 0.012, -L / 2], size: [W, 0.03, L - 3], surface: 'ice', radius: 0.01 });
+    b.cash((r.chance(0.5) ? -1 : 1) * 2.2, -L / 2, { risky: true });
     b.go(0, -L);
     b.tip(0, -1, 'Slippery! Small steps.', 2.5);
     return { length: L, calm: true };
@@ -450,6 +469,7 @@ const people: Piece = {
       const at = f.p(0, 0, z);
       b.wait({ wait: 'walkers', at: [at[0], at[2]], along: [f.v(1, 0, 0)[0], f.v(1, 0, 0)[2]] });
     };
+    b.cash((r.chance(0.5) ? -1 : 1) * 1.4, rows[0], { risky: true });
     b.go(0, -0.9);
     row(rows[0]);
     b.go(0, inline ? -9.4 : -7.9);
@@ -493,6 +513,7 @@ const corner: Piece = {
         { type: 'box', pos: [outer, hgt / 2, far / 2], size: [0.3, hgt, -far], color: t.edgeColor, radius: 0.08 },
       );
     }
+    b.cash(-side * (W / 2 - 1.1), -(M + W) + 1.0);
     b.go(0, -S / 2);
     b.go(side * (S / 2), -S / 2);
     return { length: S / 2, dx: side * (S / 2), turn };
@@ -520,6 +541,7 @@ const conveyor: Piece = {
     // (it carries things toward local +x when speed > 0): start a little upstream and lean into it, ending up
     // mid-path (only a little: a sideways step turns a wide load side-on to the walk)
     const up = -Math.sign(speed);
+    b.cash(-up * 2.4, (z0 + z1) / 2, { risky: true });
     b.go(up * 0.7, z0 + 0.4);
     b.go(up * 0.2, z1 - 0.8);
     b.go(0, -L);
@@ -557,6 +579,7 @@ const lift: Piece = {
     // it sets off once both movers have been aboard a moment
     const at = f.p(0, 0, (z0 + z1) / 2);
     b.wait({ wait: 'rise', at: [at[0], at[2]] });
+    b.cash(0, z1 - 2.2, { y: H });
     b.go(0, z1 - 2.2);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'All aboard: stand on the lift together and up it goes.', 3);
@@ -585,6 +608,7 @@ const swingDoors: Piece = {
     const open = 85 - b.g.difficulty * 20 + r.range(-3, 3);
     const color = r.pick([0xc98f5a, 0x8fb8de, 0xd96b6b, 0x7fbf7f, 0xe0c25a]);
     for (const s of [-1, 1]) b.world({ type: 'hazard', kind: 'swingDoor', pos: f.p(s * hx, 0.02, z - 0.16), rot: [0, f.yaw(0), 0], params: { width: leaf, height: 2.3, side: -s, open, spring: 3, color } });
+    b.cash(r.range(-0.8, 0.8), z - 2.0);
     b.go(0, z + 2.6);
     b.go(0, z - 2.4);
     b.go(0, -L);
@@ -617,6 +641,7 @@ const bridge: Piece = {
       { type: 'box', pos: [bw / 2 - 0.2, -0.5, mid], size: [0.22, 0.5, gap + 0.8], color: 0x6b4a2b, collide: false, radius: 0.04 },
     );
     for (const sx of [-1, 1]) for (const z of [z0 - 0.15, z1 + 0.15]) b.add({ type: 'box', pos: [sx * (bw / 2 + 0.2), 0.35, z], size: [0.18, 0.7, 0.18], color: 0x6b4a2b, radius: 0.04 });
+    b.cash((r.chance(0.5) ? -1 : 1) * Math.max(0, bw / 2 - 0.5), mid, { risky: true });
     b.go(0, z0 + 1.2);
     b.go(0, z1 - 1.2);
     b.go(0, -L);
@@ -662,6 +687,7 @@ const ferry: Piece = {
     const lead = k.form === 'inline' ? 1.4 : 0;
     const land = f.p(0, 0, c0 - travel - lead);
     b.wait({ wait: 'rise', at: [f.p(0, 0, c0)[0], f.p(0, 0, c0)[2]], land: [land[0], land[2]] });
+    b.cash(r.range(-1, 1), z1 - 2.0);
     b.go(0, z1 - 2.2);
     b.go(0, -L);
     b.tip(0, z0 + 2, 'All aboard the cable car: step on together and it carries you over.', 3);
@@ -696,6 +722,7 @@ const seesaw: Piece = {
     const wedge = (z: number, dir: 1 | -1) => b.add({ type: 'box', pos: [0, 0.03, z], size: [width, 0.12, 1.4], rot: [dir * 6, 0, 0], color: 0xb98a5a, surface: 'wood', radius: 0.02 });
     wedge(z0 + 0.65, 1);
     wedge(z1 - 0.65, -1);
+    b.cash(0, zc, { y: h + 0.25, risky: true });
     // stop just past the middle and let it tip under you, then walk down
     b.go(0, z0 + 0.6);
     b.go(0, zc - 0.5);

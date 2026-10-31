@@ -559,6 +559,32 @@ kbd.p2 {
   transition: opacity 0.2s;
 }
 
+.hud .tip-pop {
+  position: absolute;
+  right: 12px;
+  bottom: -6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f9d63;
+  -webkit-text-stroke: 3px #fff;
+  paint-order: stroke fill;
+  pointer-events: none;
+  animation: tipPop 1.3s ease-out forwards;
+}
+@keyframes tipPop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1);
+  }
+}
 .hud .tags .say {
   position: absolute;
   left: 50%;

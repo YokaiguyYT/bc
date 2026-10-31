@@ -885,6 +885,7 @@ export class App {
           ${row('Condition', `${Math.round(r.condition * 100)}%`)}
           ${r.success ? row('Time', `${formatTime(r.time)}${beat.time ? '<span class="new-best">NEW BEST</span>' : ''}`) : ''}
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
+          ${r.tips ? row(`Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
           <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}

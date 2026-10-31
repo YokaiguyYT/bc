@@ -91,8 +91,18 @@ export class Hud {
       s.events.on('cargoBreak', () => this.banner(breakLine(s.def.cargo))),
       s.events.on('respawn', () => this.banner('WHOOPS!', true)),
       s.events.on('emote', (e) => this.bubble(e.player, EMOTES[e.kind] ?? '')),
+      s.events.on('tip', (e) => this.tipPop(e.amount)),
     );
     this.banner(s.def.name.toUpperCase(), true);
+  }
+
+  /** "+$20" rising off the payout card when a tip is pocketed. */
+  private tipPop(amount: number) {
+    const d = document.createElement('div');
+    d.className = 'tip-pop';
+    d.textContent = `💵 +${formatMoney(amount)}`;
+    this.cargoCard.appendChild(d);
+    setTimeout(() => d.remove(), 1300);
   }
 
   /** A speech bubble over a mover's name tag for a couple of seconds. */

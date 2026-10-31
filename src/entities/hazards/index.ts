@@ -6,3 +6,4 @@ import './traffic';
 import './heat';
 import './riders';
 import './museum';
+import './tips';

@@ -26,6 +26,8 @@ export interface GameEvents {
   splash: { pos: THREE.Vector3; amount: number };
   chime: { pos: THREE.Vector3 };
   tick: { pos: THREE.Vector3; tock: boolean };
+  /** A cash tip was pocketed (paid with the delivery). */
+  tip: { amount: number; pos: THREE.Vector3 };
   /** A player says something (EMOTES[kind]) over their head. */
   emote: { player: number; kind: number };
 }

@@ -35,6 +35,9 @@ export interface SessionResult {
   payout: number;
   timeBonus: number;
   penalty: number;
+  /** Cash tips pocketed on the way (paid on delivery), and how many. */
+  tips: number;
+  tipCount: number;
   cargoName: string;
 }
 
@@ -84,6 +87,9 @@ export class LevelSession {
   stateTime = 0;
   time = 0;
   falls = 0;
+  /** Cash tips pocketed so far (on the online guest too: it hears the same events). */
+  tips = 0;
+  tipCount = 0;
   checkpoint = -1;
   private spawn: SpawnSet;
   private goalZone: Zone;
@@ -187,6 +193,10 @@ export class LevelSession {
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
     this.events.on('cargoBreak', () => this.cameraRig.addShake(0.5));
+    this.events.on('tip', (e) => {
+      this.tips += e.amount;
+      this.tipCount++;
+    });
     // a little celebration: confetti for a delivery, a puff of stars for a checkpoint
     const confetti = [0xff7a3d, 0x3d9bff, 0xffd23f, 0x52d39a, 0xff8fab, 0xffffff];
     this.events.on('goal', () => {
@@ -436,7 +446,8 @@ export class LevelSession {
     const base = success ? value * condition : 0;
     const penalty = success ? Math.min(base, value * 0.05 * this.falls) : 0;
     const timeBonus = success && this.time < this.def.parTime ? Math.round(value * 0.1 * condition) : 0;
-    const payout = Math.max(0, Math.round(base - penalty + timeBonus));
+    const tips = success ? this.tips : 0;
+    const payout = Math.max(0, Math.round(base - penalty + timeBonus + tips));
     this.result = {
       levelId: this.def.id,
       success,
@@ -447,6 +458,8 @@ export class LevelSession {
       payout,
       timeBonus,
       penalty: Math.round(penalty),
+      tips,
+      tipCount: this.tipCount,
       cargoName: this.cargo.displayName,
     };
     if (!success) this.state = 'failed';
@@ -456,7 +469,7 @@ export class LevelSession {
   currentPayout() {
     if (this.cargo.destroyed) return 0;
     const v = this.cargo.value * this.cargo.health;
-    return Math.max(0, v - this.cargo.value * 0.05 * this.falls);
+    return Math.max(0, v - this.cargo.value * 0.05 * this.falls) + this.tips;
   }
 
   dispose() {
