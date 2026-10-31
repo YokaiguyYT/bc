@@ -1,5 +1,6 @@
 import type { CargoKind, LevelObject, SpawnSet, Vec3 } from '../types';
 import { railing, ramp, stairs, wall } from '../helpers';
+import { galleryEasel } from '../props';
 import type { Frame } from './frame';
 import type { Rng } from './rng';
 import type { CargoKit, GenTheme } from './kits';
@@ -44,12 +45,15 @@ export class Build {
   readonly tips: { pos: Vec3; radius: number; text: string }[] = [];
   /** Lowest floor this piece has (for the out-of-bounds height). */
   low = 0;
+  /** Highest floor (for the ceiling a floating load is lost above). */
+  high = 0;
 
   constructor(
     readonly f: Frame,
     readonly g: GenCtx,
   ) {
     this.low = f.origin[1];
+    this.high = f.origin[1];
   }
 
   /** Objects written in the piece's frame. */
@@ -90,6 +94,7 @@ export class Build {
     if (edges) this.edges(z0, z1, y);
     if (decor) this.decorate(z0, z1, y);
     this.low = Math.min(this.low, this.f.origin[1] + y);
+    this.high = Math.max(this.high, this.f.origin[1] + y);
   }
 
   /** Something along both sides of the path so nobody wanders off by accident. */
@@ -132,6 +137,7 @@ export class Build {
       cargo: f.p(x, y + k.y, z),
       yaw: f.yaw(180),
     };
+    if (k.yaws) spawn.yaws = [f.yaw(k.yaws[0]), f.yaw(k.yaws[1])];
     if (k.rot) spawn.cargoRot = [k.rot[0], k.rot[1] + f.heading, k.rot[2]];
     else spawn.cargoYaw = (k.yaw ?? 0) + f.heading;
     return spawn;
@@ -511,10 +517,11 @@ const conveyor: Piece = {
     b.world({ type: 'hazard', kind: 'conveyor', pos: b.f.p(0, -0.15, (z0 + z1) / 2), rot: [0, b.f.yaw(90), 0], params: { size: [belt, 0.3, W + 2 * M], speed } });
     b.add({ type: 'box', pos: [0, -1.6, (z0 + z1) / 2], size: [W + 2 * M - 0.5, 2.4, belt - 0.1], color: t.dirt, collide: false, radius: 0.3 });
     b.edges(z0, z1);
-    // (it carries things toward local +x when speed > 0): start upstream and lean into it, ending up mid-path
+    // (it carries things toward local +x when speed > 0): start a little upstream and lean into it, ending up
+    // mid-path (only a little: a sideways step turns a wide load side-on to the walk)
     const up = -Math.sign(speed);
-    b.go(up * 1.2, z0 + 0.4);
-    b.go(up * 0.3, z1 - 0.8);
+    b.go(up * 0.7, z0 + 0.4);
+    b.go(up * 0.2, z1 - 0.8);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'A moving belt: lean into it as you cross!', 3);
     return { length: L };
@@ -754,8 +761,18 @@ export function goalPiece(b: Build): { goal: { pos: Vec3; size: Vec3; label: str
   }
   // things that start on a stand are set down on one too (nobody can lower a cake gently all the way to the floor)
   else if (b.g.cargo === 'cake' || b.g.cargo === 'swan' || b.g.cargo === 'egg') for (const o of b.g.kit.stand()) b.add({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] - L / 2] });
+  // the painting goes on job 9's gallery easel (picture facing back down the course), leaning back on its board
+  else if (b.g.cargo === 'painting') b.add(...galleryEasel(0, 0, -L / 2 - 0.3));
+  // the balloons get tied onto a party table: long and narrow, so the movers walk either side of it
+  else if (b.g.cargo === 'balloons')
+    b.add(
+      { type: 'box', pos: [0, 0.335, -L / 2 - 0.3], size: [0.62, 0.67, 1.9], color: 0xffd6e0, radius: 0.02 },
+      { type: 'box', pos: [0, 0.7, -L / 2 - 0.3], size: [0.7, 0.06, 2.0], color: 0xfbfaf6, radius: 0.015, tie: true },
+    );
   b.add({ type: 'sign', pos: [W / 2 + 1.2, 2.2, -L / 2], rot: [0, -20, 0], size: [2.6, 0.7, 0.06], text: 'DELIVERIES', color: 0x2a6f4a, post: true });
-  // glass: push it right in (the bot stops within 0.2 m of its target, so aim past the bar)
-  b.go(0, b.g.cargo === 'glass' ? -L / 2 - 0.6 : -L / 2);
+  // glass: push it right in (the bot stops within 0.2 m of its target, so aim past the bar); the painting onto the
+  // easel's ledge; the bouquet over the middle of the table
+  const end = b.g.cargo === 'glass' ? -L / 2 - 0.6 : b.g.cargo === 'painting' ? -L / 2 - 0.4 : b.g.cargo === 'balloons' ? -L / 2 - 0.3 : -L / 2;
+  b.go(0, end);
   return { goal };
 }

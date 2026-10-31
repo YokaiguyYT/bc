@@ -5,7 +5,7 @@ export default async function ({ page, base, shot }) {
   await page.goto(base + '?manual=1');
   await page.waitForFunction(() => window.__FF && window.__FF.app && !document.getElementById('loading'), null, { timeout: 90000 });
   const n = Number(process.env.SEEDS ?? 24);
-  const cargos = ['tv', 'aquarium', 'clock', 'glass', 'cake', 'swan', 'egg', 'piano'];
+  const cargos = ['tv', 'aquarium', 'clock', 'glass', 'cake', 'swan', 'egg', 'piano', 'painting', 'balloons'];
   const rows = [];
   const usage = {};
   for (let i = 0; i < n; i++) {

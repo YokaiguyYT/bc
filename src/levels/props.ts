@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { BoxObj, CylinderObj, LevelObject, SignObj, TriggerZone, Vec3 } from './types';
-import { railing, ramp } from './helpers';
+import { eulerDeg, railing, ramp } from './helpers';
 import { PALETTE } from '../render/materials';
+import { Balloons } from '../entities/cargo/Balloons';
 
 /**
  * Prefabs: little bundles of level objects (a truck, a table, windows...).
@@ -194,5 +195,89 @@ export function island(center: Vec3, size: [number, number], surface: BoxObj['su
     { type: 'box', pos: [x, y - 0.25, z], size: [w, 0.5, d], surface, radius: 0.12 },
     { type: 'box', pos: [x, y - 0.5 - depth / 2, z], size: [w - 0.6, depth, d - 0.6], color: 0xb8a48e, surface: 'concrete', radius: 0.4, collide: false },
     { type: 'box', pos: [x, y - 0.5 - depth - 0.8, z], size: [w * 0.6, 1.6, d * 0.6], color: 0xa8937d, surface: 'concrete', radius: 0.5, collide: false },
+  ];
+}
+
+// ---------------------------------------------------------------- the painting (job 9, random jobs)
+
+const DEG = Math.PI / 180;
+
+// the painting waits in a padded slot on a low stand, leaning back a little: its
+// middle is below the movers' hands, so they hold it above its middle and it hangs
+// steady; nothing stands behind it, so it can be carried off in any direction
+export const PAINT_TILT = 8;
+const LEDGE = 0.1; // the slot's floor
+const SLOT = 0.105; // the slot's width (the frame is 0.09 deep)
+const RAIL = 0.1; // the slot's sides (a pick-up lifts it well clear of them)
+const PH = 1.25;
+const PD = 0.09;
+export const PAINT_Y = LEDGE + (PH / 2) * Math.cos(PAINT_TILT * DEG) + (PD / 2) * Math.sin(PAINT_TILT * DEG) + 0.01;
+/** The painting's centre sits this far back (-Z) of the slot it stands in (it leans back). */
+export const PAINT_DZ = -(PH / 2) * Math.sin(PAINT_TILT * DEG);
+
+/** A box from a to b (legs, masts, struts). */
+export function beam(a: Vec3, b: Vec3, t: number, color: number, extra: Partial<LevelObject> = {}): LevelObject {
+  const A = new THREE.Vector3(...a);
+  const B = new THREE.Vector3(...b);
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  const m = A.clone().add(B).multiplyScalar(0.5);
+  return { type: 'box', pos: [m.x, m.y, m.z], size: [t, A.distanceTo(B), t], rot: eulerDeg(q), color, radius: t * 0.3, collide: false, ...extra } as LevelObject;
+}
+
+/**
+ * A painting stand at floor point (x, y, z): a low board with a padded slot that
+ * the painting (facing +Z) stands in, and a knob at each end. The painting's
+ * centre goes at [x, y + PAINT_Y, z + PAINT_DZ], tilted back PAINT_TILT degrees.
+ */
+export function paintingStand(x: number, y: number, z: number, color = 0x8a5a36): LevelObject[] {
+  const felt = 0x3d6fb0;
+  const top = y + LEDGE;
+  return [
+    { type: 'box', pos: [x, y + LEDGE / 2, z], size: [1.3, LEDGE, 0.46], color, radius: 0.02 },
+    ...[-1, 1].map((s): LevelObject => ({ type: 'box', pos: [x, top + RAIL / 2, z + s * (SLOT / 2 + 0.025)], size: [1.2, RAIL, 0.05], color: felt, radius: 0.02, grabbable: false })),
+    ...[-1, 1].map((s): LevelObject => ({ type: 'ball', pos: [x + s * 0.62, top + RAIL + 0.04, z], radius: 0.05, color: 0xd9a93f, collide: false })),
+  ];
+}
+
+/**
+ * The gallery easel in the keeper's cottage (floor point x, y, z; the painting
+ * faces +Z): a deep padded ledge in front of a padded backboard, so a painting
+ * set down anywhere on it, even skewed, falls back and leans there.
+ */
+export function galleryEasel(x: number, y: number, z: number): LevelObject[] {
+  const velvet = 0x7a2a3a;
+  const gold = 0xd9a93f;
+  const back = 12 * DEG;
+  // the backboard's foot is just behind the ledge's low back edge
+  const fy = y + 0.1;
+  const fz = z - 0.41;
+  const by = fy + 0.72 * Math.cos(back) - 0.04 * Math.sin(back);
+  const bz = fz - 0.72 * Math.sin(back) - 0.04 * Math.cos(back);
+  return [
+    { type: 'box', pos: [x, y + 0.075, z + 0.15], size: [1.5, 0.15, 1.1], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
+    { type: 'box', pos: [x, y + 0.16, z + 0.15], size: [1.5, 0.06, 1.12], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.4, radius: 0.02 },
+    { type: 'box', pos: [x, by, bz], size: [1.5, 1.5, 0.08], rot: [-back / DEG, 0, 0], color: velvet, surface: 'carpet', friction: 0.3, radius: 0.03, grabbable: false },
+    beam([x - 0.79, y, z - 0.42], [x - 0.79, y + 1.62, z - 0.75], 0.07, gold),
+    beam([x + 0.79, y, z - 0.42], [x + 0.79, y + 1.62, z - 0.75], 0.07, gold),
+    beam([x - 0.79, y + 1.6, z - 0.75], [x + 0.79, y + 1.6, z - 0.75], 0.06, gold),
+    { type: 'sign', pos: [x, y + 0.08, z + 0.71], size: [1.1, 0.12, 0.02], text: 'LIGHTHOUSE AT DUSK · M. GALE', color: 0xb8892e, textColor: '#2b1d14' },
+    // a potted plant each side, level with the backboard: whoever sets it down stops beside it, not behind it
+    ...[-1, 1].map((s): LevelObject => ({ type: 'model', model: 'plant', pos: [x + s * 1.3, y, z - 0.8] })),
+  ];
+}
+
+// ---------------------------------------------------------------- the balloons (job 10, random jobs)
+
+/** Top of a balloon stand. */
+export const BALLOON_STAND = 0.86;
+/** The bouquet's present, sitting on a stand. */
+export const BOUQUET_Y = BALLOON_STAND + Balloons.sitHeight + 0.005;
+
+/** A balloon stand at floor point (x, y, z): a slim post with a little plate the bouquet's present gets tied to. */
+export function balloonStand(x: number, y: number, z: number): LevelObject[] {
+  return [
+    { type: 'cylinder', pos: [x, y + 0.03, z], radius: 0.28, height: 0.06, color: 0x5b3a22, segments: 18 },
+    { type: 'cylinder', pos: [x, y + BALLOON_STAND / 2, z], radius: 0.05, height: BALLOON_STAND, color: 0xe9e4da, segments: 10 },
+    { type: 'box', pos: [x, y + BALLOON_STAND - 0.02, z], size: [0.44, 0.04, 0.38], color: 0xff8fab, radius: 0.012, tie: true },
   ];
 }

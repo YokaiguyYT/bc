@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import type { LevelDef, LevelObject, Vec3 } from '../types';
 import { eulerDeg, wall } from '../helpers';
-import { bush, counter, fence, island, rug } from '../props';
-import { Balloons } from '../../entities/cargo/Balloons';
+import { BOUQUET_Y, balloonStand, bush, counter, fence, island, rug } from '../props';
 
 /**
  * JOB 10 — Up, Up and Away (a balloon bouquet for a birthday party)
@@ -13,8 +12,6 @@ import { Balloons } from '../../entities/cargo/Balloons';
  * spear-topped railings → onto the birthday party table. Let go anywhere but
  * a balloon stand or the party table and the bouquet floats off.
  */
-const STAND = 0.86; // top of a balloon stand
-const BOUQUET_Y = STAND + Balloons.sitHeight + 0.005; // the bouquet's present, sitting on a stand
 const PATH = 0xeadcc2;
 const TUNNEL: [number, number] = [-7, -25]; // z: in, out
 const TW = 2.4; // tunnel wall line (x = ±TW)
@@ -32,12 +29,7 @@ const UP = new THREE.Vector3(0, 1, 0);
  */
 const standSpawn = (x: number, z: number) => ({ p1: [x - 0.64, 0, z] as Vec3, p2: [x + 0.64, 0, z] as Vec3, cargo: [x, BOUQUET_Y, z] as Vec3, yaw: 180, yaws: [90, -90] as [number, number] });
 
-/** A balloon stand: a slim post with a little plate the bouquet's present gets tied to. */
-const stand = (x: number, z: number): LevelObject[] => [
-  { type: 'cylinder', pos: [x, 0.03, z], radius: 0.28, height: 0.06, color: 0x5b3a22, segments: 18 },
-  { type: 'cylinder', pos: [x, STAND / 2, z], radius: 0.05, height: STAND, color: 0xe9e4da, segments: 10 },
-  { type: 'box', pos: [x, STAND - 0.02, z], size: [0.44, 0.04, 0.38], color: 0xff8fab, radius: 0.012, tie: true },
-];
+const stand = (x: number, z: number) => balloonStand(x, 0, z);
 
 /** A thin pointy cone from `base` toward `dir` (decor). */
 function spike(base: THREE.Vector3, dir: THREE.Vector3, len: number, r: number, color: number): LevelObject {

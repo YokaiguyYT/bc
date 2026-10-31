@@ -26,6 +26,8 @@ const ORDERS: Partial<Record<CargoKind, string[]>> = {
   swan: ['{who}’s ice swan for the gala at {place}. It’s melting as you read this.', '{who} wants the swan at {place} before it turns into a puddle.', 'A chilly delivery for {who} at {place}. Hurry!'],
   egg: ['{who} at {place} is expecting a very rare egg.', 'Don’t drop {who}’s dinosaur egg on the way to {place}.', '{who} has a nest ready at {place}.'],
   piano: ['{who} has a recital at {place} tonight.', '{who}’s piano needs to get to {place}. Mind the slopes.', 'Heavy, loud and precious: {who}’s piano, for {place}.'],
+  painting: ['{who} bought a masterpiece. It hangs at {place} tonight.', 'A very old painting for {who} at {place}. Mind the corners.', '{who}’s portrait is expected at {place}. Keep it in one piece.'],
+  balloons: ['It’s {who}’s birthday at {place}! Whatever you do, don’t let go.', 'Balloons for {who} at {place}. Pointy things are the enemy.', '{who}’s party at {place} needs every one of these balloons.'],
 };
 
 /** Some jobs happen at sunset or at night (the look only; the course is the same kind). */
@@ -57,12 +59,14 @@ export function generateJob(p: GenParams): LevelDef {
   const tips: { pos: Vec3; radius: number; text: string }[] = [];
   const checkpoints: LevelDef['checkpoints'] = [];
   let low = 0;
+  let high = 0;
   let par = 20;
   const take = (b: Build) => {
     objects.push(...b.objects);
     path.push(...b.bot);
     tips.push(...b.tips);
     low = Math.min(low, b.low);
+    high = Math.max(high, b.high);
   };
 
   let f = new Frame([0, 0, 0], 0);
@@ -76,7 +80,7 @@ export function generateJob(p: GenParams): LevelDef {
   let last = '';
   const used: string[] = [];
   for (let i = 0; i < count; i++) {
-    const choices = PIECES.filter((x) => x.id !== last)
+    const choices = PIECES.filter((x) => x.id !== last && !kit.avoid?.includes(x.id))
       .map((x) => ({ w: x.weight(g, f.heading, corners), v: x }))
       .filter((c) => c.w > 0);
     const piece = rng.weighted(choices);
@@ -128,6 +132,8 @@ export function generateJob(p: GenParams): LevelDef {
     goal: fin.goal,
     checkpoints,
     killY: low - 7,
+    // let go of the balloons and they're gone once they rise past here (back to the last checkpoint)
+    ...(cargo === 'balloons' ? { ceilingY: high + 9 } : {}),
     parTime: Math.max(45, Math.round(par / 5) * 5),
     objects,
     hints: [client, `${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}${when === 'day' ? '' : when === 'night' ? ', at night' : ', at sunset'}.`],

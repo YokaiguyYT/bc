@@ -1,7 +1,6 @@
-import * as THREE from 'three';
 import type { LevelDef, LevelObject, Surface, Vec3 } from '../types';
-import { eulerDeg, railing, ramp, wall } from '../helpers';
-import { bush, counter, picture, rug, table, windowPane } from '../props';
+import { railing, ramp, wall } from '../helpers';
+import { beam, bush, counter, galleryEasel as displayEasel, PAINT_DZ, PAINT_TILT as TILT, PAINT_Y, paintingStand as stand, picture, rug, table, windowPane } from '../props';
 
 /**
  * JOB 9 — Gone With the Wind (a big gilt-framed painting)
@@ -13,74 +12,9 @@ import { bush, counter, picture, rug, table, windowPane } from '../props';
  */
 const SEA = -10; // the sea, far below everything
 const HEAD = 1.2; // the headland, the causeway and the lighthouse rock
-const DEG = Math.PI / 180;
 const ROCK = 0x8d8275;
 const STONE = 0xa59a8a;
 const WIND: Vec3 = [1, 0, 0];
-
-// the painting waits in a padded slot on a low stand, leaning back a little: its
-// middle is below the movers' hands, so they hold it above its middle and it hangs
-// steady; nothing stands behind it, so it can be carried off in any direction
-const TILT = 8;
-const LEDGE = 0.1; // the slot's floor
-const SLOT = 0.105; // the slot's width (the frame is 0.09 deep)
-const RAIL = 0.1; // the slot's sides (a pick-up lifts it well clear of them)
-const PH = 1.25;
-const PD = 0.09;
-const PAINT_Y = LEDGE + (PH / 2) * Math.cos(TILT * DEG) + (PD / 2) * Math.sin(TILT * DEG) + 0.01;
-/** The painting's centre sits this far back (-Z) of the slot it stands in (it leans back). */
-const PAINT_DZ = -(PH / 2) * Math.sin(TILT * DEG);
-
-/** A box from a to b (legs, masts, struts). */
-function beam(a: Vec3, b: Vec3, t: number, color: number, extra: Partial<LevelObject> = {}): LevelObject {
-  const A = new THREE.Vector3(...a);
-  const B = new THREE.Vector3(...b);
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
-  const m = A.clone().add(B).multiplyScalar(0.5);
-  return { type: 'box', pos: [m.x, m.y, m.z], size: [t, A.distanceTo(B), t], rot: eulerDeg(q), color, radius: t * 0.3, collide: false, ...extra } as LevelObject;
-}
-
-/**
- * A painting stand at floor point (x, y, z): a low board with a padded slot that
- * the painting (facing +Z) stands in, and a knob at each end. The painting's
- * centre goes at [x, y + PAINT_Y, z + PAINT_DZ], tilted back TILT degrees.
- */
-function stand(x: number, y: number, z: number, color = 0x8a5a36): LevelObject[] {
-  const felt = 0x3d6fb0;
-  const top = y + LEDGE;
-  return [
-    { type: 'box', pos: [x, y + LEDGE / 2, z], size: [1.3, LEDGE, 0.46], color, radius: 0.02 },
-    ...[-1, 1].map((s): LevelObject => ({ type: 'box', pos: [x, top + RAIL / 2, z + s * (SLOT / 2 + 0.025)], size: [1.2, RAIL, 0.05], color: felt, radius: 0.02, grabbable: false })),
-    ...[-1, 1].map((s): LevelObject => ({ type: 'ball', pos: [x + s * 0.62, top + RAIL + 0.04, z], radius: 0.05, color: 0xd9a93f, collide: false })),
-  ];
-}
-
-/**
- * The gallery easel in the keeper's cottage (floor point x, y, z; the painting
- * faces +Z): a deep padded ledge in front of a padded backboard, so a painting
- * set down anywhere on it, even skewed, falls back and leans there.
- */
-function displayEasel(x: number, y: number, z: number): LevelObject[] {
-  const velvet = 0x7a2a3a;
-  const gold = 0xd9a93f;
-  const back = 12 * DEG;
-  // the backboard's foot is just behind the ledge's low back edge
-  const fy = y + 0.1;
-  const fz = z - 0.41;
-  const by = fy + 0.72 * Math.cos(back) - 0.04 * Math.sin(back);
-  const bz = fz - 0.72 * Math.sin(back) - 0.04 * Math.cos(back);
-  return [
-    { type: 'box', pos: [x, y + 0.075, z + 0.15], size: [1.5, 0.15, 1.1], color: 0x5b3a22, surface: 'woodDark', radius: 0.03 },
-    { type: 'box', pos: [x, y + 0.16, z + 0.15], size: [1.5, 0.06, 1.12], rot: [-8, 0, 0], color: velvet, surface: 'carpet', friction: 0.4, radius: 0.02 },
-    { type: 'box', pos: [x, by, bz], size: [1.5, 1.5, 0.08], rot: [-back / DEG, 0, 0], color: velvet, surface: 'carpet', friction: 0.3, radius: 0.03, grabbable: false },
-    beam([x - 0.79, y, z - 0.42], [x - 0.79, y + 1.62, z - 0.75], 0.07, gold),
-    beam([x + 0.79, y, z - 0.42], [x + 0.79, y + 1.62, z - 0.75], 0.07, gold),
-    beam([x - 0.79, y + 1.6, z - 0.75], [x + 0.79, y + 1.6, z - 0.75], 0.06, gold),
-    { type: 'sign', pos: [x, y + 0.08, z + 0.71], size: [1.1, 0.12, 0.02], text: 'LIGHTHOUSE AT DUSK · M. GALE', color: 0xb8892e, textColor: '#2b1d14' },
-    // a potted plant each side, level with the backboard: whoever sets it down stops beside it, not behind it
-    ...[-1, 1].map((s): LevelObject => ({ type: 'model', model: 'plant', pos: [x + s * 1.3, y, z - 0.8] })),
-  ];
-}
 
 /** The rock (or house) a piece of ground stands on, from its top down into the sea. */
 const body = (x0: number, x1: number, z0: number, z1: number, top: number, color = ROCK): LevelObject => ({

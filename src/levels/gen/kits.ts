@@ -1,6 +1,7 @@
 import type { CargoKind, LevelObject, Surface, Vec3 } from '../types';
 import type { Theme } from '../../render/Renderer';
 import { UprightPiano } from '../../entities/cargo/UprightPiano';
+import { BOUQUET_Y, balloonStand, PAINT_DZ, PAINT_TILT, PAINT_Y, paintingStand } from '../props';
 
 /**
  * How each cargo starts (and restarts at checkpoints) in a generated job, and
@@ -17,6 +18,8 @@ export interface CargoKit {
   rot?: Vec3;
   /** Where the two movers stand, local [x, z] relative to the cargo. */
   movers: [[number, number], [number, number]];
+  /** Each mover's own facing (local degrees), instead of all facing along the course (e.g. turned toward a small load). */
+  yaws?: [number, number];
   /** The bot's carrying formation in the open, and through tight spots. */
   form: 'broad' | 'inline';
   tight: 'broad' | 'inline';
@@ -28,8 +31,10 @@ export interface CargoKit {
   maxSlope: number;
   /** Door gap it needs (m): the load plus the two movers walking beside it. */
   door: number;
-  /** The test bot's grab setup (see deliver.mjs `setup`): on its back end to end, or a wider grip. */
-  bot?: { lying?: boolean; half?: number };
+  /** The test bot's grab setup (see deliver.mjs `setup`): on its back end to end, or a wider grip; or `start`: pick it up off its stand as players do. */
+  bot?: { lying?: boolean; half?: number; start?: boolean; yaw?: number };
+  /** Kinds of course piece it can't take (by id), on top of each piece's own rules. */
+  avoid?: string[];
 }
 
 const cakeStand = (): LevelObject[] => [
@@ -74,6 +79,39 @@ export const KITS: Partial<Record<CargoKind, CargoKit>> = {
   swan: { stand: carvingStand, y: 0.5 + 0.11 + 0.02, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 9, door: 3.4 },
   egg: { stand: pedestal, y: 0.42 + 0.387 + 0.02, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', broad: [0.62, 0.72], stairs: false, maxSlope: 9, door: 3.4 },
   piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0, bot: { half: 1.3 } },
+  // job 9's padded slot (shifted so the painting's centre, leaning back, is at the spot); picture facing back down the course
+  painting: {
+    stand: () => paintingStand(0, 0, -PAINT_DZ),
+    y: PAINT_Y,
+    rot: [-PAINT_TILT, 0, 0],
+    movers: [[-1.35, 0.04], [1.35, 0.04]],
+    form: 'broad',
+    tight: 'broad',
+    broad: [1.25, 1.4],
+    stairs: false,
+    maxSlope: 9,
+    door: 3.6,
+    bot: { start: true },
+    // it leans back from its picture: turned round on the way (in a corner, or dragged round by a belt) it would
+    // lean off the easel, not onto it
+    avoid: ['corner', 'conveyor'],
+  },
+  // job 10's stand; the movers face the bouquet between them. It floats above head height: nothing with a door
+  // frame or a roof
+  balloons: {
+    stand: () => balloonStand(0, 0, 0),
+    y: BOUQUET_Y,
+    movers: [[-0.64, 0], [0.64, 0]],
+    yaws: [90, -90],
+    form: 'broad',
+    tight: 'broad',
+    broad: [0.6, 0.72],
+    stairs: false,
+    maxSlope: 10,
+    door: 2.6,
+    bot: { start: true },
+    avoid: ['door', 'swing', 'ferry'],
+  },
 };
 
 /** Cargo a random job can pick. */
