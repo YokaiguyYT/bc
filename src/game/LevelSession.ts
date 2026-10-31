@@ -44,7 +44,7 @@ const DEG = Math.PI / 180;
 /** A spawn set resolved to world space (it may ride on a moving hazard). */
 interface SpawnPose {
   p: [THREE.Vector3, THREE.Vector3];
-  yaw: number;
+  yaw: [number, number];
   cargo: THREE.Vector3;
   cargoRot: THREE.Quaternion;
   vel: THREE.Vector3;
@@ -156,7 +156,7 @@ export class LevelSession {
         name: PLAYER_NAMES[i],
         color: PLAYER_COLORS[i],
         position: s.p[i],
-        yaw: s.yaw,
+        yaw: s.yaw[i],
       });
       this.players.push(p);
       const rig = new PlayerRig(p, this.physics);
@@ -400,7 +400,7 @@ export class LevelSession {
       : new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (s.cargoYaw ?? 0) * DEG);
     return {
       p: [world(s.p1), world(s.p2)],
-      yaw: s.yaw * DEG + yawOff,
+      yaw: [(s.yaws?.[0] ?? s.yaw) * DEG + yawOff, (s.yaws?.[1] ?? s.yaw) * DEG + yawOff],
       cargo: world(s.cargo),
       cargoRot: rot.clone().multiply(local),
       vel: carrier?.bodyVel?.clone() ?? new THREE.Vector3(),
@@ -410,7 +410,7 @@ export class LevelSession {
   respawnPlayer(p: Player) {
     const s = this.spawnPose(this.spawn);
     const pos = s.p[p.index];
-    p.teleport(pos.clone().add(_a.set(0, 0.3, 0)), s.yaw, s.vel);
+    p.teleport(pos.clone().add(_a.set(0, 0.3, 0)), s.yaw[p.index], s.vel);
     this.physics.snapLinks();
     this.falls++;
     this.events.emit('respawn', { pos: pos.clone() });
@@ -419,7 +419,7 @@ export class LevelSession {
   /** Put players and cargo back at the last checkpoint. */
   respawnAll(cargoFell: boolean) {
     const s = this.spawnPose(this.spawn);
-    for (const p of this.players) p.teleport(s.p[p.index].clone().add(_a.set(0, 0.3, 0)), s.yaw, s.vel);
+    for (const p of this.players) p.teleport(s.p[p.index].clone().add(_a.set(0, 0.3, 0)), s.yaw[p.index], s.vel);
     this.cargo.reset(s.cargo.clone().add(_a.set(0, 0.25, 0)), s.cargoRot, s.vel);
     this.physics.snapLinks();
     if (cargoFell) this.falls += 2;

@@ -860,6 +860,8 @@ export class Player {
       for (let i = 0; i < b.numColliders(); i++) {
         const proj = b.collider(i).projectPoint({ x: p.x, y: p.y, z: p.z }, true);
         if (!proj) continue;
+        // all of it above our head (balloons on strings): nothing to bump into
+        if (proj.point.y > p.y + 0.8) continue;
         const dx = p.x - proj.point.x;
         const dz = p.z - proj.point.z;
         const dh = Math.hypot(dx, dz);
@@ -1040,6 +1042,10 @@ export class Player {
     const T = tuning.grip;
     // things on wheels get pushed and pulled at the height we grabbed them, never lifted
     if (g.kind === 'cargo' && (g.owner as { liftable?: boolean }).liftable === false) return g.grabY;
+    // carried upright at a set height (Cargo.holdHeight): each hand goes where its grip
+    // would be then, whichever order the hands closed in
+    const hold = g.kind === 'cargo' ? (g.owner as { holdHeight?: number | null }).holdHeight : null;
+    if (hold != null) return hold + g.local.y;
     const y = Math.max(T.carryHeight, g.grabY + T.liftExtra);
     const bottom = tuning.float.rideHeight + y - g.hangBelow; // above the floor when standing
     return y + Math.max(0, T.floorClearance - bottom);

@@ -36,6 +36,8 @@ interface Base {
   tag?: string;
   /** Pointy (cactus, pins…): pops balloons that touch it. */
   sharp?: boolean;
+  /** Balloons set down on it get tied on instead of floating off (stands, the party table). */
+  tie?: boolean;
 }
 
 export interface BoxObj extends Base {
@@ -150,6 +152,8 @@ export interface SpawnSet {
   cargo: Vec3;
   /** Facing yaw for the players (degrees). */
   yaw: number;
+  /** Each mover's own facing (degrees), instead of `yaw`: e.g. both turned toward the cargo between them. */
+  yaws?: [number, number];
   cargoYaw?: number;
   /**
    * Full cargo rotation in degrees [tilt X, turn Y, roll Z]; the tilt/roll is

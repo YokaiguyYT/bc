@@ -18,6 +18,8 @@ export interface ColliderInfo {
   material?: 'wood' | 'metal' | 'glass' | 'soft' | 'concrete' | 'body' | 'cardboard' | 'cake' | 'water' | 'ice' | 'shell' | 'rubber';
   /** Pointy: pops balloons. */
   sharp?: boolean;
+  /** Balloons resting on it are tied on (they don't float off). */
+  tie?: boolean;
   /** Friction used for "slippery" checks. */
   friction?: number;
 }

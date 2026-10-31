@@ -38,6 +38,7 @@ export default async function ({ page, base }) {
               for (const col of s.cargo.colliders) {
                 const pr = col.projectPoint(b, true);
                 if (!pr) continue;
+                if (pr.point.y > b.y + 0.8) continue; // over our head (balloons): we walk under it
                 const d = Math.hypot(pr.point.x - b.x, pr.point.z - b.z);
                 if (d < near) {
                   near = d;

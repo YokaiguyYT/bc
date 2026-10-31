@@ -102,6 +102,7 @@ export class LevelBuilder {
         return; // handled by the session
     }
     if (o.sharp) for (const c of this.made) this.sim.physics.info(c)!.sharp = true;
+    if (o.tie) for (const c of this.made) this.sim.physics.info(c)!.tie = true;
   }
 
   private staticCollider(desc: InstanceType<typeof RAPIER.ColliderDesc>, pos: Vec3, q: THREE.Quaternion, surface: keyof typeof SURFACES, friction?: number, surfaceVel?: Vec3) {
