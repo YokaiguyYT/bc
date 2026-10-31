@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Renderer, Quality } from '../render/Renderer';
 import { Keyboard } from '../input/Keyboard';
+import { Touch } from '../input/Touch';
 import { LevelSession, NetInput } from './LevelSession';
 import { LEVELS, levelById } from '../levels';
 import type { LevelDef } from '../levels/types';
@@ -24,6 +25,8 @@ const DEFAULT_SETTINGS: Settings = { quality: 'medium', master: 0.8, music: 0.55
 export class Game {
   readonly renderer: Renderer;
   readonly keyboard = new Keyboard();
+  /** On-screen controls (phones and tablets; hidden everywhere else). */
+  readonly touch = new Touch();
   session: LevelSession | null = null;
   settings: Settings;
   private last = performance.now();
@@ -63,6 +66,7 @@ export class Game {
     this.endLevel();
     this.session = new LevelSession(d, this.renderer, this.keyboard);
     this.session.input = this.input;
+    this.session.touch = this.touch;
     return this.session;
   }
 

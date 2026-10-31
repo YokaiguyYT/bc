@@ -2,7 +2,8 @@ import { openSignal, Signal } from './signal';
 import { CtlMsg, NET_VERSION, PeerLink, Pipe } from './peer';
 import { RelayLink } from './relay';
 import { GuestSync, HostSync, NetEvent } from './sync';
-import type { Keyboard, MoveState } from '../input/Keyboard';
+import { mergeMoves, type Keyboard, type MoveState } from '../input/Keyboard';
+import type { Touch } from '../input/Touch';
 import type { LevelSession } from '../game/LevelSession';
 import type { GenParams } from '../levels/types';
 import * as THREE from 'three';
@@ -39,11 +40,8 @@ function allowed(name: 'p2p' | 'relay') {
   return new URLSearchParams(location.search).get(name) !== '0';
 }
 
-/** Combine two move states (each laptop's player can use either key layout). */
-export function mergeMoves(a: MoveState, b: MoveState): MoveState {
-  const c = (v: number) => Math.max(-1, Math.min(1, v));
-  return { x: c(a.x + b.x), y: c(a.y + b.y), jump: a.jump || b.jump, jumpPressed: a.jumpPressed || b.jumpPressed, grab: a.grab || b.grab };
-}
+/** Combine two move states (each laptop's player can use either key layout); it lives with MoveState. */
+export { mergeMoves };
 
 export type NetMode = 'light' | 'video';
 export type Via = 'direct' | 'relay';
@@ -648,8 +646,8 @@ export class OnlineGuest {
     this.jumps++;
   }
 
-  /** Send this laptop's keys, about 30 times a second (either layout drives our mover). */
-  sendKeys(kb: Keyboard | null, dt: number, session: LevelSession | null) {
+  /** Send this laptop's keys, about 30 times a second (either layout drives our mover, and so do the on-screen controls on a phone). */
+  sendKeys(kb: Keyboard | null, dt: number, session: LevelSession | null, touch: Touch | null = null) {
     let m: MoveState = { x: 0, y: 0, jump: false, jumpPressed: false, grab: false };
     let cam = 0;
     let world = false;
@@ -657,6 +655,12 @@ export class OnlineGuest {
       const b = kb.bindings;
       m = mergeMoves(kb.readPlayer(b.p1), kb.readPlayer(b.p2));
       cam = (kb.isDown(b.camRight) ? 1 : 0) - (kb.isDown(b.camLeft) ? 1 : 0);
+      if (touch) {
+        const t = touch.read();
+        if (t.jumpPressed) this.jumps++;
+        m = mergeMoves(m, t);
+        cam = Math.max(-1, Math.min(1, cam + touch.cam()));
+      }
       // light mode: we have our own camera, so turn the keys into a world direction here
       if (this.mode === 'light' && session) {
         const f = session.cameraRig.forward(new THREE.Vector3());
