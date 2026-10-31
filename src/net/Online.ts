@@ -153,6 +153,8 @@ export class OnlineHost {
   onPauseRequest: (() => void) | null = null;
   /** The guest said something (an emote). */
   onEmote: ((kind: number) => void) | null = null;
+  /** The guest's mover's outfit arrived. */
+  onOutfit: ((o: unknown) => void) | null = null;
   /** The level being played (null in the menus); the app keeps this up to date. */
   level: LevelSession | null = null;
   private stream: MediaStream | null = null;
@@ -303,6 +305,7 @@ export class OnlineHost {
     conn.onCtl = (m) => {
       if (m.k === 'pause') this.onPauseRequest?.();
       if (m.k === 'emote') this.onEmote?.(Number(m.e) || 0);
+      else if (m.k === 'outfit') this.onOutfit?.(m.o);
       else if (m.k === 'blank') this.useCopy();
       else if (m.k === 'want') this.setMode(m.m === 'video' ? 'video' : 'light');
       else if (m.k === 'kf') this.sync?.keyframeSoon();
@@ -322,6 +325,11 @@ export class OnlineHost {
         this.setStatus('waiting');
       }
     }, 30000);
+  }
+
+  /** A job ended: tell the guest how it went (it pays into their own wallet). */
+  sendPaid(r: PaidMsg) {
+    this.conn?.sendCtl({ k: 'paid', ok: r.success, pay: r.payout, cond: r.condition, tips: r.tipCount, stars: r.stars });
   }
 
   /** Switch between drawing on the guest's laptop and streaming the picture. */
@@ -428,7 +436,7 @@ export class OnlineHost {
       if (s) {
         this.sync = new HostSync(s);
         // a generated job travels as its recipe: the guest makes the very same one
-        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name });
+        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name, outfits: s.outfits });
       } else conn.sendCtl({ k: 'end' });
       this.snapT = 1;
     }
@@ -474,6 +482,17 @@ export interface LevelMsg {
   /** A generated job's recipe. */
   gen?: GenParams;
   name?: string;
+  /** What the two movers wear. */
+  outfits?: unknown[];
+}
+
+/** How a job went, for the guest's own wallet and quests. */
+export interface PaidMsg {
+  success: boolean;
+  payout: number;
+  condition: number;
+  tipCount: number;
+  stars: number;
 }
 
 export class OnlineGuest {
@@ -490,6 +509,8 @@ export class OnlineGuest {
   /** The route changed (direct ↔ relay). */
   onVia: (() => void) | null = null;
   onLost: ((why: string) => void) | null = null;
+  /** A job ended: how it went (for this laptop's wallet and quests). */
+  onPaid: ((r: PaidMsg) => void) | null = null;
   /** The host's latest level message (it can arrive before the app is listening). */
   lastLevel: LevelMsg | null = null;
   private seq = 0;
@@ -560,13 +581,22 @@ export class OnlineGuest {
         this.onMode?.(this.mode);
         break;
       case 'level':
-        this.lastLevel = { id: String(m.id), cargo: m.cargo as string | undefined, gen: m.gen as GenParams | undefined, name: m.name as string | undefined };
+        this.lastLevel = {
+          id: String(m.id),
+          cargo: m.cargo as string | undefined,
+          gen: m.gen as GenParams | undefined,
+          name: m.name as string | undefined,
+          outfits: Array.isArray(m.outfits) ? (m.outfits as unknown[]) : undefined,
+        };
         this.early = [];
         this.onLevel?.(this.lastLevel);
         break;
       case 'end':
         this.lastLevel = null;
         this.onEnd?.();
+        break;
+      case 'paid':
+        this.onPaid?.({ success: !!m.ok, payout: Math.max(0, Number(m.pay) || 0), condition: Number(m.cond) || 0, tipCount: Math.max(0, Number(m.tips) || 0), stars: Number(m.stars) || 0 });
         break;
       case 'ev':
         if (Array.isArray(m.l)) {
@@ -687,6 +717,10 @@ export class OnlineGuest {
   /** Say something over our mover (the host shows it to both). */
   emote(kind: number) {
     this.conn.sendCtl({ k: 'emote', e: kind });
+  }
+  /** What our mover wears (from this laptop's Locker). */
+  sendOutfit(o: object) {
+    this.conn.sendCtl({ k: 'outfit', o });
   }
 
 

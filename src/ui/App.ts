@@ -19,6 +19,7 @@ import { dailySeed, generateJob, hashSeed, randomSeed, TWISTS } from '../levels/
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
+import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, untilNext } from '../game/daily';
 
 type Screen =
@@ -41,7 +42,8 @@ type Screen =
   | 'jobnum'
   | 'netcheck'
   | 'play'
-  | 'quick';
+  | 'quick'
+  | 'locker';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -82,6 +84,7 @@ export class App {
     this.hudLayer = document.createElement('div');
     this.layer = document.createElement('div');
     root.append(this.hudLayer, this.layer);
+    setJobCount(PLAYABLE_LEVELS.length);
     this.audio.setVolumes(game.settings.master, game.settings.music, game.settings.sfx);
     tuning.damage.scale = game.settings.damage ?? 1;
     game.keyboard.onKey = (code, e) => this.onKey(code, e);
@@ -109,8 +112,12 @@ export class App {
   // ------------------------------------------------------------ navigation
 
   private setScreen(s: Screen, html: string, opts: { dim?: boolean; back?: () => void } = {}) {
+    // the same screen drawn again (something on it changed): no pop-in, and lists stay scrolled where they were
+    const again = s === this.screen && !!this.layer.firstElementChild;
+    const scrolled = again ? [...this.layer.querySelectorAll<HTMLElement>('.items, .quests, .levels, .hub')].map((e) => e.scrollTop) : [];
     this.screen = s;
-    this.layer.innerHTML = html ? `<div class="screen ${opts.dim ? 'dim' : ''}">${html}</div>` : '';
+    this.layer.innerHTML = html ? `<div class="screen ${opts.dim ? 'dim' : ''} ${again ? 'still' : ''}">${html}</div>` : '';
+    if (again) this.layer.querySelectorAll<HTMLElement>('.items, .quests, .levels, .hub').forEach((e, i) => (e.scrollTop = scrolled[i] ?? 0));
     this.back = opts.back ?? null;
     this.game.touch.show(this.touchShow()); // (at once: the controls mustn't sit over a menu for a frame)
     this.focusables = [...this.layer.querySelectorAll<HTMLElement>('[data-nav]')];
@@ -134,8 +141,10 @@ export class App {
   private navStep(code: string) {
     const el = this.focusables[this.focusIndex];
     const vertical = code === 'ArrowUp' || code === 'ArrowDown' || code === 'KeyW' || code === 'KeyS';
-    if (!vertical || !el?.classList.contains('level-card')) return 1;
-    const cards = this.focusables.filter((c) => c.classList.contains('level-card'));
+    // grids of cards (the job list, the Locker's items)
+    const grid = ['level-card', 'item-card'].find((c) => el?.classList.contains(c));
+    if (!vertical || !grid) return 1;
+    const cards = this.focusables.filter((c) => c.classList.contains(grid));
     const cols = cards.filter((c) => c.offsetTop === cards[0].offsetTop).length;
     const i = cards.indexOf(el);
     const up = code === 'ArrowUp' || code === 'KeyW';
@@ -342,6 +351,7 @@ export class App {
       `<div class="logo" style="font-size:clamp(40px,6vw,74px)"><span class="w fragile">FRAGILE</span> <span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
        <div class="menu">
          <button class="btn primary" data-nav data-default id="m-play">Play</button>
+         <button class="btn" data-nav id="m-locker">👕 Locker${loadWardrobe().cash > 0 ? ` <span class="cash">${formatMoney(loadWardrobe().cash)}</span>` : ''}</button>
          <button class="btn" data-nav id="m-online">${this.host ? `Online: ${this.host.connected ? 'friend connected' : 'hosting'}` : 'Play Online'}</button>
        </div>
        <div class="row menu-small">
@@ -354,6 +364,7 @@ export class App {
        <div class="hint-line">${earned > 0 ? `Company earnings so far: <b>${formatMoney(earned)}</b> · ` : ''}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showPlay());
+    this.bind('m-locker', () => this.showLocker());
     this.bind('m-online', () => (this.host ? this.showHost() : this.showOnline()));
     this.bind('m-howto', () => this.showHowTo(() => this.showMenu()));
     this.bind('m-controls', () => this.showControls(() => this.showMenu()));
@@ -452,6 +463,118 @@ export class App {
     this.bind('q-random', () => this.playGenerated('random', { seed: randomSeed() }));
     this.bind('q-number', () => this.showJobNumber());
     this.bind('q-back', () => this.showPlay());
+  }
+
+  // ------------------------------------------------------------ the Locker
+
+  private lockerPlayer: 0 | 1 = 0;
+  private lockerTab: Slot | 'quests' = 'hat';
+
+  /** The Locker: what the movers wear, bought with the company's cash or won from quests. */
+  private showLocker(focus?: string) {
+    this.startAttract();
+    this.dressMovers();
+    // quests finished some other way (before the Locker existed, or today's streak)
+    const won = claimQuests(streak().current);
+    if (won.length) this.toast(won.map(({ quest, item }) => `🏆 Quest done: ${quest.name}${item ? `! ${item.item.icon} ${item.item.name} unlocked` : ''}`).join(' · '));
+    const w = loadWardrobe();
+    const st = loadStats();
+    const days = streak().current;
+    const p = this.lockerPlayer;
+    const tab = this.lockerTab;
+    const outfit = w.outfits[p];
+    const swatch = (c: string) => `#${(ITEMS.color[c]?.hex ?? 0).toString(16).padStart(6, '0')}`;
+    const players = ([0, 1] as const)
+      .map((i) => `<button class="btn small tab ${p === i ? 'on' : ''}" data-nav id="lk-p${i}"><span class="swatch" style="background:${swatch(w.outfits[i].color)}"></span>Player ${i + 1}</button>`)
+      .join('');
+    const tabs = [...SLOTS.map((x) => ({ id: x.slot as string, name: x.name })), { id: 'quests', name: `Quests ${w.done.length}/${QUESTS.length}` }]
+      .map((t) => `<button class="btn small tab ${tab === t.id ? 'on' : ''}" data-nav id="lk-t-${t.id}">${t.name}</button>`)
+      .join('');
+    let body: string;
+    if (tab === 'quests') {
+      body = `<div class="quests">${QUESTS.map((q) => {
+        const [d, n] = q.progress(st, days);
+        const done = w.done.includes(q.id);
+        const r = rewardOf(q.id);
+        return `<div class="quest ${done ? 'done' : ''}">
+            <div class="q-icon">${r?.item.icon ?? '🏆'}</div>
+            <div class="q-text"><b>${esc(q.name)}</b> <span>${esc(q.text)}${r ? ` · wins the <b>${esc(r.item.name)}</b>` : ''}</span>
+              <div class="bar"><i style="width:${Math.round(100 * Math.min(1, d / n))}%"></i></div></div>
+            <div class="q-state">${done ? '✅' : `${d}/${n}`}</div>
+          </div>`;
+      }).join('')}</div>`;
+    } else {
+      body = `<div class="items">${Object.entries(ITEMS[tab])
+        .map(([id, it]) => {
+          const has = owns(w, tab, id);
+          const on = outfit[tab] === id;
+          const q = it.quest ? QUESTS.find((x) => x.id === it.quest) : null;
+          const state = on ? 'Wearing' : has ? 'Wear' : q ? `🔒 ${esc(q.name)}` : formatMoney(it.price);
+          const cls = on ? 'on' : has ? 'own' : q ? 'locked' : w.cash >= it.price ? 'buy' : 'pricey';
+          const icon = tab === 'color' ? `<span class="swatch big" style="background:${swatch(id)}"></span>` : it.icon;
+          return `<button class="item-card ${cls}" data-nav id="lk-i-${id}" ${q ? `title="${esc(q.text)}"` : ''}><div class="icon">${icon}</div><div class="name">${esc(it.name)}</div><div class="state">${state}</div></button>`;
+        })
+        .join('')}</div>`;
+    }
+    this.setScreen(
+      'locker',
+      `<div class="panel locker">
+         <div class="locker-head"><div class="logo" style="font-size:40px">LOCKER</div><div class="wallet" title="every delivery pays in">💵 ${formatMoney(w.cash)}</div></div>
+         <div class="row tabs">${players}</div>
+         <div class="row tabs">${tabs}</div>
+         ${body}
+         <p class="hint-line" style="margin:6px 0 0">${tab === 'quests' ? 'Quests unlock things money can’t buy.' : 'Every delivery pays into the wallet. 🔒 things are won from quests.'}</p>
+         <div class="row"><button class="btn small" data-nav id="lk-back">← Back</button></div>
+       </div>`,
+      { back: () => this.showMenu() },
+    );
+    // keep the focus where it was (or on what's being worn)
+    const want = focus ?? (tab === 'quests' ? 'lk-t-quests' : `lk-i-${outfit[tab]}`);
+    const at = this.focusables.findIndex((e) => e.id === want);
+    if (at >= 0) {
+      this.focusIndex = at;
+      this.updateFocus();
+    }
+    for (const i of [0, 1] as const)
+      this.bind(`lk-p${i}`, () => {
+        this.lockerPlayer = i;
+        this.showLocker(`lk-p${i}`);
+      });
+    for (const t of [...SLOTS.map((x) => x.slot), 'quests'] as const)
+      this.bind(`lk-t-${t}`, () => {
+        this.lockerTab = t;
+        this.showLocker(`lk-t-${t}`);
+      });
+    if (tab !== 'quests')
+      for (const [id, it] of Object.entries(ITEMS[tab]))
+        this.bind(`lk-i-${id}`, () => {
+          const again = () => this.showLocker(`lk-i-${id}`);
+          if (owns(w, tab, id)) {
+            wear(p, tab, id);
+            return again();
+          }
+          if (it.quest) {
+            const q = QUESTS.find((x) => x.id === it.quest);
+            this.toast(`🔒 ${it.icon} ${it.name}: win it from the quest “${q?.name}” (${q?.text}).`);
+            return;
+          }
+          if (!buy(tab, id)) {
+            this.toast(`${it.icon} ${it.name} costs ${formatMoney(it.price)}: ${formatMoney(it.price - w.cash)} more to earn. Every delivery pays into the wallet.`);
+            return;
+          }
+          wear(p, tab, id);
+          this.toast(`Bought the ${it.name}! ${formatMoney(loadWardrobe().cash)} left.`);
+          again();
+        });
+    this.bind('lk-back', () => this.showMenu());
+  }
+
+  /** The menu's movers wear the latest outfits. */
+  private dressMovers() {
+    const s = this.game.session;
+    if (!s || !this.attract) return;
+    const o = activeOutfits();
+    s.rigs.forEach((r, i) => r.applyOutfit(o[i]));
   }
 
   /** The hand-made jobs (and the Practice Yard). */
@@ -866,6 +989,13 @@ export class App {
           <button class="btn small" data-nav id="r-share">📋 Copy today's result</button>
         </div>`;
     }
+    // the wallet and the quests (after today's job is counted, for the streak)
+    const payday = track(
+      { success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars },
+      { kind: job.kind, levelId: def.id, online: !!this.host?.connected, chaos: def.gen?.chaos, shiftRound: job.kind === 'shift' ? job.round : 0, daily: job.kind === 'daily' },
+      streak().current,
+    );
+    if (this.host?.connected) this.host.sendPaid({ success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars });
     let shiftLine = '';
     if (job.kind === 'shift') {
       if (r.success) job.total += r.payout;
@@ -930,6 +1060,7 @@ export class App {
         </table>
         ${shiftLine}
         ${shareBlock}
+        ${this.paydayBlock(payday)}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
         <div class="row">${buttons}</div>
       </div>`,
@@ -967,6 +1098,18 @@ export class App {
       this.hud = null;
       this.backToList();
     });
+  }
+
+  /** What a job paid into the Locker's wallet, and any quest it finished. */
+  private paydayBlock(p: Payday) {
+    const quests = p.quests
+      .map(
+        ({ quest, item }) =>
+          `<div class="quest-won"><span class="q-icon">${item?.item.icon ?? '🏆'}</span><span><b>Quest done: ${esc(quest.name)}!</b>${item ? ` The <b>${esc(item.item.name)}</b> is in the Locker.` : ''}</span></div>`,
+      )
+      .join('');
+    if (!p.cash && !quests) return '';
+    return `<div class="payday">${p.cash ? `<p>💵 <b>+${formatMoney(p.cash)}</b> to the Locker wallet (now ${formatMoney(loadWardrobe().cash)})</p>` : ''}${quests}</div>`;
   }
 
   /** Back from a job to where it was picked: the job list for a hand-made job, the Play screen otherwise. */
@@ -1168,6 +1311,10 @@ export class App {
           host.onChange = (what) => this.hostChanged(what);
           host.onPauseRequest = () => this.pause();
           host.onEmote = (kind) => this.emote(1, kind);
+          host.onOutfit = (o) => {
+            setGuestOutfit(o);
+            this.dressMovers();
+          };
           this.game.afterRender = () => host.copyFrame();
           this.updateBadge();
           this.showHost();
@@ -1204,6 +1351,7 @@ export class App {
     this.updateBadge();
     if (what === 'joined') this.toast('🌐 Your friend joined!');
     if (what === 'left') {
+      setGuestOutfit(null);
       this.toast('Your friend disconnected. They can join again with the same code.');
       this.pause();
     }
@@ -1216,6 +1364,7 @@ export class App {
     this.host.send({ k: 'bye' });
     this.host.stop();
     this.host = null;
+    setGuestOutfit(null);
     this.game.afterRender = null;
     this.game.onlineP2 = false;
     this.game.input = null;
@@ -1252,6 +1401,8 @@ export class App {
   }
 
   private toast(text: string) {
+    // one at a time (they'd sit on top of each other)
+    for (const old of document.querySelectorAll('.toast.net-toast')) old.remove();
     const d = document.createElement('div');
     d.className = 'toast net-toast';
     d.textContent = text;
@@ -1390,6 +1541,13 @@ export class App {
     g.onMode = (m) => this.presentGuest(m);
     g.onVia = () => this.updateBadge(this.guestBadge());
     g.onLost = (why) => this.showGuestLost(why);
+    // our mover wears this laptop's Player 1 outfit; a job pays into our own wallet too
+    g.sendOutfit(loadWardrobe().outfits[0]);
+    g.onPaid = (r) => {
+      const p = track(r, { kind: 'online', online: true }, streak().current);
+      const won = p.quests.map(({ quest, item }) => `🏆 ${quest.name}${item ? `: ${item.item.icon} ${item.item.name} unlocked` : ''}`);
+      if (p.cash || won.length) this.toast([p.cash ? `💵 +${formatMoney(p.cash)} to your Locker wallet` : '', ...won].filter(Boolean).join(' · '));
+    };
     this.pictureTimer = window.setInterval(() => this.video && this.guest?.checkPicture(this.video), 2000);
     // keys go out on a steady beat, however slowly this laptop draws frames
     this.keysTimer = window.setInterval(() => {
@@ -1486,7 +1644,14 @@ export class App {
     if (m.cargo && m.cargo !== def.cargo) def = { ...def, cargo: m.cargo as LevelDef['cargo'] };
     this.endGuestLevel();
     this.attract = null;
-    const s = this.game.startLevel(def);
+    // the movers as the host dressed them
+    setActiveOutfits(m.outfits ?? null);
+    let s: LevelSession;
+    try {
+      s = this.game.startLevel(def);
+    } finally {
+      setActiveOutfits(null);
+    }
     const sync = new GuestSync(s);
     s.mirror = sync;
     g.attachSync(sync);

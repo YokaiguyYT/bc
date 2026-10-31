@@ -31,6 +31,12 @@ export default async function ({ page, base, out }) {
     p.on('pageerror', (e) => console.log(`[${n} pageerror]`, e.message));
   }
   const ready = (p) => p.waitForFunction(() => window.__FF && window.__FF.app && !document.getElementById('loading'), null, { timeout: 90000 });
+  // (one browser context: both tabs share a Locker) P1 wears red and a wizard hat
+  await host.goto(base + q);
+  await ready(host);
+  await host.evaluate(() => {
+    localStorage.setItem('ff.wardrobe', JSON.stringify({ cash: 0, owned: [], done: [], outfits: [{ color: 'red', hat: 'wizard', face: 'none', back: 'none' }, { color: 'blue', hat: 'cap', face: 'none', back: 'none' }] }));
+  });
   await Promise.all([host.goto(base + q), guest.goto(base + q)]);
   await Promise.all([ready(host), ready(guest)]);
 
@@ -76,6 +82,12 @@ export default async function ({ page, base, out }) {
   await host.evaluate(() => window.__FF.app.playLevel('playground'));
   const built = await until(guest, () => window.__FF.game.session?.mirror && window.__FF.game.session.def.id === 'playground');
   check('guest builds the same job', built, await guest.evaluate(() => window.__FF.game.session?.def.id));
+  // the guest's mover wears the guest's P1 outfit (its colour changed: red is taken by the host's mover)
+  const dress = (p) => p.evaluate(() => window.__FF.game.session.outfits.map((o) => `${o.color}/${o.hat}`).join(' '));
+  const hostDress = await dress(host);
+  check("host's P2 wears the guest's outfit", hostDress === 'red/wizard blue/wizard', hostDress);
+  const guestDress = await dress(guest);
+  check('guest builds them dressed the same', guestDress === hostDress, guestDress);
   const hud = await until(guest, () => !!document.querySelector('#ui .hud .cargo-card'));
   check('guest has its own HUD', hud, hud);
   const p1card = await guest.evaluate(() => document.querySelectorAll('.player-card .keys')[0]?.textContent);
@@ -178,6 +190,13 @@ export default async function ({ page, base, out }) {
   await host.evaluate(() => window.__FF.app.quitToMenu());
   const ended = await until(guest, () => !window.__FF.game.session?.mirror && document.getElementById('ui').textContent.includes('Play'), null, 8000);
   check('host quits: guest back to the menus', ended, await guest.evaluate(() => window.__FF.game.session?.def.id));
+
+  // a job's pay reaches the guest's own wallet
+  const cash0 = await guest.evaluate(() => JSON.parse(localStorage.getItem('ff.wardrobe')).cash);
+  await host.evaluate(() => window.__FF.app.host.sendPaid({ success: true, payout: 321, condition: 1, tipCount: 0, stars: 3 }));
+  const paid = await until(guest, () => document.querySelector('.toast')?.textContent.includes('+$321'), null, 8000);
+  const cash1 = await guest.evaluate(() => JSON.parse(localStorage.getItem('ff.wardrobe')).cash);
+  check("the guest is paid into its wallet", paid && cash1 === cash0 + 321, [cash0, cash1, await guest.evaluate(() => document.querySelector('.toast')?.textContent)]);
 
   // guest leaves: the host's P2 goes back to this keyboard
   await guest.keyboard.press('Escape');

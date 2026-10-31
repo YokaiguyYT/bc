@@ -13,6 +13,7 @@ import { disposeTree } from '../render/dispose';
 import { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import { DEFAULT_THEME } from '../render/Renderer';
+import { activeOutfits, ITEMS, type Outfit } from './outfits';
 import type { Keyboard, MoveState } from '../input/Keyboard';
 import type { Touch } from '../input/Touch';
 import { tuning } from '../config/tuning';
@@ -77,6 +78,8 @@ export class LevelSession {
   readonly physics = new PhysicsWorld();
   readonly players: Player[] = [];
   readonly rigs: PlayerRig[] = [];
+  /** What the movers wear (online, the guest builds the job with the same pair). */
+  readonly outfits: [Outfit, Outfit];
   cargo!: Cargo;
   hazards: Hazard[] = [];
   level: BuiltLevel;
@@ -159,16 +162,18 @@ export class LevelSession {
     // movers
     this.spawn = def.spawn;
     const s = this.spawnPose(def.spawn);
+    const outfits = (this.outfits = activeOutfits());
     for (let i = 0; i < 2; i++) {
       const p = new Player(this.sim, {
         index: i,
         name: PLAYER_NAMES[i],
-        color: PLAYER_COLORS[i],
+        color: ITEMS.color[outfits[i].color]?.hex ?? PLAYER_COLORS[i],
         position: s.p[i],
         yaw: s.yaw[i],
       });
       this.players.push(p);
       const rig = new PlayerRig(p, this.physics);
+      rig.applyOutfit(outfits[i]);
       this.rigs.push(rig);
       this.root.add(rig.root);
     }

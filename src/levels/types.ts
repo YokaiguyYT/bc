@@ -180,6 +180,8 @@ export interface GenParams {
   label?: string;
   /** A twist on the usual (today's job has one): see TWISTS in levels/gen/generate.ts. */
   twist?: string;
+  /** A chaos job: 1 (mild) .. 5 (ultra). */
+  chaos?: number;
 }
 
 export interface LevelDef {

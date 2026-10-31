@@ -49,6 +49,8 @@ export class Hud {
     };
     this.el = document.createElement('div');
     this.el.className = 'hud';
+    // badges and the like in each mover's own colour (the Locker can change it)
+    s.players.forEach((p, i) => this.el.style.setProperty(i === 0 ? '--p1' : '--p2', '#' + p.color.toString(16).padStart(6, '0')));
     this.el.innerHTML = `
       <div class="card cargo-card">
         <div class="title"><span>${info.icon} ${info.name}</span><span>${formatMoney(info.value)}</span></div>

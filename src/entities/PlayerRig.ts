@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Player } from './Player';
 import { HAND_LOCAL, PART_NAMES, PartName, RIG } from './rig';
 import { jelly, matte } from '../render/materials';
+import { makeBack, makeFace, makeHat } from '../render/accessories';
+import { ITEMS, type Outfit } from '../game/outfits';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 
 export type Expression = 'normal' | 'blink' | 'strain' | 'surprise' | 'ko' | 'happy' | 'worried' | 'determined';
@@ -42,6 +44,16 @@ export class PlayerRig {
   readonly root = new THREE.Group();
   readonly partObjects = {} as Record<PartName, THREE.Group>;
   private bodyMesh!: THREE.Mesh;
+  /** Recoloured by an outfit. */
+  private skin!: THREE.MeshPhysicalMaterial;
+  private pants!: THREE.MeshPhysicalMaterial;
+  private capMat!: THREE.MeshPhysicalMaterial;
+  private cap!: THREE.Object3D;
+  /** The outfit's hat, face and back things. */
+  private extras: THREE.Object3D[] = [];
+  private spinners: THREE.Object3D[] = [];
+  private flappers: THREE.Object3D[] = [];
+  private outfitT = 0;
   private headGroup!: THREE.Group;
   private faceCanvas: HTMLCanvasElement | OffscreenCanvas;
   private faceCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -59,9 +71,9 @@ export class PlayerRig {
     physics: PhysicsWorld,
   ) {
     const color = player.color;
-    const skin = jelly(color);
-    const pants = jelly(shade(color, 0.72).getHex(), 0.4);
-    const capMat = jelly(shade(color, 0.6).getHex(), 0.35);
+    const skin = (this.skin = jelly(color));
+    const pants = (this.pants = jelly(shade(color, 0.72).getHex(), 0.4));
+    const capMat = (this.capMat = jelly(shade(color, 0.6).getHex(), 0.35));
     const glove = jelly(0xfbf8f2, 0.35);
     const shoe = matte(0x3b302b, { roughness: 0.6 });
     const belt = matte(0x4a3527, { roughness: 0.7 });
@@ -140,6 +152,7 @@ export class PlayerRig {
     );
     cap.rotation.set(-0.32, Math.PI, 0);
     cap.scale.set(1.0, 0.9, 1.0);
+    this.cap = cap;
     const brim = add(
       cap,
       cached('brim', () => new THREE.CylinderGeometry(0.17, 0.17, 0.024, 26, 1, false, -Math.PI / 2, Math.PI)),
@@ -185,6 +198,31 @@ export class PlayerRig {
     void PART_NAMES;
   }
 
+  /** Dress the mover: its colour, and a hat (or its own cap), a face thing and a back thing. */
+  applyOutfit(o: Outfit) {
+    const hex = ITEMS.color[o.color]?.hex ?? this.player.color;
+    this.skin.color.setHex(hex);
+    this.pants.color.copy(shade(hex, 0.72));
+    this.capMat.color.copy(shade(hex, 0.6));
+    for (const x of this.extras) x.removeFromParent();
+    this.extras = [];
+    this.cap.visible = o.hat === 'cap';
+    const hat = makeHat(o.hat);
+    const face = makeFace(o.face);
+    const back = makeBack(o.back);
+    if (hat) this.headGroup.add(hat);
+    if (face) this.headGroup.add(face);
+    if (back) this.bodyMesh.add(back);
+    this.extras = [hat, face, back].filter((x): x is THREE.Object3D => !!x);
+    this.spinners = [];
+    this.flappers = [];
+    for (const x of this.extras)
+      x.traverse((c) => {
+        if (c.name === 'spin') this.spinners.push(c);
+        if (c.name === 'flap') this.flappers.push(c);
+      });
+  }
+
   setExpression(e: Expression) {
     if (e === this.expr) return;
     this.expr = e;
@@ -207,6 +245,19 @@ export class PlayerRig {
     const sq = THREE.MathUtils.clamp(this.squash, -0.25, 0.25);
     this.bodyMesh.scale.set(1 - sq * 0.5, 1 + sq, 1 - sq * 0.5);
     this.headGroup.position.y = sq * 0.25;
+    // the propeller turns faster on the move; capes, scarves and wings sway
+    if (this.spinners.length || this.flappers.length) {
+      this.outfitT += dt;
+      const v = p.body.linvel();
+      const speed = Math.hypot(v.x, v.z);
+      for (const sp of this.spinners) sp.rotation.y += dt * (4 + speed * 6);
+      for (const f of this.flappers) {
+        const side = (f.userData.side as number | undefined) ?? 0;
+        const wave = Math.sin(this.outfitT * (side ? 5 : 3)) * (0.05 + Math.min(0.25, speed * 0.06));
+        if (side) f.rotation.y = side * (0.35 + wave);
+        else f.rotation.x = -0.1 - Math.min(0.5, speed * 0.12) + wave * 0.5;
+      }
+    }
 
     // expression
     this.blinkTimer -= dt;
