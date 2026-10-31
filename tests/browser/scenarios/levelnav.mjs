@@ -20,14 +20,17 @@ export default async function ({ page, base, shot }) {
   let s = await state();
   check('title on screen', s.title, s.title);
   check('Back on screen', s.back, s.back);
-  check('starts on the first job', s.at === 0, s.at);
+  // the first hand-made job is picked to start with (the random / daily / number / shift cards come before it)
+  const first = await page.evaluate(() => [...document.querySelectorAll('.level-card')].findIndex((c) => !c.classList.contains('special')));
+  check('starts on the first job', s.at === first, [s.at, first]);
   await page.keyboard.press('ArrowDown');
   const down = await state();
-  check('down moves a row', down.at === Math.min(s.cols, s.n - 1) || down.at === 'l-back', down.at);
+  check('down moves a row', down.at === Math.min(first + s.cols, s.n - 1) || down.at === 'l-back', down.at);
   await page.keyboard.press('ArrowUp');
-  check('up comes back', (await state()).at === 0, (await state()).at);
-  await page.keyboard.press('ArrowUp');
-  check('up from the top row stays', (await state()).at === 0, (await state()).at);
+  check('up comes back', (await state()).at === first, (await state()).at);
+  // up again: to the row above, or (already on the top row) nowhere
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowUp');
+  check('up from the top row stays', (await state()).at === first % s.cols, (await state()).at);
   for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowDown');
   check('down from the bottom reaches Back', (await state()).at === 'l-back', (await state()).at);
   await shot('levelnav');

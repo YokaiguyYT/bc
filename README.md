@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece) through chaotic obstacle courses without breaking them.
+A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece, a bunch of helium balloons) through chaotic obstacle courses without breaking them.
 
 It runs in **Safari or Chrome**, on a Mac or a **Chromebook**. There's nothing to install.
 
@@ -68,6 +68,10 @@ Player 2 keeps their right hand on the arrows and their left hand on `K` and `L`
 
 You can change every key under **Controls**. That screen also has a **key tester**. Mac keyboards can't always register lots of keys at once ("ghosting"), so both players should hold their keys together there and check they all light up.
 
+### On a phone or tablet
+
+Mostly for joining a friend's game online (they host on a laptop): open the same link, **Play Online → Join a friend**, and type the code. On a touch screen, controls appear while you play: drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**, the small round arrows turn the camera, and the **‖** button in the top corner opens the menu. Pressing any key hides them again, so laptops are unaffected. It also works for hosting on a tablet (you're P1, your friend on their laptop is P2). A phone renders the whole game, so pick **Graphics: Fast** if it's choppy.
+
 ## How to play
 
 - **Grab:** hold your grab key near something and your mittens latch on. Heavy things need **both** of you, so grab from opposite sides and walk together.
@@ -90,6 +94,7 @@ You can change every key under **Controls**. That screen also has a **key tester
 7. **Jurassic Lark** (dinosaur egg): a museum after dark. Past the T-Rex, behind the swinging pendulum (or round past the night guard), through the laser gates when they blink off, and down to the incubator. Something inside kicks.
 8. **Hill Street Blues** (upright piano): too heavy to lift, so you push it on its castors. Hold it back down a steep hill, wait for the cable car to pass, zig-zag down the crooked street and roll it onto the stage. Let go on a slope and it's off!
 9. **Gone With the Wind** (a gilt-framed painting): a sail in the wind. Out of a rooftop studio past the extractor fans, single file over the gangway in a lull, along the windy cliff path and over the causeway to the lighthouse keeper's cottage. Keep its thin edge to the wind or the gusts rip the canvas.
+10. **Up, Up and Away** (a balloon bouquet): a birthday delivery through the funfair. Let go and it floats off; anything pointy pops a balloon. Weave past the darts stall and the cacti, duck through the pin-studded Tunnel of Love (the bouquet wants to rise), past the hedgehog topiary and onto the party table.
 
 There's also a **Practice Yard** to learn the controls.
 

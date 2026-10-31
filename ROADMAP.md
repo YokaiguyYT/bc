@@ -46,7 +46,11 @@ over many numbers and greps each log for `"state":"delivered"`.
 - Online: relay + direct, MQTT backup matchmaking, round-trip time in the
   badges and the guest menu, and **Check this network** on the Play Online
   screen.
-- Jobs 9 and 10 (painting, balloons): being built (see C).
+- Jobs 9 and 10: **Gone With the Wind** (a painting that catches the wind) and
+  **Up, Up and Away** (a balloon bouquet that floats off and pops); bot routes
+  deliver both.
+- Touch controls for phones and tablets (mainly as the online guest), and
+  emotes (number keys) on both screens.
 
 ## Work items (independent; pick any)
 
@@ -70,19 +74,20 @@ slopes, door widths), and keep the piano off anything it rolls off.
 3. **A client line** per job ("Mrs Patel needs her aquarium by noon").
 4. Run a big bot sweep (all cargo × 20 seeds) and fix pieces that fail often.
 
-### C. Jobs 9 and 10 (hand-made levels, new cargo)
-In progress. Then: add each new cargo to random jobs (a `KITS` entry, which
-pieces suit it) and to the online tests' level list.
+### C. New cargo in random jobs, and more hand-made jobs
+1. Add the painting and the balloons to random jobs: a `KITS` entry each
+   (stand, carry height, door width), which pieces suit them (fans/gusts for
+   the painting; sharp things and low ceilings for the balloons), bot setups.
+2. More hand-made jobs: ideas — a chandelier through a ballroom, a beehive,
+   a wobbling jelly, a snowman in the sun.
 
-### D. Mobile / touch (optional: only if it stays simple)
-On-screen joystick + jump/grab buttons, shown only on touch devices, feeding
-the same intents as the keyboard. Most useful as an **online guest** on a phone
-or tablet (light mode). Don't change keyboard play.
+### D. Mobile / touch
+Done (`input/Touch.ts`, `touch` scenario). Still to do: try it on a real
+iPhone and Android phone; maybe a lower default quality on phones.
 
 ### E. Online polish
-1. Emotes (wave, thumbs-up) both players can trigger, shown over their mover.
-2. Let the guest (P2) also pick jobs / open the pause menu actions.
-3. Rejoin automatically after a short drop (keep the same code).
+1. Let the guest (P2) also pick jobs / open the pause menu actions.
+2. Rejoin automatically (no button) after a short drop.
 
 ### F. Performance on weak laptops
 1. Measure frame time on "Fast" with a CPU-throttled browser; find the worst
@@ -92,4 +97,9 @@ or tablet (light mode). Don't change keyboard play.
 ### G. Testing and robustness
 1. Make `online` run the guest at a low frame rate (throttle) and check play.
 2. A long soak: host plays three jobs in a row with a guest connected.
-3. WebKit runs of the new menus (`levelnav`, `menus`, `genflow`, `netcheck`).
+3. WebKit runs of the new menus (`levelnav`, `menus`, `genflow`, `netcheck`, `touch`).
+4. `pickup`: two long-standing misses when grab is held while walking up: job 2's
+   start (in the truck bed, P1's hands catch the truck wall before the
+   aquarium) and job 1's start (the crate only lifts 3 cm in the test's
+   1.2 s). Consider letting a hand that's about to touch the cargo skip the
+   scenery on the way.

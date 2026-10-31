@@ -7,7 +7,8 @@ Design decisions, what still needs tuning, and known limitations.
 | Area | State |
 | --- | --- |
 | Eight jobs and the Practice Yard | Playable start to finish |
-| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Job 9 playable; job 10 not started |
+| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Playable; bot routes deliver both |
+| Touch controls (phones and tablets, mainly as the online guest) | Done; tested in Chromium's touch emulation, not on a real phone |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
 | Random jobs, daily job, endless shift | Done |
@@ -118,6 +119,12 @@ Two ways for the guest to see the game; the host's laptop always runs it.
 **Connecting.** The host registers `fragile-freight-<code>` on two free public matchmaking servers at once: PeerJS's (`0.peerjs.com`, port 443) and EMQX's public MQTT broker (`broker.emqx.io`, secure WebSocket on port 8084, a tiny MQTT client in `net/signal.ts`). The guest says hello on both; whichever reaches the host carries on. Play starts at once through that server as a **relay** (`net/relay.ts`), and meanwhile the laptops try a direct WebRTC link (public STUN only; no TURN, which costs money). If it opens, messages switch to it; if it ever drops, they fall back to the relay. School networks that block direct links still play, through the relay. A server that drops is reconnected in the background; one that couldn't be reached at first is retried now and then.
 
 **Drops.** Both badges warn after 3 s without a word from the other laptop. A guest whose connection drops is offered **Rejoin** (same code); the host turns away a second player only while its own guest is still talking, so a rejoining guest (who comes back with a new id) is let straight in once the old one has gone quiet for 4 s. **Check this network** (Play Online screen, `net/check.ts`) opens each matchmaking server under a throwaway id and asks the STUN servers for a public address, then says in plain words what will work.
+
+**Touch** (`input/Touch.ts`). On a touch screen (a coarse pointer, or any touch since the last key press) an overlay shows a stick that appears under the left thumb, GRAB and JUMP buttons, camera buttons and a menu button; their move merges with the keys of this device's one player (`mergeMoves`): the online guest's P2, the online host's P1, or P1 on one device. Jump taps are counted, like the guest's key taps, so a quick tap is never lost between frames. On phones the join screen gets a text box (the on-screen keyboard can't type into the code boxes). Any key press hides it all. Tested with Chromium's touch emulation (`touch` scenario); not yet on a real iPhone or Android phone.
+
+**Balloons** (job 10). One rigid body: a weighted present the movers hold, with the balloons drawn on strings above it and small colliders that pop a balloon on anything marked `sharp`. Upward pull while nobody holds it, so it floats away (above `ceilingY` it's lost, like a fall); set down on something marked `tie` (a stand, the party table) it's tied on. Carried at a fixed height (`Cargo.holdHeight`) so a light load isn't wrenched crooked by one hand closing before the other. Popped balloons go to the guest in `netState`.
+
+**Painting** (job 9). `windScale(dir, accel)` is large face-on and small edge-on; a strong face-on gust strains the canvas and tears it (shown on the canvas, sent to the guest in `netState`) but never rips it out of the movers' hands. Fans now really push: a push applied from inside Rapier's collider query was lost, so the fan collects what's in its zone first and pushes after. Windsocks fill a second before each gust.
 
 **Emotes.** Number keys emit an `emote` game event (player, kind) on the host; it reaches the guest with the other events, and the HUD shows a bubble over that mover. The guest's number keys go to the host as a control message.
 
