@@ -331,6 +331,16 @@ async function online({ browser, base, out, check, ready, until, touch, centre, 
   const inJob = await until(guest, () => window.__FF.game.session?.mirror && document.querySelector('.touch-controls')?.dataset.show === 'play', null, 30000);
   check('online: the controls show in the job', inJob, await shown(guest));
   check('online: none on the host (keys)', (await shown(host)) === 'hidden', await shown(host));
+  // (note when and why the host pauses, for when a check below goes wrong)
+  await host.evaluate(() => {
+    const app = window.__FF.app;
+    const pause = app.pause.bind(app);
+    window.__pauses = [];
+    app.pause = () => {
+      if (app.screen === 'playing') window.__pauses.push({ hidden: document.hidden, focus: document.hasFocus(), from: new Error().stack.split('\n').slice(2, 4).join(' | ') });
+      pause();
+    };
+  });
   await host.waitForTimeout(1500);
 
   const hostP2 = () =>
@@ -357,14 +367,14 @@ async function online({ browser, base, out, check, ready, until, touch, centre, 
   const grab = await centre(guest, '.tc-grab');
   await touch(cdp, 'touchStart', [[...grab, 2]]);
   const grabbing = await until(host, () => window.__FF.game.session.players[1].intent.grab, null, 10000);
-  check("online: GRAB held → the host's P2 grabs", grabbing, grabbing);
-  await touch(cdp, 'touchEnd', []);
-  const opened = await until(host, () => !window.__FF.game.session.players[1].intent.grab, null, 10000);
   // (what each side thinks, for when it goes wrong)
   const diag = async () => [
-    await host.evaluate(() => ({ screen: window.__FF.app.screen, paused: window.__FF.game.session?.paused, hidden: document.hidden, p2: window.__FF.game.session?.players[1].intent })),
-    await guest.evaluate(() => ({ screen: window.__FF.app.screen, show: document.querySelector('.touch-controls').dataset.show, sent: window.__FF.app.guest?.lastSent, hidden: document.hidden })),
+    await host.evaluate(() => ({ screen: window.__FF.app.screen, pauses: window.__pauses, hidden: document.hidden, p2: window.__FF.game.session?.players[1].intent })),
+    await guest.evaluate(() => ({ screen: window.__FF.app.screen, show: document.querySelector('.touch-controls').dataset.show, held: [...document.querySelectorAll('.touch-controls .on')].map((e) => e.className), sent: window.__FF.app.guest?.lastSent, hidden: document.hidden })),
   ];
+  check("online: GRAB held → the host's P2 grabs", grabbing, grabbing || (await diag()));
+  await touch(cdp, 'touchEnd', []);
+  const opened = await until(host, () => !window.__FF.game.session.players[1].intent.grab, null, 10000);
   check('…and lets go', opened, opened || (await diag()));
 
   // JUMP tapped on the phone: the host's P2 leaves the ground
