@@ -134,9 +134,11 @@ export abstract class Cargo {
   /**
    * How hard wind blowing along `dir` (world, unit) pushes this, as a multiple
    * of the push it gives anything else of the same mass. Big light flat things
-   * catch the wind (sails); the default is plain.
+   * catch the wind (sails); the default is plain. `accel` is how hard it's
+   * blowing right now (m/s²); fans call this once per physics step, before
+   * the cargo's own preStep.
    */
-  windScale(_dir: THREE.Vector3) {
+  windScale(_dir: THREE.Vector3, _accel: number) {
     return 1;
   }
 

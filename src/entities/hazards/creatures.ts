@@ -4,7 +4,7 @@ import type { RigidBody } from '../../physics/rapier';
 import type { Sim } from '../../game/Sim';
 import type { HazardObj } from '../../levels/types';
 import { registerHazard, Hazard } from './registry';
-import { DEG, num, v3 } from './common';
+import { DEG, num, str, v3, vec } from './common';
 import { Player } from '../Player';
 import { PlayerRig } from '../PlayerRig';
 import { G, groups, SOLID } from '../../physics/groups';
@@ -390,7 +390,10 @@ registerHazard('dog', (o, sim) => new Dog(o, sim));
 
 // ------------------------------------------------------------------ pigeons
 
-/** A little flock that hops about and scatters when movers come close. params: count, radius. */
+/**
+ * A little flock that hops about and scatters when movers come close.
+ * params: count, radius, model + size for other birds (seagulls).
+ */
 class Pigeons implements Hazard {
   private birds: {
     obj: THREE.Object3D;
@@ -411,14 +414,16 @@ class Pigeons implements Hazard {
     this.center = v3(o.pos);
     const n = num(o.params, 'count', 6);
     const r = num(o.params, 'radius', 1.8);
+    const model = str(o.params, 'model', 'pigeon');
+    const size = vec(o.params, 'size', [0.22, 0.28, 0.36]);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const d = Math.sqrt(Math.random()) * r;
       const home = this.center.clone().add(new THREE.Vector3(Math.cos(a) * d, 0, Math.sin(a) * d));
-      const inst = models.instance('pigeon', [0.22, 0.28, 0.36]);
+      const inst = models.instance(model, size);
       const holder = new THREE.Group();
       holder.add(inst.object);
-      inst.object.position.y = 0.12;
+      inst.object.position.y = size[1] * 0.43;
       let mixer: THREE.AnimationMixer | null = null;
       if (inst.clips.length && inst.root) {
         mixer = new THREE.AnimationMixer(inst.root);

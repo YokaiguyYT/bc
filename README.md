@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano) through chaotic obstacle courses without breaking them.
+A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece) through chaotic obstacle courses without breaking them.
 
 It runs in **Safari or Chrome**, on a Mac or a **Chromebook**. There's nothing to install.
 
@@ -89,6 +89,7 @@ You can change every key under **Controls**. That screen also has a **key tester
 6. **Cold Feet** (ice swan): it melts the whole way, faster near anything warm. Dodge the sledges, take the slippery shortcut over the frozen pond or the warm way round, cross between the skiers, ride the gondola up to the lodge and get it onto the buffet.
 7. **Jurassic Lark** (dinosaur egg): a museum after dark. Past the T-Rex, behind the swinging pendulum (or round past the night guard), through the laser gates when they blink off, and down to the incubator. Something inside kicks.
 8. **Hill Street Blues** (upright piano): too heavy to lift, so you push it on its castors. Hold it back down a steep hill, wait for the cable car to pass, zig-zag down the crooked street and roll it onto the stage. Let go on a slope and it's off!
+9. **Gone With the Wind** (a gilt-framed painting): a sail in the wind. Out of a rooftop studio past the extractor fans, single file over the gangway in a lull, along the windy cliff path and over the causeway to the lighthouse keeper's cottage. Keep its thin edge to the wind or the gusts rip the canvas.
 
 There's also a **Practice Yard** to learn the controls.
 

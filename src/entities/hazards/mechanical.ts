@@ -936,7 +936,9 @@ registerHazard('revolvingDoor', (o, sim) => new RevolvingDoor(o, sim));
 /**
  * Blows dynamic things in a box zone. params: size, force (m/s² accel), dir (Vec3),
  * gust: [on, off] seconds to blow in bursts instead of steadily, phase (s) to
- * offset the bursts, housing: false for wind with no fan (a sea breeze).
+ * offset the bursts, housing: false for wind with no fan (a sea breeze),
+ * socks: [[x, y, z], …] windsocks on poles (the pole's foot) that fill and
+ * stand out a second before each gust, like the blades spooling up.
  * Cargo can catch more or less wind than its mass suggests (Cargo.windScale).
  */
 class Fan implements Hazard {
@@ -949,6 +951,7 @@ class Fan implements Hazard {
   private streaks: THREE.InstancedMesh;
   private streakMat: THREE.MeshBasicMaterial;
   private streakT: Float32Array;
+  private socks: { pivot: THREE.Group; lift: number }[] = [];
   /** 0..1: how hard it is blowing right now. */
   strength = 1;
   constructor(
@@ -993,6 +996,25 @@ class Fan implements Hazard {
     this.streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.6, 0.02, 0.02), this.streakMat, 30);
     this.streakT = new Float32Array(30).map(() => Math.random());
     sim.scene.add(this.streaks);
+    // windsocks: red and white, hanging limp until the wind comes
+    const sockGeo = new THREE.CylinderGeometry(0.15, 0.07, 0.95, 10, 1, true).rotateZ(Math.PI / 2).translate(0.5, 0, 0);
+    const stripeGeo = new THREE.CylinderGeometry(0.115, 0.1, 0.24, 10, 1, true).rotateZ(Math.PI / 2).translate(0.5, 0, 0);
+    const red = new THREE.MeshStandardMaterial({ color: 0xe9554b, roughness: 0.85, side: THREE.DoubleSide });
+    const white = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: 0.85, side: THREE.DoubleSide });
+    for (const at of (p?.socks as [number, number, number][] | undefined) ?? []) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 2.6, 8), matte(0xd8d8d8));
+      pole.position.set(at[0], at[1] + 1.3, at[2]);
+      pole.castShadow = true;
+      const pivot = new THREE.Group();
+      pivot.position.set(at[0], at[1] + 2.55, at[2]);
+      const sock = new THREE.Mesh(sockGeo, red);
+      const stripe = new THREE.Mesh(stripeGeo, white);
+      sock.castShadow = true;
+      pivot.add(sock, stripe);
+      sim.scene.add(pole, pivot);
+      this.extras.push(pole, pivot);
+      this.socks.push({ pivot, lift: 0 });
+    }
   }
   private extras: THREE.Object3D[] = [];
 
@@ -1014,17 +1036,23 @@ class Fan implements Hazard {
     const world = this.sim.physics.world;
     const c = this.zone.getCenter(new THREE.Vector3());
     const h = this.zone.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    // find what's in the wind first, then push it: a push from inside the query is lost
     const seen = new Set<number>();
+    const hit: Collider[] = [];
     world.collidersWithAabbIntersectingAabb({ x: c.x, y: c.y, z: c.z }, { x: h.x, y: h.y, z: h.z }, (col) => {
       const b = col.parent();
       if (!b || !b.isDynamic() || seen.has(b.handle)) return true;
       seen.add(b.handle);
-      const info = this.sim.physics.info(col);
-      const scale = info?.kind === 'cargo' ? (info.owner as { windScale(d: THREE.Vector3): number }).windScale(this.dir) : 1;
-      const f = this.dir.clone().multiplyScalar(this.accel * b.mass() * dt * this.strength * scale);
-      b.applyImpulse({ x: f.x, y: f.y, z: f.z }, true);
+      hit.push(col);
       return true;
     });
+    for (const col of hit) {
+      const b = col.parent()!;
+      const info = this.sim.physics.info(col);
+      const scale = info?.kind === 'cargo' ? (info.owner as { windScale(d: THREE.Vector3, a: number): number }).windScale(this.dir, this.accel * this.strength) : 1;
+      const f = this.dir.clone().multiplyScalar(this.accel * b.mass() * dt * this.strength * scale);
+      b.applyImpulse({ x: f.x, y: f.y, z: f.z }, true);
+    }
   }
   mirrorFrame(time: number) {
     this.strength = this.level(time);
@@ -1035,6 +1063,15 @@ class Fan implements Hazard {
     const t = this.sim.time();
     const spin = this.gust ? Math.max(this.strength, this.level(t + 1.0)) : 1;
     this.blades.rotateZ(dt * (1.5 + 13 * spin));
+    // windsocks fill as the gust comes (a second early), flutter in it and droop in the lulls
+    if (this.socks.length) {
+      const yaw = Math.atan2(-this.dir.z, this.dir.x);
+      this.socks.forEach((s, i) => {
+        s.lift += (spin - s.lift) * Math.min(1, dt * 3);
+        const flutter = Math.sin(t * 11 + i * 1.7) * 0.07 * s.lift;
+        s.pivot.rotation.set(flutter * 2, yaw + flutter, -1.35 + 1.4 * s.lift + flutter);
+      });
+    }
     this.streakMat.opacity = 0.55 * this.strength;
     this.streaks.visible = this.strength > 0.02;
     if (!this.streaks.visible) return;

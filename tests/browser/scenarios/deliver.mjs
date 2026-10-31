@@ -223,6 +223,51 @@ const ROUTES = {
     broad: [1.15, 1.35],
     hill: { cargo: [0, 9.75, 13.5], yaw: 180, half: 1.3, path: [[0, 12.0, 'broad'], [0, -26.0, 'broad']] },
   },
+  // painting: out of the studio side by side (edge to the fans), in line over the gangway in a
+  // lull, side by side again along the cliff path, in line over the causeway, onto the easel
+  'wind-full': {
+    studio: {
+      start: true,
+      path: [
+        [0, 21.6, 'broad'],
+        [0, 17.4, 'broad'],
+        [0, 11.4, 'broad'],
+        // single file for the gangway, then go as a gust dies away
+        [0, 9.2, 'inline'],
+        { wait: 'calm', at: [0, 4] },
+        [0, 3.0, 'inline'],
+        [0, -3.4, 'inline'],
+      ],
+    },
+    cliff: {
+      keep: true,
+      path: [
+        // turn back the way it turned for the gangway (a little east first), so the picture still faces out
+        [0.8, -6.4, 'broad'],
+        [-2.6, -9.0, 'broad'],
+        [-5.2, -10.6, 'broad'],
+        [-5.2, -20.0, 'broad'],
+        [-5.1, -28.6, 'broad'],
+        [-5.4, -33.0, 'broad'],
+        [-5.4, -42.0, 'broad'],
+        [-5.0, -47.0, 'broad'],
+      ],
+    },
+    causeway: { keep: true, fresh: true, path: [[-12.0, -47.0, 'inline'], [-22.0, -47.0, 'inline'], [-28.8, -47.0, 'inline']] },
+    easel: { keep: true, path: [[-27.5, -50.0, 'broad'], [-27.5, -52.7, 'broad']], place: true },
+  },
+  // just the gangway, from the calm spot before it
+  'wind-gangway': {
+    gangway: { cargo: [0, 1.15, 10.2], yaw: 0, half: 1.32, path: [[0, 9.2, 'inline'], { wait: 'calm', at: [0, 4] }, [0, 3.0, 'inline'], [0, -3.4, 'inline']] },
+  },
+  // just the causeway, from the headland
+  'wind-causeway': {
+    causeway: { cargo: [-5.0, 2.3, -47.0], yaw: 0, half: 1.32, path: [[-12.0, -47.0, 'inline'], [-22.0, -47.0, 'inline'], [-28.8, -47.0, 'inline']] },
+  },
+  // just the easel in the cottage
+  'wind-easel': {
+    easel: { cargo: [-27.5, 2.35, -48.0], yaw: 0, half: 1.32, path: [[-27.5, -50.0, 'broad'], [-27.5, -52.7, 'broad']], place: true },
+  },
   // just the lodge: through the swing doors to the buffet
   'cold-lodge': {
     lodge: { cargo: [0, 10.0, -49.6], yaw: 180, path: [[0, -53.6, 'broad'], [0, -58.0, 'broad'], [0, -61.7, 'broad']], place: true },
@@ -658,6 +703,20 @@ export default async function ({ page, base, shot }) {
         }
         return t;
       }
+      if (w.wait === 'calm') {
+        // go as the gust nearest `at` dies away (wait for one to come first, so we get the whole lull)
+        const fans = s.hazards.filter((h) => h.zone && typeof h.strength === 'number');
+        const fan = fans.reduce((a, b) => (Math.hypot(b.zone.getCenter(b.zone.min.clone()).x - w.at[0], b.zone.getCenter(b.zone.min.clone()).z - w.at[1]) < Math.hypot(a.zone.getCenter(a.zone.min.clone()).x - w.at[0], a.zone.getCenter(a.zone.min.clone()).z - w.at[1]) ? b : a));
+        while (t < 30 && fan.strength < 0.01) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
+        }
+        while (t < 30 && fan.strength > 0.001) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
+        }
+        return t;
+      }
       if (w.wait === 'laser') {
         // go as a laser gate blinks off (wait for it to come on first, so we get the whole gap)
         const gate = s.hazards.find((h) => h.pos && typeof h.live === 'boolean' && Math.abs(h.pos.z - w.z) < 0.5);
@@ -739,7 +798,8 @@ export default async function ({ page, base, shot }) {
     if (Array.isArray(seg)) continue; // route-wide settings (broad)
     if (only.length && !only.includes(name)) continue;
     if (seg.wait) await adv(seg.wait);
-    if (!seg.keep) await page.evaluate(() => { window.__snake = null; });
+    // fresh: a new single-file stretch (a new leader) even though the carry keeps going
+    if (!seg.keep || seg.fresh) await page.evaluate(() => { window.__snake = null; });
     // broad: how close either side of the load the movers stay [min, max] (small loads want them close)
     await page.evaluate((b) => { window.__broad = b; }, seg.broad ?? route.broad ?? null);
     if (seg.start) {

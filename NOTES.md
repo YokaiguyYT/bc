@@ -7,7 +7,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Area | State |
 | --- | --- |
 | Eight jobs and the Practice Yard | Playable start to finish |
-| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Planned, not started |
+| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Job 9 playable; job 10 not started |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
 | Random jobs, daily job, endless shift | Done |
