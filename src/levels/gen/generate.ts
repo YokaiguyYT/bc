@@ -1,3 +1,4 @@
+import { chaosLevel } from '../../game/chaos';
 import type { CargoKind, GenParams, LevelDef, LevelObject, Vec3 } from '../types';
 import { Rng, hashSeed } from './rng';
 import { Frame } from './frame';
@@ -55,8 +56,10 @@ export function generateJob(p: GenParams): LevelDef {
   const twist = p.twist && TWISTS[p.twist] ? p.twist : null;
   const kit = KITS[cargo]!;
   const theme = rolled.theme;
-  const difficulty = Math.max(0, Math.min(1, p.difficulty ?? rolled.difficulty));
-  const count = p.pieces ?? Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0);
+  // a chaos job: the course itself a bit harder, and not too long (the chaos is the point)
+  const chaos = p.chaos ? Math.max(1, Math.min(5, Math.round(p.chaos))) : 0;
+  const difficulty = Math.max(0, Math.min(1, p.difficulty ?? (chaos ? 0.3 + 0.1 * chaos : rolled.difficulty)));
+  const count = p.pieces ?? (chaos ? 4 + chaos : Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0));
   const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1 };
   const when = twist === 'night' ? 'night' : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
   const opener = rng.pick(OPENERS);
@@ -124,8 +127,14 @@ export function generateJob(p: GenParams): LevelDef {
   stretches.push([fin.goal.pos[0], fin.goal.pos[2]]);
   if (twist === 'rush') par *= 0.67;
 
+  // the chaos itself: one director for the whole course, knowing which way is ahead
+  if (chaos) {
+    const route = [0, 0, ...stretches.flat()].map((x) => +x.toFixed(2));
+    objects.push({ type: 'hazard', kind: 'chaos', pos: [0, 0, 0], params: { level: chaos, mask: p.chaosMask ?? 15, seed: p.seed, path: route } });
+  }
   const info = CARGO_INFO[cargo];
-  const label = p.label ?? 'Random job';
+  const label = p.label ?? (chaos ? 'Chaos job' : 'Random job');
+  const lv = chaos ? chaosLevel(chaos) : null;
   // who it's for (drawn last, so it never changes the course)
   const who = rng.pick(CLIENTS);
   const client = rng
@@ -134,8 +143,9 @@ export function generateJob(p: GenParams): LevelDef {
     .replace('{place}', place);
   return {
     generated: true,
-    gen: { seed: p.seed, cargo, difficulty, pieces: count, label, ...(twist ? { twist } : {}) },
-    id: `gen-${p.seed}-${cargo}`,
+    gen: { seed: p.seed, cargo, difficulty, pieces: count, label, ...(twist ? { twist } : {}), ...(chaos ? { chaos, chaosMask: p.chaosMask ?? 15 } : {}) },
+    id: `gen-${p.seed}-${cargo}${chaos ? `-c${chaos}` : ''}`,
+    ...(lv ? { payScale: lv.pay } : {}),
     name: title,
     tagline: `${label} #${p.seed}`,
     order: 1000,
@@ -151,7 +161,7 @@ export function generateJob(p: GenParams): LevelDef {
     ...(cargo === 'balloons' ? { ceilingY: high + 9 } : {}),
     parTime: Math.max(45, Math.round(par / 5) * 5),
     objects,
-    hints: [client, `${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}${when === 'day' ? '' : when === 'night' ? ', at night' : ', at sunset'}.`],
+    hints: [...(lv ? [`${lv.icon} ${lv.name}: expect anything. It pays ×${lv.pay}.`] : []), client, `${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}${when === 'day' ? '' : when === 'night' ? ', at night' : ', at sunset'}.`],
     tips,
     // the bot starts with a mover either side, as in the hand-made routes (picking it up off the stand is the pickup test's job)
     bot: {

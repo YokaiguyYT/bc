@@ -36,5 +36,42 @@ export default async function ({ page, base }) {
   await host.waitForTimeout(3000);
   const mm = await guest.evaluate(() => window.__FF.game.session.mirror.mismatch);
   check('snapshots fit the level', !mm, mm);
+
+  // a chaos job: the same thrown things on both laptops, banners and the HUD line on the guest too
+  await host.evaluate(() => window.__FF.app.quitToMenu());
+  await host.evaluate(() => window.__FF.app.playGenerated('chaos', { seed: 186876, chaos: 5, chaosMask: 15 }));
+  const cb = await guest
+    .waitForFunction(() => window.__FF.game.session?.mirror && window.__FF.game.session.def.gen?.chaos === 5, null, { timeout: 20000 })
+    .then(() => true, () => false);
+  check('guest builds the chaos job', cb, cb);
+  const hl = await host.evaluate(() => window.__FF.game.session.physics.linkCount);
+  const gl = await guest.evaluate(() => window.__FF.game.session.physics.linkCount);
+  check('same moving parts (thrown things too)', hl === gl, [hl, gl]);
+  const D = 'window.__FF.game.session.hazards.find((h) => h.hudLine)';
+  await host.evaluate(`(${D}).nextAt = 1e9`);
+  await host.evaluate(`(${D}).trigger('boxes')`);
+  await host.evaluate(`(${D}).trigger('money')`);
+  const banner = await guest
+    .waitForFunction(() => [...document.querySelectorAll('.hud .banner.chaos')].some((b) => /BOXES|MONEY/.test(b.textContent)), null, { timeout: 10000 })
+    .then(() => true, () => false);
+  check('guest sees the chaos banner', banner, banner);
+  await host.waitForTimeout(2500);
+  // a box the host dropped is where the guest shows it
+  // (the guest is a snapshot or two behind: give it a moment to catch up)
+  let hb = 0;
+  let gb = 0;
+  for (let i = 0; i < 12; i++) {
+    hb = await host.evaluate(`(${D}).things.filter((t) => t.kind === 'box' && t.live).length`);
+    gb = await guest.evaluate(`(${D}).things.filter((t) => t.kind === 'box' && t.obj.visible).length`);
+    if (hb > 0 && gb === hb) break;
+    await host.waitForTimeout(500);
+  }
+  check('guest sees the falling boxes', hb > 0 && gb === hb, [hb, gb]);
+  const notes = await guest.evaluate(`(${D}).noteObjs.filter((o) => o.visible).length`);
+  check('guest sees the money raining', notes > 0, notes);
+  const line = await guest.evaluate(() => document.querySelector('.hud .chaos-line')?.textContent ?? '');
+  check("guest's HUD says what's going on", /MONEY|BOXES/.test(line), line);
+  const mm2 = await guest.evaluate(() => window.__FF.game.session.mirror.mismatch);
+  check('snapshots fit the chaos job', !mm2, mm2);
   if (checks.some((c) => !c)) throw new Error('online random job failed');
 }

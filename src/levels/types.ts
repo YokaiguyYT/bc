@@ -134,7 +134,8 @@ export interface HazardObj {
     | 'riders'
     | 'laser'
     | 'light'
-    | 'tip';
+    | 'tip'
+    | 'chaos';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */
@@ -182,11 +183,15 @@ export interface GenParams {
   twist?: string;
   /** A chaos job: 1 (mild) .. 5 (ultra). */
   chaos?: number;
+  /** A chaos job: which kinds of chaos (CHAOS_KINDS bits; all if absent). */
+  chaosMask?: number;
 }
 
 export interface LevelDef {
   /** Made by the job generator. */
   generated?: boolean;
+  /** The payout is multiplied by this (chaos jobs pay more). */
+  payScale?: number;
   gen?: GenParams;
   /** Tests: the delivery bot's route through a generated job. */
   bot?: unknown;

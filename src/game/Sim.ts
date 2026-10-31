@@ -115,6 +115,8 @@ export interface Sim {
   signals?: Map<string, 'green' | 'yellow' | 'red'>;
   /** Warm (power > 0) and cold (power < 0) spots: heaters, fires, freezers. */
   heat?: HeatSource[];
+  /** Shake the camera (an earthquake, a meteor landing). */
+  shake?: (amount: number) => void;
 }
 
 export interface HeatSource {

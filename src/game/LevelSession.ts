@@ -39,6 +39,8 @@ export interface SessionResult {
   /** Cash tips pocketed on the way (paid on delivery), and how many. */
   tips: number;
   tipCount: number;
+  /** Extra pay (a chaos job's multiplier). */
+  bonus: number;
   cargoName: string;
 }
 
@@ -194,6 +196,7 @@ export class LevelSession {
     });
 
     this.cameraRig = new CameraRig(renderer.camera);
+    this.sim.shake = (a) => this.cameraRig.addShake(a);
     this.cameraRig.reset(def.cameraYaw, this.focusPoints());
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
@@ -452,7 +455,9 @@ export class LevelSession {
     const penalty = success ? Math.min(base, value * 0.05 * this.falls) : 0;
     const timeBonus = success && this.time < this.def.parTime ? Math.round(value * 0.1 * condition) : 0;
     const tips = success ? this.tips : 0;
-    const payout = Math.max(0, Math.round(base - penalty + timeBonus + tips));
+    // chaos jobs pay extra for the trouble
+    const bonus = success ? Math.round(Math.max(0, base - penalty + timeBonus) * ((this.def.payScale ?? 1) - 1)) : 0;
+    const payout = Math.max(0, Math.round(base - penalty + timeBonus + tips + bonus));
     this.result = {
       levelId: this.def.id,
       success,
@@ -465,6 +470,7 @@ export class LevelSession {
       penalty: Math.round(penalty),
       tips,
       tipCount: this.tipCount,
+      bonus,
       cargoName: this.cargo.displayName,
     };
     if (!success) this.state = 'failed';
@@ -474,7 +480,7 @@ export class LevelSession {
   currentPayout() {
     if (this.cargo.destroyed) return 0;
     const v = this.cargo.value * this.cargo.health;
-    return Math.max(0, v - this.cargo.value * 0.05 * this.falls) + this.tips;
+    return Math.max(0, v - this.cargo.value * 0.05 * this.falls) * (this.def.payScale ?? 1) + this.tips;
   }
 
   dispose() {

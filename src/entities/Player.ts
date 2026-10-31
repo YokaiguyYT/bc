@@ -120,6 +120,8 @@ export class Player {
   /** Multiplier for balance gains (NPC drunk guy uses < 1). */
   balanceScale = 1;
   speedScale = 1;
+  /** Every floor is ice (a chaos job's flash freeze). */
+  slippery = false;
 
   // ground
   grounded = false;
@@ -558,7 +560,7 @@ export class Player {
       const load = clamp(Math.max(this.heldMass() / 12, this.heldCare()), 0, 1);
       accel += (Math.min(accel, T.move.carryAccel) - accel) * load;
     }
-    if (this.grounded && this.groundFriction < T.move.slipperyFriction) accel *= T.move.slipperyAccelScale;
+    if (this.grounded && (this.groundFriction < T.move.slipperyFriction || this.slippery)) accel *= T.move.slipperyAccelScale;
     const need = _c.set(goal.x - v.x, 0, goal.z - v.z).multiplyScalar(1 / dt);
     const nl = need.length();
     if (nl > accel) need.multiplyScalar(accel / nl);

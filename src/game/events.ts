@@ -28,6 +28,8 @@ export interface GameEvents {
   tick: { pos: THREE.Vector3; tock: boolean };
   /** A cash tip was pocketed (paid with the delivery). */
   tip: { amount: number; pos: THREE.Vector3 };
+  /** Something crazy started in a chaos job (see game/chaos.ts). */
+  chaos: { kind: string; text: string };
   /** A player says something (EMOTES[kind]) over their head. */
   emote: { player: number; kind: number };
 }

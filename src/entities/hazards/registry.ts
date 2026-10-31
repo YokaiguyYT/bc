@@ -20,6 +20,8 @@ export interface Hazard {
   applyNetState?(s: number[]): void;
   /** Online guest: once per frame in place of the physics steps (looks driven by the clock). */
   mirrorFrame?(time: number): void;
+  /** A line for the HUD about what it's up to (chaos jobs). */
+  hudLine?(): string;
   dispose(): void;
 }
 

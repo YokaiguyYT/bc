@@ -20,6 +20,7 @@ import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
+import { ALL_CHAOS, CHAOS_KINDS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, untilNext } from '../game/daily';
 
 type Screen =
@@ -43,7 +44,8 @@ type Screen =
   | 'netcheck'
   | 'play'
   | 'quick'
-  | 'locker';
+  | 'locker'
+  | 'chaos';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -227,6 +229,13 @@ export class App {
     if (this.screen === 'results' && this.game.session?.result && !this.focusables.length) return;
     // jump keys double as "select": don't let a last mashed jump skip the results card
     if (this.screen === 'results' && this.resultsFor < 1.2) return;
+    // a focused slider takes left and right
+    const sl = this.focusables[this.focusIndex];
+    if (sl?.hasAttribute('data-slider') && this.sliderStep && ['ArrowLeft', 'KeyA', 'ArrowRight', 'KeyD'].includes(code)) {
+      e.preventDefault();
+      this.sliderStep(code === 'ArrowLeft' || code === 'KeyA' ? -1 : 1);
+      return;
+    }
     // menu navigation
     const prev = ['ArrowUp', 'KeyW', 'ArrowLeft', 'KeyA'];
     const next = ['ArrowDown', 'KeyS', 'ArrowRight', 'KeyD'];
@@ -392,6 +401,7 @@ export class App {
     const twist = TWISTS[dailyTwist()];
     const st = streak();
     const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
+    const chaosBest = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
     // returning players land on today's job until it's done; newcomers on the jobs
     const dailyFirst = !fresh && !dBest?.completed && !today?.delivered;
     this.setScreen(
@@ -420,6 +430,12 @@ export class App {
            <div class="sub">A brand-new random course, or a friend's job number</div>
            <div class="best">never the same twice</div>
          </button>
+         <button class="hub-tile chaos" data-nav id="p-chaos">
+           <div class="icon">💥</div>
+           <div class="name">Chaos</div>
+           <div class="sub">Courses where crazy things keep happening. Pick how much: Mild to ULTRA</div>
+           <div class="best">${chaosBest ? `best: ${formatMoney(chaosBest.payout)} on ${chaosLevel(chaosBest.level).name}` : 'meteors, quakes, chickens…'}</div>
+         </button>
          <button class="hub-tile" data-nav id="p-shift">
            <div class="icon">♾️</div>
            <div class="name">Endless shift</div>
@@ -434,6 +450,7 @@ export class App {
     this.bind('p-daily', () => this.playGenerated('daily', { seed: dailySeed(), twist: dailyTwist() }));
     this.bind('p-quick', () => this.showQuick());
     this.bind('p-shift', () => this.startShift());
+    this.bind('p-chaos', () => this.showChaos());
     this.bind('p-back', () => this.showMenu());
   }
 
@@ -464,6 +481,78 @@ export class App {
     this.bind('q-number', () => this.showJobNumber());
     this.bind('q-back', () => this.showPlay());
   }
+
+  // ------------------------------------------------------------ chaos jobs
+
+  /** Chaos: how much (a slider from Mild to ULTRA CHAOS) and what kinds, then a chaos job. */
+  private showChaos(focus?: string) {
+    this.startAttract();
+    const c = { level: 3, mask: ALL_CHAOS, ...(loadJSON<{ level: number; mask: number }>('ff.chaos') ?? {}) };
+    const lv = chaosLevel(c.level);
+    const best = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
+    const notches = CHAOS_LEVELS.map((_, i) => `<span class="notch ${i < c.level ? 'on' : ''} l${i + 1}" data-level="${i + 1}"></span>`).join('');
+    const kinds = CHAOS_KINDS.map(
+      (k) => `<button class="chaos-kind ${c.mask & k.bit ? '' : 'off'}" data-nav id="ch-k${k.bit}"><span class="k-name">${k.icon} ${k.name}</span><span class="k-text">${k.text}</span></button>`,
+    ).join('');
+    this.setScreen(
+      'chaos',
+      `<div class="logo" style="font-size:44px">💥 CHAOS</div>
+       <div class="panel chaos-setup">
+         <p style="margin:0">A random course, and every few seconds <b>something crazy happens</b>. Separate from the usual jobs.</p>
+         <div class="chaos-slider ${c.level === 5 ? 'ultra' : ''}" data-nav data-slider id="ch-level" title="← → to change">
+           <div class="now">${lv.icon} ${lv.name}</div>
+           <div class="track">${notches}</div>
+           <div class="ends"><span>← less</span><span>${esc(lv.text)} · pays ×${lv.pay}</span><span>more →</span></div>
+         </div>
+         <div class="chaos-kinds">${kinds}</div>
+         ${best ? `<p class="hint-line" style="margin:0">Best chaos delivery: <b>${formatMoney(best.payout)}</b> on ${chaosLevel(best.level).name}</p>` : ''}
+         <div class="row">
+           <button class="btn primary" data-nav ${focus ? '' : 'data-default'} id="ch-go">Start a chaos job →</button>
+           <button class="btn small" data-nav id="ch-back">← Back</button>
+         </div>
+       </div>`,
+      { back: () => this.showPlay() },
+    );
+    if (focus) {
+      const at = this.focusables.findIndex((e) => e.id === focus);
+      if (at >= 0) {
+        this.focusIndex = at;
+        this.updateFocus();
+      }
+    }
+    const save = (n: { level: number; mask: number }) => saveJSON('ff.chaos', n);
+    this.sliderStep = (d) => {
+      const level = Math.max(1, Math.min(5, c.level + d));
+      if (level === c.level) return;
+      save({ ...c, level });
+      this.showChaos('ch-level');
+    };
+    this.layer.querySelectorAll<HTMLElement>('.chaos-slider .notch').forEach((n) =>
+      n.addEventListener('click', (e) => {
+        e.stopPropagation();
+        save({ ...c, level: Number(n.dataset.level) });
+        this.showChaos('ch-level');
+      }),
+    );
+    // Return (or a click on the slider itself) goes up a notch, round to Mild after ULTRA
+    this.bind('ch-level', () => {
+      save({ ...c, level: (c.level % 5) + 1 });
+      this.showChaos('ch-level');
+    });
+    for (const k of CHAOS_KINDS)
+      this.bind(`ch-k${k.bit}`, () => {
+        const mask = c.mask ^ k.bit;
+        // at least one kind of chaos
+        if (!mask) return this.toast('Leave at least one kind of chaos on!');
+        save({ ...c, mask });
+        this.showChaos(`ch-k${k.bit}`);
+      });
+    this.bind('ch-go', () => this.playGenerated('chaos', { seed: randomSeed(), chaos: c.level, chaosMask: c.mask }));
+    this.bind('ch-back', () => this.showPlay());
+  }
+
+  /** The focused slider (the chaos level): ← and → change it instead of moving the focus. */
+  private sliderStep: ((d: number) => void) | null = null;
 
   // ------------------------------------------------------------ the Locker
 
@@ -806,8 +895,8 @@ export class App {
   }
 
   /** A generated job: a random one, today's, or the next one in an endless shift. */
-  playGenerated(kind: 'random' | 'daily', gen: GenParams) {
-    const label = kind === 'daily' ? 'Daily job' : 'Random job';
+  playGenerated(kind: 'random' | 'daily' | 'chaos', gen: GenParams) {
+    const label = kind === 'daily' ? 'Daily job' : kind === 'chaos' ? 'Chaos job' : 'Random job';
     this.job = { kind, gen: { ...gen, label } };
     this.playDef(generateJob(this.job.gen));
   }
@@ -989,6 +1078,15 @@ export class App {
           <button class="btn small" data-nav id="r-share">📋 Copy today's result</button>
         </div>`;
     }
+    // the best chaos delivery
+    let chaosBestLine = false;
+    if (job.kind === 'chaos' && r.success && def.gen?.chaos) {
+      const best = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
+      if (!best || r.payout > best.payout) {
+        saveJSON('ff.chaosBest', { payout: r.payout, level: def.gen.chaos });
+        chaosBestLine = true;
+      }
+    }
     // the wallet and the quests (after today's job is counted, for the streak)
     const payday = track(
       { success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars },
@@ -1022,7 +1120,9 @@ export class App {
     const seedLine =
       job.kind === 'daily'
         ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
-        : def.gen && job.kind !== 'shift'
+        : def.gen?.chaos
+          ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b></p>`
+          : def.gen && job.kind !== 'shift'
           ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>`
           : '';
     // the buttons depend on what's being played
@@ -1033,6 +1133,10 @@ export class App {
            <button class="btn" data-nav id="r-shift-stop">End the shift here</button>`
         : `<button class="btn primary" data-nav data-default id="r-shift-new">Start a new shift</button>
            <button class="btn" data-nav id="r-levels">Back to Play</button>`;
+    else if (job.kind === 'chaos')
+      buttons = `<button class="btn primary" data-nav data-default id="r-chaos">New chaos job →</button>
+           <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
+           <button class="btn" data-nav id="r-levels">Change the chaos</button>`;
     else if (job.kind === 'random')
       buttons = `<button class="btn primary" data-nav data-default id="r-random">New random job →</button>
            <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
@@ -1054,8 +1158,9 @@ export class App {
           ${r.success ? row('Time', `${formatTime(r.time)}${beat.time ? '<span class="new-best">NEW BEST</span>' : ''}`) : ''}
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
           ${r.tips ? row(`Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
+          ${r.bonus ? row(`${chaosLevel(def.gen?.chaos).icon} Chaos pay (×${def.payScale})`, '+' + formatMoney(r.bonus)) : ''}
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
-          <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
+          <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout || chaosBestLine ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
@@ -1076,6 +1181,7 @@ export class App {
       });
     });
     this.bind('r-random', () => this.playGenerated('random', { seed: randomSeed() }));
+    this.bind('r-chaos', () => def.gen && this.playGenerated('chaos', { seed: randomSeed(), chaos: def.gen.chaos, chaosMask: def.gen.chaosMask }));
     this.bind('r-shift', () => {
       if (this.job?.kind !== 'shift') return;
       this.job.round++;
@@ -1115,6 +1221,7 @@ export class App {
   /** Back from a job to where it was picked: the job list for a hand-made job, the Play screen otherwise. */
   private backToList() {
     if (this.job?.kind === 'level') this.showLevels();
+    else if (this.job?.kind === 'chaos') this.showChaos();
     else this.showPlay();
   }
 
@@ -1780,7 +1887,7 @@ export class App {
 /** What's being played. */
 type Job =
   | { kind: 'level'; id: string }
-  | { kind: 'random' | 'daily'; gen: GenParams }
+  | { kind: 'random' | 'daily' | 'chaos'; gen: GenParams }
   | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number };
 
 /** The best endless shift so far. */

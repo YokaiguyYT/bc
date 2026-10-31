@@ -5,6 +5,7 @@ import { keyLabel } from '../config/bindings';
 import { CARGO_INFO } from '../entities/cargo/info';
 import { EMOTES } from '../game/events';
 import { formatMoney, formatTime } from '../util/math';
+import type { Hazard } from '../entities/hazards/registry';
 
 const _v = new THREE.Vector3();
 
@@ -58,6 +59,7 @@ export class Hud {
         <div class="payout"><span>Payout if delivered</span><b>$0</b></div>
       </div>
       <div class="card timer-card"><div class="lvl">${s.def.name}</div><div class="time">0:00.0</div></div>
+      <div class="chaos-line" style="display:none"></div>
       <div class="card status-card"></div>
       ${pcard(0)}${pcard(1)}
       <div class="tags"><div class="tag"><span class="say"></span>P1</div><div class="tag"><span class="say"></span>P2</div></div>
@@ -94,7 +96,17 @@ export class Hud {
       s.events.on('respawn', () => this.banner('WHOOPS!', true)),
       s.events.on('emote', (e) => this.bubble(e.player, EMOTES[e.kind] ?? '')),
       s.events.on('tip', (e) => this.tipPop(e.amount)),
+      s.events.on('chaos', (e) => {
+        // two at once: the second one goes underneath
+        const now = performance.now();
+        const second = now - this.lastChaos < 700;
+        this.lastChaos = now;
+        this.banner(e.text, false, second ? 'chaos second' : 'chaos');
+      }),
     );
+    this.chaos = s.hazards.find((h) => h.hudLine) ?? null;
+    this.chaosLine = q('.chaos-line');
+    if (this.chaos) this.chaosLine.style.display = '';
     this.banner(s.def.name.toUpperCase(), true);
   }
 
@@ -120,9 +132,14 @@ export class Hud {
   }
   private bubbleTimers: number[] = [];
 
-  banner(text: string, small = false) {
+  private lastChaos = -1e9;
+  private chaos: Hazard | null = null;
+  private chaosLine: HTMLElement;
+  private chaosText = '';
+
+  banner(text: string, small = false, extra = '') {
     const d = document.createElement('div');
-    d.className = 'banner' + (small ? ' small' : '');
+    d.className = 'banner' + (small ? ' small' : '') + (extra ? ' ' + extra : '');
     d.textContent = text;
     this.el.appendChild(d);
     setTimeout(() => d.remove(), 1900);
@@ -130,6 +147,10 @@ export class Hud {
 
   update(dt: number) {
     const s = this.s;
+    if (this.chaos) {
+      const t = this.chaos.hudLine?.() ?? '';
+      if (t !== this.chaosText) this.chaosLine.textContent = this.chaosText = t;
+    }
     const h = s.cargo.destroyed ? 0 : s.cargo.health;
     this.fill.style.transform = `scaleX(${h})`;
     this.fill.style.background = h > 0.75 ? 'var(--good)' : h > 0.4 ? 'var(--warn)' : 'var(--bad)';

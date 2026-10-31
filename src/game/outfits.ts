@@ -263,7 +263,7 @@ export function track(
     if (job.daily) s.dailies++;
     if (job.shiftRound) s.bestShift = Math.max(s.bestShift, job.shiftRound);
     if (job.online) s.online++;
-    if ((job.chaos ?? 0) >= 4) s.chaos++;
+    if ((job.chaos ?? 0) >= 5) s.chaos++;
     if (job.kind === 'level' && job.levelId && job.levelId !== 'playground') {
       if (!s.jobs.includes(job.levelId)) s.jobs.push(job.levelId);
       if (r.stars >= 3 && !s.threeStars.includes(job.levelId)) s.threeStars.push(job.levelId);
