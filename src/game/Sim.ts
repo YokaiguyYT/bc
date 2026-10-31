@@ -117,6 +117,8 @@ export interface Sim {
   heat?: HeatSource[];
   /** Shake the camera (an earthquake, a meteor landing). */
   shake?: (amount: number) => void;
+  /** Still being played (not yet delivered or lost). */
+  live?: () => boolean;
 }
 
 export interface HeatSource {

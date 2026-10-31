@@ -75,6 +75,19 @@ export default async function ({ page, base, shot }) {
   w = await wallet();
   check('the crown is a quest prize', w.outfits[0].hat === 'tophat', w.outfits[0]);
 
+  // surprise me: a random mix of what P1 owns
+  const o0 = JSON.stringify((await wallet()).outfits[0]);
+  await click('#lk-rand');
+  const o1 = (await wallet()).outfits[0];
+  check('🎲 surprise me changes the outfit (owned things only)', JSON.stringify(o1) !== o0 && ['cap', 'none', 'cowboy', 'wizard', 'tophat', 'party'].includes(o1.hat), [o0, o1]);
+  await page.evaluate(() => {
+    const w = JSON.parse(localStorage.getItem('ff.wardrobe'));
+    w.outfits[0] = { color: 'orange', hat: 'tophat', face: 'none', back: 'none' };
+    localStorage.setItem('ff.wardrobe', JSON.stringify(w));
+  });
+  // the camera closes in on the mover being dressed, who stands still
+  const view = await page.evaluate(() => ({ close: window.__FF.game.session.cameraRig.closeUp, hold: window.__FF.app.attract?.hold }));
+  check('close-up on the mover being dressed', view.close > 0 && view.hold === 0, view);
   // P2: colour
   await click('#lk-p1');
   await click('#lk-t-color');
@@ -99,6 +112,9 @@ export default async function ({ page, base, shot }) {
   const q = await page.evaluate(() => document.querySelectorAll('.quest').length);
   check('quests listed', q === 10, q);
 
+  await page.evaluate(() => window.__FF.app.showMenu());
+  const view2 = await page.evaluate(() => ({ close: window.__FF.game.session.cameraRig.closeUp, hold: window.__FF.app.attract?.hold }));
+  check('…and back to the usual view after', view2.close === null && view2.hold === null, view2);
   // a delivery: pays the wallet; the fifth delivery gives the hard hat
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('ff.stats'));

@@ -216,6 +216,8 @@ export class ChaosDirector implements Hazard {
   private noteObjs: THREE.Object3D[] = [];
   private windT = 0;
   private time = 0;
+  /** How many surprises so far (the results card counts them). */
+  fired = 0;
 
   constructor(
     o: HazardObj,
@@ -328,7 +330,7 @@ export class ChaosDirector implements Hazard {
     const now = this.sim.time();
     this.time = now;
     // nothing new once the load is lost
-    if (now >= this.nextAt && !this.sim.cargo?.destroyed) {
+    if (now >= this.nextAt && !this.sim.cargo?.destroyed && (this.sim.live?.() ?? true)) {
       this.fire(now);
       // Mayhem and up: sometimes two at once
       const two = this.level >= 5 ? 0.35 : this.level >= 4 ? 0.15 : 0;
@@ -359,6 +361,7 @@ export class ChaosDirector implements Hazard {
     const side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
     const a: Active = { ev, t0: now, t1: now + ev.dur, center, fwd, side, left: 0, next: now, from: this.rand() < 0.5 ? 1 : -1 };
     this.active.push(a);
+    this.fired++;
     this.start(a);
     this.sim.events.emit('chaos', { kind: ev.id, text: ev.text });
   }
@@ -516,16 +519,17 @@ export class ChaosDirector implements Hazard {
     }
     switch (a.ev.id) {
       case 'gust':
-        if (this.gust) this.blow(this.gust, 4 + 1.6 * L, dt);
+        // (Mild about as strong as job 9's fans; ULTRA two and a half times that)
+        if (this.gust) this.blow(this.gust, 2.5 + 1.8 * L, dt);
         break;
       case 'quake': {
         this.quakeTick -= dt;
         if (this.quakeTick > 0) break;
         this.quakeTick = 0.25;
-        const kick = 0.9 + 0.45 * L;
+        const kick = 0.5 + 0.35 * L;
         for (const p of this.sim.players ?? []) {
           const ang = this.rand() * Math.PI * 2;
-          p.applyBlast(_v.set(Math.cos(ang) * kick, 0.6, Math.sin(ang) * kick).multiplyScalar(p.totalMass));
+          p.applyBlast(_v.set(Math.cos(ang) * kick, 0.4, Math.sin(ang) * kick).multiplyScalar(p.totalMass));
           if (L >= 3 && this.rand() < 0.04 * (L - 2)) p.knock(4);
         }
         // loose things hop about (the cargo too, from Wild up, unless it's being carried)

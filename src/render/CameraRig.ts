@@ -21,6 +21,8 @@ export class CameraRig {
   private shakeT = 0;
   /** Extra zoom-out the level can request (e.g. big open areas). */
   zoomBias = 0;
+  /** A close-up at this distance instead of framing everything (the Locker). */
+  closeUp: number | null = null;
   private initialized = false;
 
   constructor(public camera: THREE.PerspectiveCamera) {}
@@ -82,7 +84,7 @@ export class CameraRig {
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * this.camera.aspect);
     const pad = T.padding;
     const need = Math.max((ex + pad) / Math.tan(hfov / 2), (ey + pad) / Math.tan(vfov / 2)) + ez;
-    const dist = clamp(need + this.zoomBias, T.minDistance, T.maxDistance);
+    const dist = this.closeUp ?? clamp(need + this.zoomBias, T.minDistance, T.maxDistance);
 
     if (snap || !this.initialized) {
       this.focus.copy(c);

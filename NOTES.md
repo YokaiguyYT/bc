@@ -11,7 +11,12 @@ Design decisions, what still needs tuning, and known limitations.
 | Touch controls (phones and tablets, mainly as the online guest) | Done; tested in Chromium's touch emulation, not on a real phone |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
-| Random jobs, daily job, endless shift | Done |
+| Random jobs, endless shift | Done |
+| Play screen (Jobs, Daily, Quick job, Chaos, Endless shift) | Done |
+| Daily (Wordle-style: number, twist, streak, shareable squares) | Done |
+| Cash tips on random courses | Done |
+| Chaos jobs (slider Mild → ULTRA, 13 kinds of chaos) | Done; online too |
+| The Locker (outfits, wallet, 10 quests) | Done; online too |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click), GitHub Pages from `/docs` | Done |
@@ -141,6 +146,22 @@ Fairness rules learned from the bot: wrecking balls swing slowly (7.5–8.8 s a 
 The painting and the balloons are in random jobs too (ten kinds of cargo): the painting starts in job 9's padded slot and goes onto job 9's gallery easel, and never goes round a corner or over a conveyor belt (it leans back from its picture, so turned round on the way it would lean off the easel, not onto it; the belt drags the movers round); the balloons start on job 10's stand, are tied onto a party table at the drop-off, keep away from doorways, swing doors and the cable car (the bouquet floats above door height), and if let go they're lost 9 m above the highest floor (back to the last checkpoint). Both are picked up off their stands by the bot as players do.
 
 Sweeps (the bot plays a batch of numbered jobs, cycling the cargo): the first one delivered 7 of 16; after the fixes above, 13 of 16, and the three failures (pedestrians shoving the movers into a rail, and a lift leaving with one mover still stepping on) led to the pedestrian and lift rules. With all the pieces in build 7, 15 of 16 (the one failure, a belt carrying the glass into the railing, led to the bot starting belts upstream), plus 13 of 13 jobs chosen for crossings, wrecking balls and see-saws. Run one with a loop over `GEN=<n> CARGO=<kind> … run.mjs deliver` and grep each log for `"state":"delivered"`.
+
+## Daily
+
+`src/game/daily.ts`. Daily #1 was 31 October 2026 (local date); the job number and the twist come from the date, so every laptop makes the same course with no server. The best go of the day is kept (a delivery beats none, then the bigger payout). The share card's squares come from `StretchTracker`: the course's stretches start at known points (`LevelDef.stretches`), and the cargo's health is noted as it passes near each; skipped points (taken in one go) count as passed.
+
+## Chaos jobs
+
+`src/game/chaos.ts` (the levels, kinds and events) and `src/entities/hazards/chaos.ts` (the director). A chaos job is a random course (4 + level obstacles, a bit harder) with one `chaos` hazard holding the course's stretch points, so it knows which way is ahead. On the host, every few seconds (16 s on Mild, 4.5 s on ULTRA, sometimes two at once from Mayhem) it starts one of the enabled events around the cargo (or the movers if the cargo's far off). Meteors aim 4.5 m+ away on Mild and, on Mayhem and ULTRA, sometimes right at the load; spawns look for floor near the movers' level so nothing lands in the void or behind a kerb.
+
+Online: every body it can throw (8 rocks, 4 beach balls, 8 boxes, 4 barrels, 8 chickens) is made up front, disabled and parked far below, in the same order on both laptops, so the guest's copy moves them from the host's snapshots like any other body. What bodies don't show (the quake, the wind, the money notes, what's on) is in `netState`; banners are a game event. Moon gravity and super jumps change the shared tuning while they last; the director puts it back when the event ends and when the job is left. New events stop once the job is delivered or lost. `trigger(id)` starts one on demand (tests).
+
+The bot isn't made for chaos (it doesn't dodge), so sweeps only check that Mild chaos jobs stay deliverable; see the chaos and online-gen scenarios for the rest.
+
+## The Locker
+
+`src/game/outfits.ts` (items, quests, wallet, stats), `src/render/accessories.ts` (hats, face things and back things made of primitives; anything named `spin` or `flap` is animated by the rig) and `PlayerRig.applyOutfit`. The wallet is credited with every successful payout (an existing save starts with the sum of its best payouts); stats for quests start from the saved bests too. Online, the guest sends its P1 outfit when it joins; the host builds the job with `[its P1, the guest's]` (the guest's colour changes if it's the same) and sends the pair with the level, and sends each job's result so the guest's wallet and quests count it too.
 
 ## Tuning still needed
 

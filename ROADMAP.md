@@ -29,7 +29,8 @@ FF_URL=http://localhost:5199/ node tests/browser/run.mjs <scenario> [outdir]
 Key scenarios: `online` (also `ONLY=relay`, `ONLY=direct`), `online-errors`,
 `online-gen`, `netcheck` (needs local servers, see the file), `genbuild`
 (SEEDS=n), `genflow`, `deliver` (ROUTE=<route> or GEN=<number> CARGO=<kind>
-PIECES=<n>), `pickup`, `carryall`, `coop`, `p2layout`, `levelnav`, `menus`.
+PIECES=<n> CHAOS=<1..5>), `pickup`, `carryall`, `coop`, `p2layout`, `levelnav`,
+`menus`, `locker`, `chaos`.
 The test machine renders on the CPU, so the game runs in slow motion there;
 judge speeds per simulated second. **Editing source reloads pages on the dev
 server**: run long batches (bot sweeps) against `npm run build` + `npx vite
@@ -51,6 +52,13 @@ over many numbers and greps each log for `"state":"delivered"`.
   deliver both.
 - Touch controls for phones and tablets (mainly as the online guest), and
   emotes (number keys) on both screens.
+- Build 10: a **Play screen** (Jobs, Daily, Quick job, Chaos, Endless shift)
+  instead of one long list; **cash tips** and denser random courses; a
+  Wordle-style **Daily** (number, twist, streak, shareable squares); **Chaos
+  jobs** (a slider from Mild to ULTRA, 13 kinds of chaos, online too); the
+  **Locker** (outfits from the wallet or from 10 quests, online too).
+  New scenarios: `locker`, `chaos`; `online` and `online-gen` cover outfits,
+  pay and chaos online.
 
 ## Work items (independent; pick any)
 
@@ -95,6 +103,15 @@ iPhone and Android phone; maybe a lower default quality on phones.
 1. Measure frame time on "Fast" with a CPU-throttled browser; find the worst
    levels and random-job themes.
 2. Instance repeated decorations (trees, rails, posts); fewer shadow casters.
+
+### H. Chaos and Locker ideas
+1. More chaos: a UFO that beams the cargo up a little, a giant rolling
+   snowball, a sudden fog (dark, with lit-up movers), a stampede of shopping
+   trolleys, birds that steal your hat (and you chase them).
+2. A shareable chaos result like the daily's (the job number would need the
+   chaos level in it, or a chaos switch on the job-number screen).
+3. More Locker items (shoes, held props like a mop or a coffee), outfits that
+   change the mover's walk, and a quest for each hand-made job.
 
 ### G. Testing and robustness
 1. Make `online` run the guest at a low frame rate (throttle) and check play.

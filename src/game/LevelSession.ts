@@ -197,6 +197,7 @@ export class LevelSession {
 
     this.cameraRig = new CameraRig(renderer.camera);
     this.sim.shake = (a) => this.cameraRig.addShake(a);
+    this.sim.live = () => this.state === 'playing' && !this.attractMode;
     this.cameraRig.reset(def.cameraYaw, this.focusPoints());
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));

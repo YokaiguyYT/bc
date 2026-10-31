@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { Game } from '../game/Game';
 import { LevelSession, SessionResult, PLAYER_COLORS } from '../game/LevelSession';
 import { LEVELS, PLAYABLE_LEVELS, levelById } from '../levels';
@@ -114,6 +115,7 @@ export class App {
   // ------------------------------------------------------------ navigation
 
   private setScreen(s: Screen, html: string, opts: { dim?: boolean; back?: () => void } = {}) {
+    if (s !== 'locker' && this.viewing) this.lockerView(null);
     // the same screen drawn again (something on it changed): no pop-in, and lists stay scrolled where they were
     const again = s === this.screen && !!this.layer.firstElementChild;
     const scrolled = again ? [...this.layer.querySelectorAll<HTMLElement>('.items, .quests, .levels, .hub')].map((e) => e.scrollTop) : [];
@@ -563,6 +565,7 @@ export class App {
   private showLocker(focus?: string) {
     this.startAttract();
     this.dressMovers();
+    this.lockerView(this.lockerPlayer);
     // quests finished some other way (before the Locker existed, or today's streak)
     const won = claimQuests(streak().current);
     if (won.length) this.toast(won.map(({ quest, item }) => `🏆 Quest done: ${quest.name}${item ? `! ${item.item.icon} ${item.item.name} unlocked` : ''}`).join(' · '));
@@ -609,7 +612,7 @@ export class App {
       'locker',
       `<div class="panel locker">
          <div class="locker-head"><div class="logo" style="font-size:40px">LOCKER</div><div class="wallet" title="every delivery pays in">💵 ${formatMoney(w.cash)}</div></div>
-         <div class="row tabs">${players}</div>
+         <div class="row tabs">${players}<button class="btn small tab" data-nav id="lk-rand" title="put on a random mix of what you own">🎲 Surprise me</button></div>
          <div class="row tabs">${tabs}</div>
          ${body}
          <p class="hint-line" style="margin:6px 0 0">${tab === 'quests' ? 'Quests unlock things money can’t buy.' : 'Every delivery pays into the wallet. 🔒 things are won from quests.'}</p>
@@ -655,8 +658,44 @@ export class App {
           this.toast(`Bought the ${it.name}! ${formatMoney(loadWardrobe().cash)} left.`);
           again();
         });
+    this.bind('lk-rand', () => {
+      // a random mix of what's owned (something different each time)
+      const before = JSON.stringify(loadWardrobe().outfits[p]);
+      for (let tries = 0; tries < 6; tries++) {
+        const w2 = loadWardrobe();
+        for (const { slot } of SLOTS) {
+          const mine = Object.keys(ITEMS[slot]).filter((id) => owns(w2, slot, id) && !(p === 1 && slot === 'color' && id === w2.outfits[0].color) && !(p === 0 && slot === 'color' && id === w2.outfits[1].color));
+          if (mine.length) wear(p, slot, mine[Math.floor(Math.random() * mine.length)]);
+        }
+        if (JSON.stringify(loadWardrobe().outfits[p]) !== before) break;
+      }
+      this.showLocker('lk-rand');
+    });
     this.bind('lk-back', () => this.showMenu());
   }
+
+  /** The Locker: a close-up of the mover being dressed, the camera circling them (null: back to the usual view). */
+  private lockerView(player: 0 | 1 | null) {
+    const s = this.game.session;
+    if (!s || !this.attract) return;
+    this.attract.hold = player;
+    if (player === null) {
+      if (this.viewing) s.focusOverride = null;
+      s.cameraRig.closeUp = null;
+      this.viewing = false;
+      return;
+    }
+    this.viewing = true;
+    s.cameraRig.closeUp = 5.2;
+    s.focusOverride = () => {
+      const p = s.players[player];
+      const at = s.physics.interpolatedPosition(p.body, new THREE.Vector3());
+      // the panel covers the right of the screen: put the mover left of the middle
+      if (window.innerWidth > 900) at.addScaledVector(s.cameraRig.right(new THREE.Vector3()), 1.3);
+      return [at.add(new THREE.Vector3(0, 0.1, 0))];
+    };
+  }
+  private viewing = false;
 
   /** The menu's movers wear the latest outfits. */
   private dressMovers() {
@@ -1115,13 +1154,14 @@ export class App {
             : ['Technically delivered.', 'The client is weeping softly.']
       : ['Total loss!', `The ${r.cargoName.toLowerCase()} did not survive the move.`];
     const row = (label: string, v: string) => `<tr><td>${label}</td><td>${v}</td></tr>`;
+    const surprises = (s.hazards.find((h) => h.hudLine) as { fired?: number } | undefined)?.fired ?? 0;
     // (a shift job's number alone doesn't make the same course: shifts also set how hard it is)
     const twist = def.gen?.twist ? TWISTS[def.gen.twist] : null;
     const seedLine =
       job.kind === 'daily'
         ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
         : def.gen?.chaos
-          ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b></p>`
+          ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b>${surprises ? ` · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'}` : ''}</p>`
           : def.gen && job.kind !== 'shift'
           ? `<p style="font-size:14px">${esc(def.gen.label ?? 'Job')} <b>#${def.gen.seed}</b> · tell a friend the number to play the same course</p>`
           : '';

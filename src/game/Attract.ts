@@ -11,6 +11,9 @@ export class Attract {
     { t: 0, x: 0, z: 0, grab: false, jump: false },
   ];
 
+  /** The Locker: this mover stands still while the camera circles round them (null: everyone wanders). */
+  hold: number | null = null;
+
   constructor(private session: LevelSession) {
     session.attractMode = true;
   }
@@ -21,6 +24,12 @@ export class Attract {
     if (!s || !s.attractMode) return;
     s.players.forEach((p, i) => {
       const plan = this.plans[i];
+      if (i === this.hold) {
+        p.intent.moveX = p.intent.moveZ = 0;
+        p.intent.grab = false;
+        plan.t = 0;
+        return;
+      }
       plan.t -= dt;
       if (plan.t <= 0) {
         const r = Math.random();
@@ -60,6 +69,6 @@ export class Attract {
         p.intent.moveZ = pos.z > 6 ? -1 : pos.z < -6 ? 1 : 0;
       }
     });
-    s.cameraRig.yaw += dt * 0.06;
+    s.cameraRig.yaw += dt * (this.hold === null ? 0.06 : 0.4);
   }
 }

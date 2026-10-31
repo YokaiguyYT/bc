@@ -98,14 +98,32 @@ Mostly for joining a friend's game online (they host on a laptop): open the same
 
 There's also a **Practice Yard** to learn the controls.
 
-### Endless jobs
+### The Play screen
 
-At the top of the job list:
+**Play** opens four (well, five) big choices, so nothing is buried:
 
-- **🎲 Random job:** a brand-new course every time: a random cargo, place and string of obstacles (ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, bridges with no railings, corners), with checkpoints along the way. Each one has a **job number** (on the results card): tell a friend and you can both play the same course.
-- **📅 Today's job:** the same course for everyone all day; a new one tomorrow. Your best today is kept.
-- **🔢 By number:** type a job number from someone's results card to play that exact course.
+- **🚚 Jobs:** the hand-made jobs above, with the **Practice Yard** first (marked START HERE the first time).
+- **📅 Daily #N:** one course for everyone each day, Wordle-style, with a **twist** (night, rush hour, double tips, an extra-long route, busy streets). Deliver it every day for a 🔥 **streak**; the last seven days show as ticks. The results card gives you a spoiler-free line of squares (🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating · 💥 broke here, one per stretch of course) and a **Copy** button to paste it in the group chat.
+- **🎲 Quick job:** a brand-new random course (any cargo, any place, a string of obstacles: ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, ferries, bridges with no railings, corners), or **type a job number** from a friend's results card to play that exact course.
+- **💥 Chaos:** courses where crazy things keep happening (below).
 - **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
+
+**💵 Tips:** banknotes float along every random course, some on the easy line and some right where it's risky. Walk through one to pocket it; they're paid with the delivery.
+
+### 💥 Chaos
+
+Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and which kinds (switch any off):
+
+- **☄️ From the sky:** meteor showers (a red ring shows where each one lands), beach-ball barrages, raining boxes, and **money rain** (grab the notes!)
+- **🌪️ Ground & weather:** earthquakes, hurricanes, flash freezes (every floor turns to ice), rolling barrels
+- **🌙 Weird physics:** moon gravity, speed shoes, super jumps
+- **🐔 Critters:** chicken stampedes and chicken rain (you can pick the chickens up)
+
+The higher the slider, the more often (on ULTRA, sometimes two at once) and the closer to your load. A banner and a line under the cargo card say what's going on. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. It works online too.
+
+### 👕 The Locker
+
+Every delivery pays into the company **wallet** (an existing save starts with what you'd already earned). In the **Locker** (main menu) each mover gets their own **colour**, **hat**, **face thing** and **something on the back**: beanies, cowboy and top hats, a wizard hat, shades, a mustache, a monocle, a cape… Some things can't be bought: **10 quests** (deliver five jobs, pocket 25 tips, three flawless deliveries, a three-day daily streak, a five-job shift, deliver online, survive ULTRA CHAOS…) win a propeller cap, a crown, a Viking helmet, angel wings, chaos goggles, solid gold and more. The camera circles the mover you're dressing, and **🎲 Surprise me** picks a random mix of what you own. Online, your mover wears *your* Locker's outfit on both screens (if you both picked the same colour, the guest's changes), and the guest gets paid into their own wallet too.
 
 Some jobs happen at sunset or at night. Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
 

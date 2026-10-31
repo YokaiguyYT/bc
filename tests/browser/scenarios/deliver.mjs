@@ -357,6 +357,7 @@ export default async function ({ page, base, shot }) {
     if (process.env.CARGO) q.set('cargo', process.env.CARGO);
     if (process.env.DIFF) q.set('diff', process.env.DIFF);
     if (process.env.PIECES) q.set('pieces', process.env.PIECES);
+    if (process.env.CHAOS) q.set('chaos', process.env.CHAOS);
     await page.goto(base + '?' + q);
   } else await page.goto(base + `?level=${id}&manual=1`);
   await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
@@ -375,6 +376,9 @@ export default async function ({ page, base, shot }) {
     window.__digital = digital;
     // TIPS=1: log every message the hint line shows
     window.__tips = [];
+    // chaos jobs: what happened when
+    window.__chaos = [];
+    window.__FF.game.session.events.on('chaos', (e) => window.__chaos.push(`${window.__FF.game.session.physics.time.toFixed(1)}s ${e.kind}`));
     const hint = document.querySelector('.hud .hint');
     if (hint)
       new MutationObserver(() => {
@@ -912,6 +916,8 @@ export default async function ({ page, base, shot }) {
     }
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));
+    const ch = await page.evaluate(() => window.__chaos ?? []);
+    if (ch.length) console.log('chaos:', ch.join(', '));
   }
   if (process.env.TIPS) for (const t of await page.evaluate(() => window.__tips)) console.log('   hint', t);
 }

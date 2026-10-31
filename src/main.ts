@@ -29,9 +29,10 @@ async function boot() {
     const gen = params.get('gen');
     if (params.has('gallery')) (await import('./dev/gallery')).showGallery(game);
     else if (gen) {
-      // a generated job by number: ?gen=123456 (&cargo=tv &diff=0.5 &pieces=8)
+      // a generated job by number: ?gen=123456 (&cargo=tv &diff=0.5 &pieces=8 &chaos=1..5)
       const num = (k: string) => (params.has(k) ? Number(params.get(k)) : undefined);
-      app.playGenerated('random', { seed: Number(gen) || 1, cargo: (params.get('cargo') ?? undefined) as never, difficulty: num('diff'), pieces: num('pieces') });
+      const chaos = num('chaos');
+      app.playGenerated(chaos ? 'chaos' : 'random', { seed: Number(gen) || 1, cargo: (params.get('cargo') ?? undefined) as never, difficulty: num('diff'), pieces: num('pieces'), chaos });
     } else if (lvl) app.playLevel(lvl);
     else app.showTitle();
     loading?.classList.add('done');
