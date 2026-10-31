@@ -16,7 +16,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Daily (Wordle-style: number, twist, streak, shareable squares) | Done |
 | Cash tips on random courses | Done |
 | Chaos jobs (slider Mild → ULTRA, 15 kinds of chaos) | Done; online too |
-| The Locker (outfits, wallet, 10 quests) | Done; online too |
+| The Locker (outfits, wallet, 14 quests) | Done; online too |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click), GitHub Pages from `/docs` | Done |

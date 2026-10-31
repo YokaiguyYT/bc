@@ -120,7 +120,7 @@ export default async function ({ page, base, shot }) {
   await click('#lk-t-quests');
   await shot('locker_quests');
   const q = await page.evaluate(() => document.querySelectorAll('.quest').length);
-  check('quests listed', q === 10, q);
+  check('quests listed', q === 14, q);
 
   await page.evaluate(() => window.__FF.app.showMenu());
   const view2 = await page.evaluate(() => ({ close: window.__FF.game.session.cameraRig.closeUp, hold: window.__FF.app.attract?.hold }));

@@ -56,7 +56,7 @@ over many numbers and greps each log for `"state":"delivered"`.
   instead of one long list; **cash tips** and denser random courses; a
   Wordle-style **Daily** (number, twist, streak, shareable squares); **Chaos
   jobs** (a slider from Mild to ULTRA, 15 kinds of chaos, online too); the
-  **Locker** (outfits from the wallet or from 10 quests, online too).
+  **Locker** (over 40 things to wear, from the wallet or from 14 quests, online too).
   New scenarios: `locker`, `chaos`; `online` and `online-gen` cover outfits,
   pay and chaos online.
 

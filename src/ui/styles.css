@@ -1747,3 +1747,29 @@ button.btn .cash {
   transform: translateY(-2px);
   background: linear-gradient(90deg, #ffe98a, #ffcfe6);
 }
+.locker .records {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.locker .rec {
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.locker .rec span {
+  font-size: 16px;
+}
+.locker .rec b {
+  font-size: 16px;
+}
+.locker .rec small {
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-align: center;
+}

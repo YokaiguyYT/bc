@@ -55,6 +55,12 @@ export const ITEMS: Record<Slot, Record<string, Item>> = {
     hardhat: { name: 'Hard hat', price: 0, quest: 'five', icon: '👷' },
     crown: { name: 'Crown', price: 0, quest: 'stars', icon: '👑' },
     viking: { name: 'Viking helmet', price: 0, quest: 'shift5', icon: '⚔️' },
+    cone: { name: 'Traffic cone', price: 350, icon: '🚧' },
+    flowers: { name: 'Flower crown', price: 600, icon: '🌸' },
+    bunny: { name: 'Bunny ears', price: 700, icon: '🐰' },
+    pirate: { name: 'Pirate hat', price: 1100, icon: '🏴‍☠️' },
+    halo: { name: 'Halo', price: 0, quest: 'dailies7', icon: '😇' },
+    astronaut: { name: 'Space helmet', price: 0, quest: 'surprises', icon: '👨‍🚀' },
   },
   face: {
     none: { name: 'Nothing', price: 0, icon: '🙂' },
@@ -63,6 +69,9 @@ export const ITEMS: Record<Slot, Record<string, Item>> = {
     monocle: { name: 'Monocle', price: 800, icon: '🧐' },
     nose: { name: 'Clown nose', price: 400, icon: '🤡' },
     goggles: { name: 'Chaos goggles', price: 0, quest: 'chaos', icon: '🥽' },
+    nerd: { name: 'Big glasses', price: 450, icon: '🤓' },
+    hearts: { name: 'Heart shades', price: 650, icon: '😍' },
+    beard: { name: 'Big beard', price: 900, icon: '🧔' },
   },
   back: {
     none: { name: 'Nothing', price: 0, icon: '🙂' },
@@ -70,6 +79,9 @@ export const ITEMS: Record<Slot, Record<string, Item>> = {
     cape: { name: 'Cape', price: 1800, icon: '🦸' },
     scarf: { name: 'Friendship scarf', price: 0, quest: 'online', icon: '🧣' },
     wings: { name: 'Angel wings', price: 0, quest: 'flawless', icon: '🪽' },
+    guitar: { name: 'Guitar', price: 1300, icon: '🎸' },
+    balloon: { name: 'A balloon', price: 0, quest: 'chaos3', icon: '🎈' },
+    jetpack: { name: 'Jetpack', price: 0, quest: 'rich', icon: '🚀' },
   },
 };
 
@@ -94,6 +106,11 @@ export interface Stats {
   bestShift: number;
   online: number;
   chaos: number;
+  /** Chaos jobs delivered (any level), and the surprises survived in them. */
+  chaosAny: number;
+  surprises: number;
+  /** The biggest payout of any one job. */
+  bestPayout: number;
   /** Hand-made jobs delivered, and with three stars. */
   jobs: string[];
   threeStars: string[];
@@ -124,6 +141,10 @@ export const QUESTS: Quest[] = [
   { id: 'alljobs', name: 'Seen it all', text: 'Deliver every hand-made job', progress: (s) => [Math.min(jobCount, s.jobs.length), jobCount] },
   { id: 'online', name: 'Long-distance friends', text: 'Deliver a job online', progress: (s) => [Math.min(1, s.online), 1] },
   { id: 'chaos', name: 'Agent of chaos', text: 'Deliver a chaos job on Ultra', progress: (s) => [Math.min(1, s.chaos), 1] },
+  { id: 'chaos3', name: 'Chaos regular', text: 'Deliver 3 chaos jobs (any level)', progress: (s) => [Math.min(3, s.chaosAny), 3] },
+  { id: 'surprises', name: 'Unflappable', text: 'Survive 50 chaos surprises (in jobs you deliver)', progress: (s) => [Math.min(50, s.surprises), 50] },
+  { id: 'dailies7', name: 'Daily devotee', text: 'Deliver 7 daily jobs', progress: (s) => [Math.min(7, s.dailies), 7] },
+  { id: 'rich', name: 'High roller', text: 'Get paid $3,000 for one job', progress: (s) => [Math.min(3000, s.bestPayout), 3000] },
 ];
 
 // ---------------------------------------------------------------- storage
@@ -166,7 +187,7 @@ function saveWardrobe(w: Wardrobe) {
 }
 
 export function loadStats(): Stats {
-  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, jobs: [], threeStars: [] };
+  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, chaosAny: 0, surprises: 0, bestPayout: 0, jobs: [], threeStars: [] };
   const saved = loadJSON<Partial<Stats>>(STATS);
   if (saved) return { ...base, ...saved };
   // the first time: count what this laptop did before the Locker existed
@@ -174,6 +195,7 @@ export function loadStats(): Stats {
   for (const [id, b] of Object.entries(prog)) {
     if (!b?.completed) continue;
     base.deliveries++;
+    base.bestPayout = Math.max(base.bestPayout, b.bestPayout || 0);
     if (b.bestCondition >= 0.995) base.flawless++;
     if (id === 'playground' || id.startsWith('daily')) continue;
     base.jobs.push(id);
@@ -252,7 +274,7 @@ export interface Payday {
 /** After a job: count it, pay the payout into the wallet, and hand over any quest rewards. */
 export function track(
   r: { success: boolean; payout: number; condition: number; tipCount: number; stars: number },
-  job: { kind: string; levelId?: string; online?: boolean; chaos?: number; shiftRound?: number; daily?: boolean },
+  job: { kind: string; levelId?: string; online?: boolean; chaos?: number; surprises?: number; shiftRound?: number; daily?: boolean },
   streak: number,
 ): Payday {
   const s = loadStats();
@@ -264,6 +286,11 @@ export function track(
     if (job.shiftRound) s.bestShift = Math.max(s.bestShift, job.shiftRound);
     if (job.online) s.online++;
     if ((job.chaos ?? 0) >= 5) s.chaos++;
+    if (job.chaos) {
+      s.chaosAny++;
+      s.surprises += job.surprises ?? 0;
+    }
+    s.bestPayout = Math.max(s.bestPayout, r.payout);
     if (job.kind === 'level' && job.levelId && job.levelId !== 'playground') {
       if (!s.jobs.includes(job.levelId)) s.jobs.push(job.levelId);
       if (r.stars >= 3 && !s.threeStars.includes(job.levelId)) s.threeStars.push(job.levelId);

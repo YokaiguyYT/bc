@@ -610,7 +610,20 @@ export class App {
       .join('');
     let body: string;
     if (tab === 'quests') {
-      body = `<div class="quests">${QUESTS.map((q) => {
+      const st2 = streak();
+      const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
+      const rec = (icon: string, label: string, v: string) => `<div class="rec"><span>${icon}</span><b>${v}</b><small>${label}</small></div>`;
+      const records = `<div class="records">
+          ${rec('📦', 'deliveries', String(st.deliveries))}
+          ${rec('✨', 'flawless', String(st.flawless))}
+          ${rec('💵', 'tips grabbed', String(st.tips))}
+          ${rec('🏆', 'best payout', formatMoney(st.bestPayout))}
+          ${rec('🔥', 'best daily streak', String(st2.best))}
+          ${rec('♾️', 'best shift', shiftBest ? `${shiftBest.jobs} jobs` : '–')}
+          ${rec('💥', 'chaos jobs', String(st.chaosAny))}
+          ${rec('🐔', 'surprises survived', String(st.surprises))}
+        </div>`;
+      body = `${records}<div class="quests">${QUESTS.map((q) => {
         const [d, n] = q.progress(st, days);
         const done = w.done.includes(q.id);
         const r = rewardOf(q.id);
@@ -1143,6 +1156,7 @@ export class App {
           <button class="btn small" data-nav id="r-share">📋 Copy today's result</button>
         </div>`;
     }
+    const surprises = (s.hazards.find((h) => h.hudLine) as { fired?: number } | undefined)?.fired ?? 0;
     // the best chaos delivery
     let chaosBestLine = false;
     if (job.kind === 'chaos' && r.success && def.gen?.chaos) {
@@ -1155,7 +1169,7 @@ export class App {
     // the wallet and the quests (after today's job is counted, for the streak)
     const payday = track(
       { success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars },
-      { kind: job.kind, levelId: def.id, online: !!this.host?.connected, chaos: def.gen?.chaos, shiftRound: job.kind === 'shift' ? job.round : 0, daily: job.kind === 'daily' },
+      { kind: job.kind, levelId: def.id, online: !!this.host?.connected, chaos: def.gen?.chaos, surprises, shiftRound: job.kind === 'shift' ? job.round : 0, daily: job.kind === 'daily' },
       streak().current,
     );
     if (this.host?.connected) this.host.sendPaid({ success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars });
@@ -1180,7 +1194,6 @@ export class App {
             : ['Technically delivered.', 'The client is weeping softly.']
       : ['Total loss!', `The ${r.cargoName.toLowerCase()} did not survive the move.`];
     const row = (label: string, v: string) => `<tr><td>${label}</td><td>${v}</td></tr>`;
-    const surprises = (s.hazards.find((h) => h.hudLine) as { fired?: number } | undefined)?.fired ?? 0;
     // (a shift job's number alone doesn't make the same course: shifts also set how hard it is)
     const twist = def.gen?.twist ? TWISTS[def.gen.twist] : null;
     const seedLine =

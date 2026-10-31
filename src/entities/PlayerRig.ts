@@ -52,6 +52,7 @@ export class PlayerRig {
   /** The outfit's hat, face and back things. */
   private extras: THREE.Object3D[] = [];
   private spinners: THREE.Object3D[] = [];
+  private flickers: THREE.Object3D[] = [];
   private flappers: THREE.Object3D[] = [];
   private outfitT = 0;
   private headGroup!: THREE.Group;
@@ -216,9 +217,11 @@ export class PlayerRig {
     this.extras = [hat, face, back].filter((x): x is THREE.Object3D => !!x);
     this.spinners = [];
     this.flappers = [];
+    this.flickers = [];
     for (const x of this.extras)
       x.traverse((c) => {
         if (c.name === 'spin') this.spinners.push(c);
+        if (c.name === 'flicker') this.flickers.push(c);
         if (c.name === 'flap') this.flappers.push(c);
       });
   }
@@ -246,6 +249,8 @@ export class PlayerRig {
     this.bodyMesh.scale.set(1 - sq * 0.5, 1 + sq, 1 - sq * 0.5);
     this.headGroup.position.y = sq * 0.25;
     // the propeller turns faster on the move; capes, scarves and wings sway
+    // a jetpack's flames flicker (and roar when jumping)
+    for (const f of this.flickers) f.scale.set(1, (p.grounded ? 0.6 : 1.6) + Math.random() * 0.5, 1);
     if (this.spinners.length || this.flappers.length) {
       this.outfitT += dt;
       const v = p.body.linvel();
