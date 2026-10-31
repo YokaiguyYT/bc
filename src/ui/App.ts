@@ -5,7 +5,7 @@ import { LEVELS, PLAYABLE_LEVELS, levelById } from '../levels';
 import { Hud } from './Hud';
 import { keyLabel, PlayerBindings, P2_LAYOUTS } from '../config/bindings';
 import { takeKeys } from '../input/Keyboard';
-import { loadProgress, recordResult, starsFor, totalEarnings } from '../game/progress';
+import { loadProgress, recordResult, starsFor } from '../game/progress';
 import { formatMoney, formatTime } from '../util/math';
 import { models } from '../render/models';
 import { AudioEngine } from '../audio/AudioEngine';
@@ -22,7 +22,7 @@ import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_KINDS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
-import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, untilNext } from '../game/daily';
+import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
 type Screen =
   | 'title'
@@ -47,6 +47,9 @@ type Screen =
   | 'quick'
   | 'locker'
   | 'chaos';
+
+/** Bump to show the main menu's "New:" line again after an update. */
+const NEWS = 'build10';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -356,7 +359,6 @@ export class App {
   showMenu() {
     this.startAttract();
     this.audio.music('menu');
-    const earned = totalEarnings();
     this.setScreen(
       'menu',
       `<div class="logo" style="font-size:clamp(40px,6vw,74px)"><span class="w fragile">FRAGILE</span> <span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
@@ -371,16 +373,38 @@ export class App {
          <button class="btn small" data-nav id="m-settings">Settings</button>
          <button class="btn small" data-nav id="m-credits">Credits</button>
        </div>
+       ${this.menuNudge()}
        ${this.game.keyboard.movedP2 ? '<div class="hint-line" style="color:var(--ink)"><b>New for Player 2:</b> arrows to move, <b>K</b> to jump, <b>L</b> to grab. Other layouts are under Controls.</div>' : ''}
-       <div class="hint-line">${earned > 0 ? `Company earnings so far: <b>${formatMoney(earned)}</b> · ` : ''}Navigate with arrows / WASD · Return or Space to pick</div>`,
+       <div class="hint-line">Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showPlay());
     this.bind('m-locker', () => this.showLocker());
+    this.bind('m-nudge', () => {
+      saveJSON('ff.news', NEWS);
+      this.showPlay();
+    });
     this.bind('m-online', () => (this.host ? this.showHost() : this.showOnline()));
     this.bind('m-howto', () => this.showHowTo(() => this.showMenu()));
     this.bind('m-controls', () => this.showControls(() => this.showMenu()));
     this.bind('m-settings', () => this.showSettings(() => this.showMenu()));
     this.bind('m-credits', () => this.showCredits());
+  }
+
+  /** One line under the main menu: what's new in this version (a few times), or today's job if it's not done yet. */
+  private menuNudge() {
+    const seen = loadJSON<string>('ff.news');
+    const shown = loadJSON<number>('ff.newsShown') ?? 0;
+    const played = Object.values(loadProgress()).some((p) => p?.completed);
+    // (brand-new players get the START HERE ribbon instead)
+    if (played && seen !== NEWS && shown < 4) {
+      saveJSON('ff.newsShown', shown + 1);
+      return `<button class="nudge" data-nav id="m-nudge">✨ <b>New:</b> 💥 Chaos jobs · 👕 the Locker · 📅 Daily streaks · 💵 tips</button>`;
+    }
+    if (played && !todaysResult()?.delivered) {
+      const st = streak();
+      return `<button class="nudge" data-nav id="m-nudge">📅 <b>Daily #${dailyNumber()}</b> is waiting${st.current ? ` · 🔥 keep your ${st.current}-day streak` : ''}</button>`;
+    }
+    return '';
   }
 
   private bind(id: string, fn: () => void) {
@@ -424,7 +448,7 @@ export class App {
            <div class="week" title="the last seven days">${lastWeek()
              .map((d) => `<span class="${d}">${d === 'done' ? '✓' : d === 'tried' ? '✗' : ''}</span>`)
              .join('')}${st.current ? `<b>🔥 ${st.current}</b>` : ''}</div>
-           <div class="best">${dBest?.completed || today?.delivered ? `✅ done today · next in ${untilNext()}` : 'not done yet today'}</div>
+           <div class="best">${dBest?.completed || today?.delivered ? `✅ done today${triesToday() > 1 ? ` in ${triesToday()} tries` : triesToday() === 1 ? ', first try!' : ''} · next in ${untilNext()}` : triesToday() ? `${triesToday()} ${triesToday() === 1 ? 'try' : 'tries'} so far today` : 'not done yet today'}</div>
          </button>
          <button class="hub-tile" data-nav id="p-quick">
            <div class="icon">🎲</div>

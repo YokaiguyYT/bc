@@ -1729,3 +1729,21 @@ button.btn .cash {
   background: #fff4cc;
   opacity: 1;
 }
+
+/* the main menu's one-line nudge: what's new, or today's job */
+.nudge {
+  font-family: var(--font);
+  font-size: 16px;
+  color: var(--ink);
+  background: linear-gradient(90deg, #fff4cc, #ffe3f1);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.nudge.focus,
+.nudge:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, #ffe98a, #ffcfe6);
+}

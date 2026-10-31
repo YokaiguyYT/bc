@@ -40,6 +40,8 @@ export interface DayResult {
 
 interface Store {
   days: Record<number, DayResult>;
+  /** Goes at each day's job (like Wordle's guesses). */
+  tries?: Record<number, number>;
 }
 
 const KEY = 'ff.daily';
@@ -56,6 +58,7 @@ export function recordDaily(r: DayResult, d = new Date()) {
   const old = s.days[n];
   const better = !old || (r.delivered && !old.delivered) || (r.delivered === old.delivered && r.payout > old.payout);
   if (better) s.days[n] = r;
+  s.tries = { ...(s.tries ?? {}), [n]: (s.tries?.[n] ?? 0) + 1 };
   saveJSON(KEY, s);
   return better;
 }
@@ -95,6 +98,11 @@ export function lastWeek(d = new Date()): ('done' | 'tried' | 'none')[] {
   });
 }
 
+/** How many goes at today's job so far. */
+export function triesToday(d = new Date()) {
+  return load().tries?.[dailyNumber(d)] ?? 0;
+}
+
 /** Time until tomorrow's job, like "5h 12m". */
 export function untilNext(d = new Date()) {
   const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
@@ -110,7 +118,9 @@ export function shareText(r: DayResult, cargoLine: string, d = new Date()) {
   const secs = String(Math.floor(r.time % 60)).padStart(2, '0');
   const head = `Fragile Freight · Daily #${dailyNumber(d)}${t ? ` ${t.icon}` : ''}`;
   const how = r.delivered ? `${cargoLine} · ${Math.round(r.condition * 100)}% · ${mins}:${secs} ${'⭐'.repeat(r.stars)}` : `${cargoLine} · 💥 didn't make it`;
-  const tail = `💵 $${r.payout.toLocaleString('en-US')}${st.current > 1 ? ` · 🔥 ${st.current} days` : ''}`;
+  const tries = triesToday(d);
+  const goes = !r.delivered || !tries ? '' : tries === 1 ? ' · 🎯 first try' : ` · ${tries} tries`;
+  const tail = `💵 $${r.payout.toLocaleString('en-US')}${goes}${st.current > 1 ? ` · 🔥 ${st.current} days` : ''}`;
   return [head, how, r.squares, tail].join('\n');
 }
 

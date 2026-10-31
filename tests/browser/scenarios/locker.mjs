@@ -30,7 +30,17 @@ export default async function ({ page, base, shot }) {
   const wallet = () => page.evaluate(() => JSON.parse(localStorage.getItem('ff.wardrobe') || 'null'));
   const focused = () => page.evaluate(() => document.querySelector('.focus')?.id);
 
+  await page.evaluate(() => localStorage.removeItem('ff.news'));
+  await page.evaluate(() => localStorage.removeItem('ff.newsShown'));
   await page.evaluate(() => window.__FF.app.showMenu());
+  const nudge = await page.evaluate(() => document.querySelector('#m-nudge')?.textContent ?? '');
+  check("a returning player is told what's new", /New:.*Chaos/.test(nudge), nudge);
+  await shot('locker_menu');
+  await click('#m-nudge');
+  check('…which opens the Play screen', (await page.evaluate(() => window.__FF.app.screen)) === 'play', await page.evaluate(() => window.__FF.app.screen));
+  await page.evaluate(() => window.__FF.app.showMenu());
+  const nudge2 = await page.evaluate(() => document.querySelector('#m-nudge')?.textContent ?? '');
+  check('then it nudges about the daily instead', /Daily #/.test(nudge2), nudge2);
   const btn = await page.evaluate(() => document.querySelector('#m-locker')?.textContent);
   check('menu has the Locker, with the cash', !!btn && btn.includes('5,000'), btn);
   await click('#m-locker');
