@@ -74,10 +74,12 @@ slopes, door widths), and keep the piano off anything it rolls off.
 3. **A client line** per job ("Mrs Patel needs her aquarium by noon").
 4. Run a big bot sweep (all cargo × 20 seeds) and fix pieces that fail often.
 
-### C. New cargo in random jobs, and more hand-made jobs
-1. Add the painting and the balloons to random jobs: a `KITS` entry each
-   (stand, carry height, door width), which pieces suit them (fans/gusts for
-   the painting; sharp things and low ceilings for the balloons), bot setups.
+### C. More for the new cargo, and more hand-made jobs
+1. The painting and the balloons are in random jobs (build 9). Next: pieces
+   made for them: wind (fans/gusts across a railed stretch) for the painting,
+   sharp things and low ceilings for the balloons; and let the painting take
+   corners (the bot, or players, can turn it round and it then leans off the
+   easel: a two-sided easel would fix that).
 2. More hand-made jobs: ideas — a chandelier through a ballroom, a beehive,
    a wobbling jelly, a snowman in the sun.
 
