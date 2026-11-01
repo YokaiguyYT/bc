@@ -87,6 +87,9 @@ export default async function ({ page, base, out }) {
     await ph.tap('#h-back');
     await ph.tap('#m-play');
     await adv(ph, 0.4);
+    // (Play opens the Play screen: Jobs is the first tile)
+    await ph.tap('#p-jobs');
+    await adv(ph, 0.4);
     await ph.screenshot({ path: `${out}/touch-levels-landscape.png` });
     await ph.tap('[data-level="playground"]');
     await adv(ph, 1.5);
@@ -273,7 +276,8 @@ export default async function ({ page, base, out }) {
     await ph.tap('#j-back');
     await ph.tap('#o-back');
     await ph.tap('#m-play');
-    await ph.tap('[data-gen="number"]');
+    await ph.tap('#p-quick');
+    await ph.tap('#q-number');
     await ph.touchscreen.tap(...(await centre(ph, '.job-digits')));
     await ph.keyboard.insertText('123456');
     check('job number: typed digits enable Play', !(await ph.evaluate(() => document.getElementById('jn-go').disabled)), '');
