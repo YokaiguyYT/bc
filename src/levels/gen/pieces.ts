@@ -552,8 +552,9 @@ const corner: Piece = {
 
 const conveyor: Piece = {
   id: 'conveyor',
-  // (a piano on castors just rolls off with the belt)
-  weight: (g) => (g.cargo === 'piano' ? 0 : 0.6),
+  // (a piano on castors just rolls off with the belt, and the belt shoves a wide pane of
+  // glass, side-on, into the edge and pins it there)
+  weight: (g) => (g.cargo === 'piano' || g.cargo === 'glass' ? 0 : 0.6),
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;

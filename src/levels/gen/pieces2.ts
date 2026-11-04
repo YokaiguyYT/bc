@@ -218,7 +218,8 @@ const mud: Piece = {
     for (const z of [-3, -6.2, -9]) {
       const w = r.range(4.2, W - 0.4);
       const x = r.range(-(W - w) / 2, (W - w) / 2);
-      b.add({ type: 'box', pos: [x, 0.012, z], size: [w, 0.03, r.range(2.2, 3)], surface: 'plain', color: 0x5a3f28, slow: 0.5, radius: 0.01, castShadow: false });
+      // (almost flush: a lip of even 3 cm stops the piano's castors dead)
+      b.add({ type: 'box', pos: [x, -0.011, z], size: [w, 0.03, r.range(2.2, 3)], surface: 'plain', color: 0x5a3f28, slow: 0.5, radius: 0.004, castShadow: false });
     }
     b.cash(r.range(-2, 2), -6.2);
     b.go(0, -4);
