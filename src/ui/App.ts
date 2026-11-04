@@ -22,7 +22,7 @@ import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
-import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
+import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
 type Screen =
   | 'title'
@@ -432,6 +432,8 @@ export class App {
     const st = streak();
     const shiftBest = loadJSON<ShiftBest>('ff.shiftBest');
     const chaosBest = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
+    const cd = chaosDaily();
+    const cst = streak(new Date(), 'chaos');
     // returning players land on today's job until it's done; newcomers on the jobs
     const dailyFirst = !fresh && !dBest?.completed && !today?.delivered;
     this.setScreen(
@@ -466,6 +468,15 @@ export class App {
            <div class="sub">Courses where crazy things keep happening. Pick how much: Mild to ULTRA</div>
            <div class="best">${chaosBest ? `best: ${formatMoney(chaosBest.payout)} on ${chaosLevel(chaosBest.level).name}` : 'what happens? a surprise…'}</div>
          </button>
+         <button class="hub-tile chaos" data-nav id="p-chaosdaily">
+           <div class="icon">🌀</div>
+           <div class="name">Chaos Daily #${dailyNumber()}</div>
+           <div class="sub">Today's chaos, the same for everyone: ${chaosLevel(cd.level).icon} ${chaosLevel(cd.level).name}${cd.level === 5 ? ' (it’s the weekend!)' : ''}</div>
+           <div class="week" title="the last seven days">${lastWeek(new Date(), 'chaos')
+             .map((d) => `<span class="${d}">${d === 'done' ? '✓' : d === 'tried' ? '✗' : ''}</span>`)
+             .join('')}${cst.current ? `<b>🔥 ${cst.current}</b>` : ''}</div>
+           <div class="best">${todaysResult(new Date(), 'chaos')?.delivered ? `✅ survived today · next in ${untilNext()}` : triesToday(new Date(), 'chaos') ? `${triesToday(new Date(), 'chaos')} tries so far today` : 'not survived yet today'}</div>
+         </button>
          <button class="hub-tile" data-nav id="p-shift">
            <div class="icon">♾️</div>
            <div class="name">Endless shift</div>
@@ -481,6 +492,10 @@ export class App {
     this.bind('p-quick', () => this.showQuick());
     this.bind('p-shift', () => this.startShift());
     this.bind('p-chaos', () => this.showChaos());
+    this.bind('p-chaosdaily', () => {
+      const c = chaosDaily();
+      this.playGenerated('chaosDaily', { seed: c.seed, chaos: c.level, chaosMask: ALL_CHAOS });
+    });
     this.bind('p-back', () => this.showMenu());
   }
 
@@ -967,8 +982,8 @@ export class App {
   }
 
   /** A generated job: a random one, today's, or the next one in an endless shift. */
-  playGenerated(kind: 'random' | 'daily' | 'chaos', gen: GenParams) {
-    const label = kind === 'daily' ? 'Daily job' : kind === 'chaos' ? 'Chaos job' : 'Random job';
+  playGenerated(kind: 'random' | 'daily' | 'chaos' | 'chaosDaily', gen: GenParams) {
+    const label = kind === 'daily' ? 'Daily job' : kind === 'chaosDaily' ? 'Chaos Daily' : kind === 'chaos' ? 'Chaos job' : 'Random job';
     this.job = { kind, gen: { ...gen, label } };
     this.playDef(generateJob(this.job.gen));
   }
@@ -1130,7 +1145,7 @@ export class App {
     const def = s.def;
     const job = this.job ?? { kind: 'level', id: def.id };
     // generated jobs: a random job is a one-off (nothing to keep), today's job keeps today's best, a shift keeps a running total
-    const kept = job.kind === 'level' ? r : job.kind === 'daily' ? { ...r, levelId: dailyId() } : null;
+    const kept = job.kind === 'level' ? r : job.kind === 'daily' ? { ...r, levelId: dailyId() } : job.kind === 'chaosDaily' ? { ...r, levelId: 'chaos' + dailyId() } : null;
     const beat = kept ? recordResult(kept) : { payout: false, time: false };
     const stars = starsFor(r);
     const nextLevel = job.kind === 'level' ? PLAYABLE_LEVELS.find((l) => l.order > def.order) : undefined;
@@ -1151,9 +1166,24 @@ export class App {
         </div>`;
     }
     const surprises = (s.hazards.find((h) => h.hudLine) as { fired?: number } | undefined)?.fired ?? 0;
+    if (job.kind === 'chaosDaily') {
+      // today's chaos: kept like the daily, with its own streak and card (and the surprises survived)
+      const info = CARGO_INFO[def.cargo];
+      const lv = chaosLevel(def.gen?.chaos);
+      recordDaily({ delivered: r.success, condition: r.condition, time: r.time, payout: r.payout, stars, cargo: def.cargo, squares, twist: null }, new Date(), 'chaos');
+      const best = todaysResult(new Date(), 'chaos');
+      this.shareCard = best ? shareText(best, `${info.icon} ${info.name} · ${surprises} surprises`, new Date(), 'chaos', `${lv.icon} ${lv.name}`) : '';
+      const st = streak(new Date(), 'chaos');
+      shareBlock = `<div class="share">
+          <div class="squares" title="each square is a stretch of the course: 🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating">${squares}</div>
+          <p>${st.current ? `🔥 <b>${st.current}</b>-day chaos streak${st.best > st.current ? ` (best ${st.best})` : ''}` : "Deliver today's chaos to start a streak."} · next in ${untilNext()}</p>
+          <pre class="share-text">${esc(this.shareCard)}</pre>
+          <button class="btn small" data-nav id="r-share">📋 Copy today's chaos</button>
+        </div>`;
+    }
     // the best chaos delivery
     let chaosBestLine = false;
-    if (job.kind === 'chaos' && r.success && def.gen?.chaos) {
+    if ((job.kind === 'chaos' || job.kind === 'chaosDaily') && r.success && def.gen?.chaos) {
       const best = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
       if (!best || r.payout > best.payout) {
         saveJSON('ff.chaosBest', { payout: r.payout, level: def.gen.chaos });
@@ -1193,6 +1223,8 @@ export class App {
     const seedLine =
       job.kind === 'daily'
         ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
+        : job.kind === 'chaosDaily'
+          ? `<p style="font-size:14px">💥 Chaos Daily <b>#${dailyNumber()}</b> · ${chaosLevel(def.gen?.chaos).icon} ${chaosLevel(def.gen?.chaos).name} · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'} · the same chaos for everyone today</p>`
         : def.gen?.chaos
           ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b>${surprises ? ` · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'}` : ''}<br>Challenge a friend: Chaos → 🔢 A friend's number, on ${chaosLevel(def.gen.chaos).name}</p>`
           : def.gen && job.kind !== 'shift'
@@ -1972,7 +2004,7 @@ export class App {
 /** What's being played. */
 type Job =
   | { kind: 'level'; id: string }
-  | { kind: 'random' | 'daily' | 'chaos'; gen: GenParams }
+  | { kind: 'random' | 'daily' | 'chaos' | 'chaosDaily'; gen: GenParams }
   | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number };
 
 /** The best endless shift so far. */

@@ -44,16 +44,19 @@ interface Store {
   tries?: Record<number, number>;
 }
 
-const KEY = 'ff.daily';
-const load = (): Store => loadJSON<Store>(KEY) ?? { days: {} };
+/** Which daily: the usual one, or the Chaos Daily (each keeps its own days, streak and tries). */
+export type DailyKind = 'daily' | 'chaos';
+const KEYS: Record<DailyKind, string> = { daily: 'ff.daily', chaos: 'ff.chaosDaily' };
+const load = (kind: DailyKind = 'daily'): Store => loadJSON<Store>(KEYS[kind]) ?? { days: {} };
 
-export function todaysResult(d = new Date()): DayResult | null {
-  return load().days[dailyNumber(d)] ?? null;
+export function todaysResult(d = new Date(), kind: DailyKind = 'daily'): DayResult | null {
+  return load(kind).days[dailyNumber(d)] ?? null;
 }
 
 /** Keep the day's best go: a delivery beats none, then the bigger payout. */
-export function recordDaily(r: DayResult, d = new Date()) {
-  const s = load();
+export function recordDaily(r: DayResult, d = new Date(), kind: DailyKind = 'daily') {
+  const KEY = KEYS[kind];
+  const s = load(kind);
   const n = dailyNumber(d);
   const old = s.days[n];
   const better = !old || (r.delivered && !old.delivered) || (r.delivered === old.delivered && r.payout > old.payout);
@@ -64,8 +67,8 @@ export function recordDaily(r: DayResult, d = new Date()) {
 }
 
 /** Days in a row with a delivery, up to today (or yesterday, while today is still to play); and the longest ever. */
-export function streak(d = new Date()) {
-  const s = load();
+export function streak(d = new Date(), kind: DailyKind = 'daily') {
+  const s = load(kind);
   const today = dailyNumber(d);
   const ok = (n: number) => !!s.days[n]?.delivered;
   let n = ok(today) ? today : today - 1;
@@ -89,8 +92,8 @@ export function streak(d = new Date()) {
 }
 
 /** The last seven days, oldest first: delivered, tried, or not played. */
-export function lastWeek(d = new Date()): ('done' | 'tried' | 'none')[] {
-  const s = load();
+export function lastWeek(d = new Date(), kind: DailyKind = 'daily'): ('done' | 'tried' | 'none')[] {
+  const s = load(kind);
   const today = dailyNumber(d);
   return Array.from({ length: 7 }, (_, i) => {
     const r = s.days[today - 6 + i];
@@ -99,8 +102,17 @@ export function lastWeek(d = new Date()): ('done' | 'tried' | 'none')[] {
 }
 
 /** How many goes at today's job so far. */
-export function triesToday(d = new Date()) {
-  return load().tries?.[dailyNumber(d)] ?? 0;
+export function triesToday(d = new Date(), kind: DailyKind = 'daily') {
+  return load(kind).tries?.[dailyNumber(d)] ?? 0;
+}
+
+/** The Chaos Daily's number (the same course and chaos for everyone today) and level: ULTRA at weekends. */
+export function chaosDaily(d = new Date()) {
+  const key = `chaos daily ${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  const seed = 100000 + (hashSeed(key) % 900000);
+  const weekend = d.getDay() === 0 || d.getDay() === 6;
+  const level = weekend ? 5 : [2, 3, 3, 4, 4][hashSeed(key + ' level') % 5];
+  return { seed, level };
 }
 
 /** Time until tomorrow's job, like "5h 12m". */
@@ -111,14 +123,14 @@ export function untilNext(d = new Date()) {
 }
 
 /** The result as text to paste anywhere (no spoilers: just how it went, stretch by stretch). */
-export function shareText(r: DayResult, cargoLine: string, d = new Date()) {
+export function shareText(r: DayResult, cargoLine: string, d = new Date(), kind: DailyKind = 'daily', extra = '') {
   const t = r.twist ? TWISTS[r.twist] : null;
-  const st = streak(d);
+  const st = streak(d, kind);
   const mins = Math.floor(r.time / 60);
   const secs = String(Math.floor(r.time % 60)).padStart(2, '0');
-  const head = `Fragile Freight · Daily #${dailyNumber(d)}${t ? ` ${t.icon}` : ''}`;
+  const head = kind === 'chaos' ? `Fragile Freight · 💥 Chaos Daily #${dailyNumber(d)}${extra ? ` ${extra}` : ''}` : `Fragile Freight · Daily #${dailyNumber(d)}${t ? ` ${t.icon}` : ''}`;
   const how = r.delivered ? `${cargoLine} · ${Math.round(r.condition * 100)}% · ${mins}:${secs} ${'⭐'.repeat(r.stars)}` : `${cargoLine} · 💥 didn't make it`;
-  const tries = triesToday(d);
+  const tries = triesToday(d, kind);
   const goes = !r.delivered || !tries ? '' : tries === 1 ? ' · 🎯 first try' : ` · ${tries} tries`;
   const tail = `💵 $${r.payout.toLocaleString('en-US')}${goes}${st.current > 1 ? ` · 🔥 ${st.current} days` : ''}`;
   return [head, how, r.squares, tail].join('\n');

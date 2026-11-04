@@ -136,7 +136,11 @@ export interface HazardObj {
     | 'light'
     | 'tip'
     | 'chaos'
-    | 'chaosActs';
+    | 'chaosActs'
+    | 'turntable'
+    | 'bumper'
+    | 'trampoline'
+    | 'cannon';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */

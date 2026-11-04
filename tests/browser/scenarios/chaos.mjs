@@ -228,7 +228,8 @@ export default async function ({ page, base, shot }) {
   await trigger('blackout');
   await adv(2);
   const e1 = await exposure();
-  check('blackout: lights down', e1 < e0 * 0.4, [e0, +e1.toFixed(3)]);
+  const vig = await sess(() => Number(document.querySelector('.hud .blackout')?.style.opacity ?? 0));
+  check('blackout: lights down, dark round the edges', e1 < e0 * 0.6 && vig > 0.8, [e0, +e1.toFixed(3), vig]);
   await shot('chaos_blackout');
   await adv(9);
   const e2 = await exposure();
@@ -388,6 +389,27 @@ export default async function ({ page, base, shot }) {
   await click('#r-chaos');
   const again = await page.evaluate(() => window.__FF.game.session.def.gen);
   check('new chaos job: same level, new number', again.chaos === 2 && again.seed !== 4242, again);
+
+  // the Chaos Daily: its own tile, the same chaos for everyone today, its own card to share
+  await page.evaluate(() => localStorage.removeItem('ff.chaosDaily'));
+  await page.evaluate(() => window.__FF.app.showPlay());
+  await adv(0.1);
+  const cdTile = await page.evaluate(() => document.querySelector('#p-chaosdaily')?.textContent ?? '');
+  check('a Chaos Daily tile', /Chaos Daily #\d+/.test(cdTile), cdTile.replace(/\s+/g, ' ').slice(0, 90));
+  await click('#p-chaosdaily');
+  const cdj = await page.evaluate(() => window.__FF.game.session.def.gen);
+  check('…plays today\'s chaos', cdj.label === 'Chaos Daily' && cdj.chaos >= 2, cdj);
+  await page.evaluate(() => {
+    const s = window.__FF.game.session;
+    const g = s.def.goal.pos;
+    const V = s.cargo.lastHitPos.constructor;
+    for (const p of s.players) for (const h of p.hands) if (h.grip) p.release(h);
+    s.cargo.reset(new V(g[0], g[1] - 0.2, g[2]), 0);
+  });
+  for (let i = 0; i < 20 && (await page.evaluate(() => window.__FF.app.screen)) !== 'results'; i++) await adv(0.5);
+  const card = await page.evaluate(() => document.querySelector('.share-text')?.textContent ?? '');
+  check('…with a card to share', /Chaos Daily #\d+/.test(card) && /surprises/.test(card), card);
+  await shot('chaos_daily_results');
 
   console.log(checks.every(Boolean) ? 'ALL OK' : 'SOME FAILED');
 }

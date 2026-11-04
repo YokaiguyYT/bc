@@ -78,7 +78,7 @@ export const KITS: Partial<Record<CargoKind, CargoKit>> = {
   cake: { stand: cakeStand, y: 0.83, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 8, door: 3.4 },
   swan: { stand: carvingStand, y: 0.5 + 0.11 + 0.02, movers: [[-1.05, 0], [1.05, 0]], form: 'broad', tight: 'broad', stairs: false, maxSlope: 9, door: 3.4 },
   egg: { stand: pedestal, y: 0.42 + 0.387 + 0.02, movers: [[-1.0, 0], [1.0, 0]], form: 'broad', tight: 'broad', broad: [0.62, 0.72], stairs: false, maxSlope: 9, door: 3.4 },
-  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0, bot: { half: 1.3 } },
+  piano: { stand: floor, y: UprightPiano.rideHeight, yaw: 180, movers: [[-1.35, 0], [1.35, 0]], form: 'broad', tight: 'broad', broad: [1.15, 1.35], stairs: false, maxSlope: 5, door: 4.0, bot: { half: 1.3 }, avoid: ['turntable'] },
   // job 9's padded slot (shifted so the painting's centre, leaning back, is at the spot); picture facing back down the course
   painting: {
     stand: () => paintingStand(0, 0, -PAINT_DZ),
@@ -94,7 +94,7 @@ export const KITS: Partial<Record<CargoKind, CargoKit>> = {
     bot: { start: true },
     // it leans back from its picture: turned round on the way (in a corner, or dragged round by a belt) it would
     // lean off the easel, not onto it
-    avoid: ['corner', 'conveyor'],
+    avoid: ['corner', 'conveyor', 'turntable'],
   },
   // job 10's stand; the movers face the bouquet between them. It floats above head height: nothing with a door
   // frame or a roof

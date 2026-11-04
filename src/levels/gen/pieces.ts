@@ -26,6 +26,8 @@ export interface GenCtx {
   cargo: CargoKind;
   /** Tips pay this much more (a twist doubles them). */
   tipScale?: number;
+  /** A chaos job (1..5): its funfair pieces come up too. */
+  chaos?: number;
 }
 
 /** Bot steps: [x, z, formation] waypoints (level coordinates), or a wait. */
@@ -736,7 +738,107 @@ const seesaw: Piece = {
   },
 };
 
-export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift, swingDoors, bridge, ferry, seesaw];
+// ---------------------------------------------------------------- chaos jobs only: funfair pieces
+
+const turntable: Piece = {
+  id: 'turntable',
+  weight: (g) => (g.chaos ? 0.8 : 0),
+  build(b) {
+    const r = b.g.rng;
+    const L = 10;
+    const z = -L / 2;
+    b.ground(0, -L);
+    const R = 3.2;
+    const spin = (r.chance(0.5) ? 1 : -1) * (0.3 + b.g.difficulty * 0.3);
+    b.world({ type: 'hazard', kind: 'turntable', pos: b.f.p(0, 0.02, z), params: { radius: R, speed: spin } });
+    b.cash(r.range(-1.8, 1.8), z + r.range(-1.5, 1.5), { risky: true });
+    // straight over the middle, where it turns slowest
+    b.go(0, z + R + 0.6);
+    b.go(0, z);
+    b.go(0, z - R - 0.6);
+    b.go(0, -L);
+    b.tip(0, z + R + 1.5, 'A turntable! Straight over the middle, where it turns slowest.', 3);
+    return { length: L };
+  },
+};
+
+/** Rows of things down one side, leaving a gap on the other side (that swaps each row): bumpers or trampolines. */
+function weave(b: Build, kind: 'bumper' | 'trampoline', size: number) {
+  const r = b.g.rng;
+  const k = b.g.kit;
+  const rows = 3;
+  const step = r.range(3.6, 4.2);
+  const L = step * (rows + 1);
+  b.ground(0, -L);
+  const pass = Math.min(W - 1.4, k.door + 0.9);
+  let side = r.chance(0.5) ? 1 : -1;
+  for (let i = 1; i <= rows; i++) {
+    const z = -step * i;
+    const n = Math.max(1, Math.floor((W - pass) / (size * 2.3)));
+    for (let j = 0; j < n; j++) {
+      const x = side * (W / 2 - size - 0.15 - j * size * 2.3);
+      b.world({ type: 'hazard', kind, pos: b.f.p(x, 0, z + (j % 2 ? 0.4 : -0.4)), params: kind === 'bumper' ? { radius: size, kick: 4.5 + b.g.difficulty * 2 } : { radius: size, bounce: 7.5 } });
+    }
+    const pc = -side * (W / 2 - pass / 2);
+    if (i === 2) b.cash(side * (W / 2 - size - 0.15), z, { y: kind === 'trampoline' ? 1.6 : 1.1, risky: true });
+    b.go(pc * 0.7, z + 1.3, k.tight);
+    b.go(pc * 0.7, z - 1.3, k.tight);
+    side = -side;
+  }
+  b.go(0, -L);
+  return L;
+}
+
+const bumpers: Piece = {
+  id: 'bumpers',
+  weight: (g) => (g.chaos ? 0.8 : 0),
+  build(b) {
+    const L = weave(b, 'bumper', 0.45);
+    b.tip(0, -1.5, "Pinball bumpers! Touch one and you're flying.", 3);
+    return { length: L };
+  },
+};
+
+const trampolines: Piece = {
+  id: 'trampolines',
+  weight: (g) => (g.chaos ? 0.8 : 0),
+  build(b) {
+    const L = weave(b, 'trampoline', 0.95);
+    b.tip(0, -1.5, 'Trampolines! Step on one and up you go (the load too, if you set it down there).', 3);
+    return { length: L };
+  },
+};
+
+const cannons: Piece = {
+  id: 'cannons',
+  weight: (g) => (g.chaos ? 0.7 : 0),
+  build(b) {
+    const r = b.g.rng;
+    const L = 12;
+    b.ground(0, -L, { edges: false });
+    const zs = [-3.6, -8.4];
+    // edges, with gaps where the cannons fire across
+    b.edges(0, zs[0] + 0.9);
+    b.edges(zs[0] - 0.9, zs[1] + 0.9);
+    b.edges(zs[1] - 0.9, -L);
+    let s = r.chance(0.5) ? 1 : -1;
+    for (const z of zs) {
+      const pos = b.f.p(s * (W / 2 + 1.0), 0, z);
+      const period = 3.4 + r.range(0, 0.8) - b.g.difficulty * 0.4;
+      b.world({ type: 'hazard', kind: 'cannon', pos, params: { yaw: b.f.yaw(s > 0 ? -90 : 90), period, phase: r.next(), speed: 9 } });
+      b.go(0, z + 1.7);
+      b.wait({ wait: 'cannon', at: [pos[0], pos[2]] });
+      b.go(0, z - 1.7);
+      s = -s;
+    }
+    b.cash(0, -6, { risky: true });
+    b.go(0, -L);
+    b.tip(0, -1.5, 'Cannons! Wait for a shot to fly past, then hurry across.', 3);
+    return { length: L };
+  },
+};
+
+export const PIECES: Piece[] = [flat, rampPiece, stairsPiece, door, slalom, wreckingBall, traffic, lasers, ice, people, corner, conveyor, lift, swingDoors, bridge, ferry, seesaw, turntable, bumpers, trampolines, cannons];
 
 // ---------------------------------------------------------------- start, checkpoint, finish
 

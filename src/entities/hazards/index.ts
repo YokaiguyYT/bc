@@ -9,3 +9,4 @@ import './museum';
 import './tips';
 import './chaos';
 import './chaos2';
+import './funhouse';

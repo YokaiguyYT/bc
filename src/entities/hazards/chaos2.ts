@@ -490,7 +490,8 @@ class ChaosCompanion implements Hazard, ChaosActs {
           for (const q of ps) {
             const dist = Math.hypot(q.bodyPos.x - p.x, q.bodyPos.z - p.z);
             if (dist < 2.8) {
-              q.knock(3);
+              // (on Mild it only throws them off balance: a fall can cost a fragile load)
+              if (L >= 2) q.knock(3);
               q.applyBlast(_v.set(q.bodyPos.x - p.x, 0, q.bodyPos.z - p.z).normalize().multiplyScalar(3).setY(2.5).multiplyScalar(q.totalMass));
             } else if (dist < 6) q.applyBlast(new THREE.Vector3(0, 1.6 * q.totalMass, 0));
           }
@@ -569,7 +570,7 @@ class ChaosCompanion implements Hazard, ChaosActs {
         if (dist < 0.9 && this.beeCool <= 0) {
           // stung! (and off they go after the other one)
           this.beeCool = 1.6;
-          target.knock(1.5);
+          if (L >= 2) target.knock(1.5);
           const ang = Math.random() * Math.PI * 2;
           target.applyBlast(_v.set(Math.cos(ang) * 2, 1.5, Math.sin(ang) * 2).multiplyScalar(target.totalMass));
           this.beeTarget++;

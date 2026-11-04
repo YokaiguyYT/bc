@@ -777,6 +777,20 @@ export default async function ({ page, base, shot }) {
         }
         return t;
       }
+      if (w.wait === 'cannon') {
+        // go just after the cannon nearest `at` fires (its ball is across and away)
+        const cans = s.hazards.filter((h) => h.pos && typeof h.period === 'number' && typeof h.phase === 'number' && Array.isArray(h.balls));
+        const can = cans.reduce((a, b) => (Math.hypot(b.pos.x - w.at[0], b.pos.z - w.at[1]) < Math.hypot(a.pos.x - w.at[0], a.pos.z - w.at[1]) ? b : a));
+        const since = () => {
+          const f = (s.physics.time / can.period + can.phase) % 1;
+          return (f < 0 ? f + 1 : f) * can.period;
+        };
+        while (t < 20 && !(since() > 0.9 && since() < 1.2)) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
+        }
+        return t;
+      }
       if (w.wait === 'ball') {
         // go right after the wrecking ball swings through (it is away the longest then)
         // the ball nearest `at` (there can be more than one)

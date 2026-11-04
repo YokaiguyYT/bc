@@ -45,7 +45,7 @@ const SUNSET: Partial<Theme> = { sunDir: [-0.75, 0.42, 0.3], skyTop: 0x5a78c8, s
 const NIGHT: Partial<Theme> = { skyTop: 0x16203a, skyHorizon: 0x3a4670, fog: 0x2a3358, sun: 0xc8d6ff, sunIntensity: 1.6, sunDir: [0.3, 0.85, 0.45], hemiSky: 0xa8b4e0, hemiGround: 0x5a5068, hemiIntensity: 1.1, cloudColor: 0x5a6488, exposure: 1.08 };
 
 /** Extra seconds a hazard costs (waiting for gaps and swings), for par time. */
-const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2, seesaw: 3 };
+const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2, seesaw: 3, turntable: 2, bumpers: 4, trampolines: 4, cannons: 6 };
 
 export function generateJob(p: GenParams): LevelDef {
   const rng = new Rng(p.seed);
@@ -60,7 +60,7 @@ export function generateJob(p: GenParams): LevelDef {
   const chaos = p.chaos ? Math.max(1, Math.min(5, Math.round(p.chaos))) : 0;
   const difficulty = Math.max(0, Math.min(1, p.difficulty ?? (chaos ? 0.3 + 0.1 * chaos : rolled.difficulty)));
   const count = p.pieces ?? (chaos ? 4 + chaos : Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0));
-  const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1 };
+  const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1, chaos };
   const when = twist === 'night' ? 'night' : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
   const opener = rng.pick(OPENERS);
   const lead = when === 'night' ? rng.pick(NIGHT_OPENERS) : opener;
