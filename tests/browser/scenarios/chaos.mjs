@@ -1,5 +1,5 @@
-// Chaos jobs: the Chaos screen (a slider from Mild to ULTRA, kinds on and
-// off, all by keyboard), a chaos job with its director, each kind of chaos
+// Chaos jobs: the Chaos screen (a slider from Mild to ULTRA by keyboard, and
+// no list of what can happen), a chaos job with its director, each kind of chaos
 // doing what it says (and the world put back after), money rain paying, the
 // HUD line and banners, the chaos pay on the results card, and nothing left
 // changed after quitting mid-chaos.
@@ -33,7 +33,7 @@ export default async function ({ page, base, shot }) {
   check('the Play screen has a Chaos tile', tile, tile);
   await click('#p-chaos');
   check('Chaos screen', (await page.evaluate(() => window.__FF.app.screen)) === 'chaos', await page.evaluate(() => window.__FF.app.screen));
-  // keyboard: up from Start lands on the kinds, then the slider
+  // keyboard: up from Start lands on the slider
   await key('ArrowUp');
   for (let i = 0; i < 6 && (await focused()) !== 'ch-level'; i++) await key('ArrowUp');
   check('the slider can be focused', (await focused()) === 'ch-level', await focused());
@@ -49,11 +49,9 @@ export default async function ({ page, base, shot }) {
   check('← turns it down', c?.level === 4, c);
   await key('ArrowRight');
   await shot('chaos_setup');
-  await click('#ch-k8');
-  c = await saved();
-  check('critters off', c?.mask === 7, c);
-  await click('#ch-k8');
-  check('…and on again', (await saved())?.mask === 15, await saved());
+  // no spoilers: the screen doesn't list what can happen
+  const spoil = await page.evaluate(() => document.querySelector('.chaos-setup')?.textContent ?? '');
+  check("the Chaos screen doesn't spoil the surprises", !/meteor|chicken|UFO|quake|gravity|barrel/i.test(spoil) && !document.querySelector('.chaos-kind'), spoil.slice(0, 120));
 
   // a friend's chaos job number, played at the slider's level
   await click('#ch-num');

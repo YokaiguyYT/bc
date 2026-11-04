@@ -21,7 +21,7 @@ import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
-import { ALL_CHAOS, CHAOS_KINDS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
+import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
 type Screen =
@@ -47,6 +47,9 @@ type Screen =
   | 'quick'
   | 'locker'
   | 'chaos';
+
+/** The developer tuning panel (backquote) only with ?dev in the address. */
+const DEV = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dev');
 
 /** Bump to show the main menu's "New:" line again after an update. */
 const NEWS = 'build10';
@@ -201,7 +204,8 @@ export class App {
       return;
     }
     const b = this.game.keyboard.bindings;
-    if (b.dev.includes(code)) {
+    // the tuning panel is for developers only (?dev in the address)
+    if (DEV && b.dev.includes(code)) {
       this.toggleDev();
       return;
     }
@@ -460,7 +464,7 @@ export class App {
            <div class="icon">💥</div>
            <div class="name">Chaos</div>
            <div class="sub">Courses where crazy things keep happening. Pick how much: Mild to ULTRA</div>
-           <div class="best">${chaosBest ? `best: ${formatMoney(chaosBest.payout)} on ${chaosLevel(chaosBest.level).name}` : 'meteors, quakes, chickens…'}</div>
+           <div class="best">${chaosBest ? `best: ${formatMoney(chaosBest.payout)} on ${chaosLevel(chaosBest.level).name}` : 'what happens? a surprise…'}</div>
          </button>
          <button class="hub-tile" data-nav id="p-shift">
            <div class="icon">♾️</div>
@@ -510,16 +514,14 @@ export class App {
 
   // ------------------------------------------------------------ chaos jobs
 
-  /** Chaos: how much (a slider from Mild to ULTRA CHAOS) and what kinds, then a chaos job. */
+  /** Chaos: how much (a slider from Mild to ULTRA CHAOS), then a chaos job. What happens is a surprise. */
   private showChaos(focus?: string) {
     this.startAttract();
-    const c = { level: 3, mask: ALL_CHAOS, ...(loadJSON<{ level: number; mask: number }>('ff.chaos') ?? {}) };
+    // (every kind of chaos, always: the menu doesn't spoil what's coming)
+    const c = { level: 3, ...(loadJSON<{ level: number }>('ff.chaos') ?? {}), mask: ALL_CHAOS };
     const lv = chaosLevel(c.level);
     const best = loadJSON<{ payout: number; level: number }>('ff.chaosBest');
     const notches = CHAOS_LEVELS.map((_, i) => `<span class="notch ${i < c.level ? 'on' : ''} l${i + 1}" data-level="${i + 1}"></span>`).join('');
-    const kinds = CHAOS_KINDS.map(
-      (k) => `<button class="chaos-kind ${c.mask & k.bit ? '' : 'off'}" data-nav id="ch-k${k.bit}"><span class="k-name">${k.icon} ${k.name}</span><span class="k-text">${k.text}</span></button>`,
-    ).join('');
     this.setScreen(
       'chaos',
       `<div class="logo" style="font-size:44px">💥 CHAOS</div>
@@ -530,7 +532,7 @@ export class App {
            <div class="track">${notches}</div>
            <div class="ends"><span>← less</span><span>${esc(lv.text)} · pays ×${lv.pay}</span><span>more →</span></div>
          </div>
-         <div class="chaos-kinds">${kinds}</div>
+         <p class="chaos-tease">🎁 What happens is a surprise. Expect the unexpected.</p>
          ${best ? `<p class="hint-line" style="margin:0">Best chaos delivery: <b>${formatMoney(best.payout)}</b> on ${chaosLevel(best.level).name}</p>` : ''}
          <div class="row">
            <button class="btn primary" data-nav ${focus ? '' : 'data-default'} id="ch-go">Start a chaos job →</button>
@@ -547,7 +549,7 @@ export class App {
         this.updateFocus();
       }
     }
-    const save = (n: { level: number; mask: number }) => saveJSON('ff.chaos', n);
+    const save = (n: { level: number }) => saveJSON('ff.chaos', { level: n.level });
     this.sliderStep = (d) => {
       const level = Math.max(1, Math.min(5, c.level + d));
       if (level === c.level) return;
@@ -566,14 +568,6 @@ export class App {
       save({ ...c, level: (c.level % 5) + 1 });
       this.showChaos('ch-level');
     });
-    for (const k of CHAOS_KINDS)
-      this.bind(`ch-k${k.bit}`, () => {
-        const mask = c.mask ^ k.bit;
-        // at least one kind of chaos
-        if (!mask) return this.toast('Leave at least one kind of chaos on!');
-        save({ ...c, mask });
-        this.showChaos(`ch-k${k.bit}`);
-      });
     this.bind('ch-go', () => this.playGenerated('chaos', { seed: randomSeed(), chaos: c.level, chaosMask: c.mask }));
     this.bind('ch-num', () => this.showJobNumber({ level: c.level, mask: c.mask }));
     this.bind('ch-back', () => this.showPlay());

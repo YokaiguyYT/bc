@@ -165,7 +165,7 @@ The bot isn't made for chaos (it doesn't dodge), so sweeps only check that Mild 
 
 ## Tuning still needed
 
-Every number below lives in `src/config/tuning.ts` and has a slider in the dev panel (`` ` `` key). So far they're tuned against the bot and screenshots, not human hands. Playtest these first:
+Every number below lives in `src/config/tuning.ts` and has a slider in the dev panel (`` ` `` key, only with `?dev` in the address). So far they're tuned against the bot and screenshots, not human hands. Playtest these first:
 
 - **Wobbliness:** `balance.uprightK`, `balance.waddle`, `arms.swing`.
 - **Grip strength versus cargo weight:** `grip.handForce`, `grip.slipStretch`, `grip.slipTime`. Too strong and one mover can carry everything alone. Too weak and hands keep slipping.

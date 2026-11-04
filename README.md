@@ -64,7 +64,6 @@ Player 2 keeps their right hand on the arrows and their left hand on `K` and `L`
 - `Q` / `E`: spin the camera (movement follows the camera)
 - `1` `2` `3` `4`: say something over your mover (👋 Hi! · 👍 Nice! · 😬 Careful! · ✋ Wait!). Player 2 on the same keyboard uses `7` `8` `9` `0`; online, you both use `1`–`4`.
 - `Esc` or `P`: pause
-- `` ` `` (backquote): developer tuning panel
 
 You can change every key under **Controls**. That screen also has a **key tester**. Mac keyboards can't always register lots of keys at once ("ghosting"), so both players should hold their keys together there and check they all light up.
 
@@ -112,14 +111,7 @@ There's also a **Practice Yard** to learn the controls.
 
 ### 💥 Chaos
 
-Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and which kinds (switch any off):
-
-- **☄️ From the sky:** meteor showers (a red ring shows where each one lands), beach-ball barrages, raining boxes, and **money rain** (grab the notes!)
-- **🌪️ Ground & weather:** earthquakes, hurricanes, flash freezes (every floor turns to ice), rolling barrels, a pea-souper fog
-- **🌙 Weird physics:** moon gravity, speed shoes, super jumps, and a **UFO** that beams your load up (hold on to it!)
-- **🐔 Critters:** chicken stampedes and chicken rain (you can pick the chickens up)
-
-The higher the slider, the more often (on ULTRA, sometimes two at once) and the closer to your load. A banner and a line under the cargo card say what's going on. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. It works online too.
+Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and go. What happens is a surprise (there's a lot of it, and it happens more often, closer to your load, and sometimes several at once the higher the slider goes). A banner says what's going on as it happens. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. Give a friend the job number from your results card (Chaos → 🔢 A friend's number) to play the same chaos. It works online too.
 
 ### 👕 The Locker
 

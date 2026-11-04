@@ -1773,3 +1773,8 @@ button.btn .cash {
   color: var(--ink-soft);
   text-align: center;
 }
+.chaos-tease {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ink-soft);
+}
