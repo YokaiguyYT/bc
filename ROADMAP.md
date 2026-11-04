@@ -14,7 +14,7 @@ checks, push.
 - Must keep working from a **double-clicked single file** (`npm run build:single`
   → `play/FragileFreight.html` and `docs/index.html`) in Safari and Chrome, and
   on a **school Chromebook** (Chrome, weak GPU, school Wi-Fi).
-- The owner plays at school: **online play (MacBook + Chromebook) must keep working.**
+- **Online play (MacBook + Chromebook, on school-style networks) must keep working.**
   Bump `NET_VERSION` (`src/net/peer.ts`) whenever random jobs come out
   differently: the online guest rebuilds them from their number.
 
@@ -59,6 +59,15 @@ over many numbers and greps each log for `"state":"delivered"`.
   **Locker** (over 40 things to wear, from the wallet or from 14 quests, online too).
   New scenarios: `locker`, `chaos`; `online` and `online-gen` cover outfits,
   pay and chaos online.
+- Build 11: **28 chaos events** (with a siren before each, combos, chaos-only
+  obstacles and a **Chaos Daily**; the Chaos screen no longer lists them);
+  random jobs got nine more pieces, variants of old ones, eight more settings,
+  twists and hilly routes; hand-made jobs come at different times of day and
+  weather, with **bonus goals**; **jobs 11–15** (a chandelier, a beehive, a
+  giant jelly, a snowman in the sun, a space rocket); the **company rank** up
+  to CEO, trails, dances, emote packs and cargo skins in the Locker; a
+  **ghost** of your best run; the dev panel hidden behind `?dev`. New
+  scenarios: `newjobs`, `variety`, `flair`, `chaoslooks`, `tour`.
 
 ## Work items (independent; pick any)
 
@@ -88,8 +97,9 @@ slopes, door widths), and keep the piano off anything it rolls off.
    sharp things and low ceilings for the balloons; and let the painting take
    corners (the bot, or players, can turn it round and it then leans off the
    easel: a two-sided easel would fix that).
-2. More hand-made jobs: ideas — a chandelier through a ballroom, a beehive,
-   a wobbling jelly, a snowman in the sun.
+2. Jobs 11–15 are done (build 11). Next: let their loads into random jobs
+   (each needs a start kit, a drop-off stand and rules in `kits.ts`), and
+   playtest their tuning (see NOTES).
 
 ### D. Mobile / touch
 Done (`input/Touch.ts`, `touch` scenario). Still to do: try it on a real
@@ -105,11 +115,10 @@ iPhone and Android phone; maybe a lower default quality on phones.
 2. Instance repeated decorations (trees, rails, posts); fewer shadow casters.
 
 ### H. Chaos and Locker ideas
-1. More chaos: a giant rolling snowball, a power cut (dark, with lit-up
-   movers), a stampede of shopping trolleys, birds that steal your hat (and
-   you chase them).
-2. A shareable chaos result like the daily's (the job number would need the
-   chaos level in it, or a chaos switch on the job-number screen).
+1. More chaos: a giant rolling snowball, a stampede of shopping trolleys,
+   birds that steal your hat (and you chase them).
+2. **Mini-games** (the owner said "maybe later"): short party games between
+   jobs.
 3. More Locker items (shoes, held props like a mop or a coffee), outfits that
    change the mover's walk, and a quest for each hand-made job.
 

@@ -95,7 +95,17 @@ Mostly for joining a friend's game online (they host on a laptop): open the same
 9. **Gone With the Wind** (a gilt-framed painting): a sail in the wind. Out of a rooftop studio past the extractor fans, single file over the gangway in a lull, along the windy cliff path and over the causeway to the lighthouse keeper's cottage. Keep its thin edge to the wind or the gusts rip the canvas.
 10. **Up, Up and Away** (a balloon bouquet): a birthday delivery through the funfair. Let go and it floats off; anything pointy pops a balloon. Weave past the darts stall and the cacti, duck through the pin-studded Tunnel of Love (the bouquet wants to rise), past the hedgehog topiary and onto the party table.
 
+11. **Swing Time** (a crystal chandelier): out of the antiques store, across the ballroom between the waltzing couples, up the grand staircase and onto the stage. Its crystals really swing: start, stop or turn sharply and they clink, chip and fall off.
+12. **Mind the Bees** (a beehive, bees and all): across the farm past the chickens and an excitable dog, through the gate, over the footbridge and through the orchard's sprinklers. Jerky starts, stops and bumps make the bees cross; get them angry and they come out and sting you off your feet. Stand still and they calm down.
+13. **Wibble Wobble** (a giant jelly): from the hotel kitchen, through the swing doors, between the waiters and up to the birthday table. It wobbles at every start and stop; let it settle, or it tears.
+14. **Snow Business** (a snowman): a scorching day in the park. Out in the sun it melts, so dash from shade to shade, keep away from the barbecues and get it into the Winter Wonderland tent.
+15. **Lift Off** (a space rocket): carried end to end through a hangar full of welders. Their sparks heat it up, and if it overheats the engine lights and it drags you off nose-first. Cool it by the fans, then up the ramp to the launch pad.
+
 There's also a **Practice Yard** to learn the controls.
+
+**Every play is a bit different:** most jobs come at a different time of day each time (day, sunset or night), and some in the rain (wet, slippery floors) or snow. Most jobs also have **two bonus goals** (no falls, beat a time, keep it above 90%…), named at the start, that pay extra the first time you manage them; the job card shows how many you've done.
+
+**👻 Ghost:** your fastest delivery of each job is kept, and next time a see-through ghost of that run plays alongside you to race against (turn it off in Settings).
 
 ### The Play screen
 
@@ -103,7 +113,8 @@ There's also a **Practice Yard** to learn the controls.
 
 - **🚚 Jobs:** the hand-made jobs above, with the **Practice Yard** first (marked START HERE the first time).
 - **📅 Daily #N:** one course for everyone each day, Wordle-style, with a **twist** (night, rush hour, double tips, an extra-long route, busy streets). Deliver it every day for a 🔥 **streak**; the last seven days show as ticks. The results card gives you a spoiler-free line of squares (🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating · 💥 broke here, one per stretch of course) and a **Copy** button to paste it in the group chat.
-- **🎲 Quick job:** a brand-new random course (any cargo, any place, a string of obstacles: ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, ferries, bridges with no railings, corners), or **type a job number** from a friend's results card to play that exact course.
+- **🎲 Quick job:** a brand-new random course (any cargo, any place, a string of obstacles: ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, ferries, bridges with no railings, collapsing planks, level crossings with trains, crane beams, sprinklers, escalators, narrow ledges, stepping stones, mud, spinning arms, corners), in all sorts of places (streets, parks, docks, a market, an airport, a factory, rooftops at sunset, a haunted graveyard at night, the desert, the jungle, a pirate cove…). Some come with a **twist**: rain, fog, a hilly route, an extra-fragile load (pays more), or no checkpoints (pays more). Or **type a job number** from a friend's results card to play that exact course.
+- **🌀 Chaos Daily #N:** one chaos course for everyone each day (wilder at weekends), with its own share line.
 - **💥 Chaos:** courses where crazy things keep happening (below).
 - **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
 
@@ -111,19 +122,22 @@ There's also a **Practice Yard** to learn the controls.
 
 ### 💥 Chaos
 
-Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and go. What happens is a surprise (there's a lot of it, and it happens more often, closer to your load, and sometimes several at once the higher the slider goes). A banner says what's going on as it happens. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. Give a friend the job number from your results card (Chaos → 🔢 A friend's number) to play the same chaos. It works online too.
+Separate from the usual jobs: pick **how much chaos** on a slider (🙂 Mild · 😬 Wild · 🤪 Bonkers · 😱 Mayhem · 💀 ULTRA CHAOS; the arrow keys move it) and go. What happens is a surprise: the Chaos screen doesn't spoil it (there's a lot of it, and it happens more often, closer to your load, and sometimes several at once the higher the slider goes). A siren gives you a moment's warning before each one, and a banner says what's going on. Chaos courses also have a few obstacles you'll only meet there. Chaos pays more (×1.25 on Mild up to **×3 on ULTRA**), and your best chaos delivery is kept. Give a friend the job number from your results card (Chaos → 🔢 A friend's number) to play the same chaos. It works online too.
 
 ### 👕 The Locker
 
-Every delivery pays into the company **wallet** (an existing save starts with what you'd already earned). In the **Locker** (main menu) each mover gets their own **colour**, **hat**, **face thing** and **something on the back**: beanies, cowboy, top and pirate hats, a traffic cone, bunny ears, a flower crown, shades, big glasses, a beard, a cape, a guitar, a balloon… Some things can't be bought: **14 quests** (deliver five jobs, pocket 25 tips, three flawless deliveries, a three-day daily streak, seven dailies, a five-job shift, deliver online, survive ULTRA CHAOS, survive 50 chaos surprises, a $3,000 payday…) win a propeller cap, a crown, a Viking helmet, a halo, a space helmet, a jetpack, angel wings, chaos goggles, solid gold and more. There are over 40 things to wear in all, and the Quests tab keeps the company records (deliveries, tips, best payout, best streak…). The camera circles the mover you're dressing, and **🎲 Surprise me** picks a random mix of what you own. Online, your mover wears *your* Locker's outfit on both screens (if you both picked the same colour, the guest's changes), and the guest gets paid into their own wallet too.
+Every delivery pays into the company **wallet** (an existing save starts with what you'd already earned). In the **Locker** (main menu) each mover gets their own **colour**, **hat**, **face thing** and **something on the back**: beanies, cowboy, top and pirate hats, a traffic cone, bunny ears, a flower crown, shades, big glasses, a beard, a cape, a guitar, a balloon… Some things can't be bought: **14 quests** (deliver five jobs, pocket 25 tips, three flawless deliveries, a three-day daily streak, seven dailies, a five-job shift, deliver online, survive ULTRA CHAOS, survive 50 chaos surprises, a $3,000 payday…) win a propeller cap, a crown, a Viking helmet, a halo, a space helmet, a jetpack, angel wings, chaos goggles, solid gold and more. There are over 40 things to wear in all, and the Quests tab keeps the company records (deliveries, tips, best payout, best streak…). The camera circles the mover you're dressing, and **🎲 Surprise me** picks a random mix of what you own.
 
-Some jobs happen at sunset or at night. Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
+Everything you earn also counts toward your **company rank**, from Trainee up through Mover, Senior Mover, Crew Lead, Foreman, Depot Manager, Regional Manager and VP of Moving to **CEO**. A promotion shows on the results card, and some Locker things only unlock at a rank. The Locker also has **trails** (hearts, bubbles, hot feet, sparkles, flower petals, money…) that follow your feet, **dances** your movers do after a delivery (jumping jacks, the wiggle, a conga…), **emote packs** (what your mover says with the emote keys) and **cargo skins** (gold, rainbow, sparkly). Online, your mover wears *your* Locker's outfit on both screens (if you both picked the same colour, the guest's changes), and the guest gets paid into their own wallet too.
+
+Every random course is checked to be fair: each obstacle is built so the cargo it's paired with can get through (no stairs for the piano, no ice under the cake, wider doors for big loads), and a test robot plays hundreds of them.
 
 ## Settings
 
 - **Graphics:** Fast / Balanced / Pretty. Pick **Fast** if Safari stutters.
 - **Cargo toughness:** Normal / Sturdy / Unbreakable, for a relaxed game.
 - **Screen shake:** on or off.
+- **Ghost of your best run:** on or off.
 
 ---
 

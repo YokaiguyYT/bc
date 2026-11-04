@@ -6,20 +6,22 @@ Design decisions, what still needs tuning, and known limitations.
 
 | Area | State |
 | --- | --- |
-| Eight jobs and the Practice Yard | Playable start to finish |
-| Jobs 9–10 (a painting in the wind, a balloon bouquet) | Playable; bot routes deliver both |
+| Fifteen hand-made jobs and the Practice Yard | Playable start to finish; a bot route delivers each one |
+| Hand-made job variety (time of day, rain or snow) and bonus goals | Done |
+| Ghost of your best run (hand-made jobs) | Done (not shown online) |
 | Touch controls (phones and tablets, mainly as the online guest) | Done; tested in Chromium's touch emulation, not on a real phone |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
-| Random jobs, endless shift | Done |
-| Play screen (Jobs, Daily, Quick job, Chaos, Endless shift) | Done |
+| Random jobs (more obstacles, 17 settings, twists, hilly routes), endless shift | Done |
+| Play screen (Jobs, Daily, Chaos Daily, Quick job, Chaos, Endless shift) | Done |
 | Daily (Wordle-style: number, twist, streak, shareable squares) | Done |
 | Cash tips on random courses | Done |
-| Chaos jobs (slider Mild → ULTRA, 15 kinds of chaos) | Done; online too |
-| The Locker (outfits, wallet, 14 quests) | Done; online too |
+| Chaos jobs (slider Mild → ULTRA, 28 kinds of chaos, a siren before each, combos, chaos-only obstacles) | Done; online too |
+| The Locker (outfits, trails, dances, emote packs, cargo skins, wallet, 14 quests) and the company rank (Trainee → CEO) | Done; online too |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click), GitHub Pages from `/docs` | Done |
+| Dev panel | Hidden: only with `?dev` in the address, then the `` ` `` key |
 | Gamepad | Not planned (by request) |
 | **Audio** | **Planned, not yet implemented** |
 
@@ -137,6 +139,18 @@ Two ways for the guest to see the game; the host's laptop always runs it.
 
 Tests (two tabs in one browser): `online` (connect, menus copied, the job built on the guest in step with the host, P2 from either layout, cargo damage, pause, video mode and back, the host quitting, leaving); `ONLY=relay` and `ONLY=direct` variants; `NET=ws://127.0.0.1:9000/peerjs` (the official PeerJS server software run locally), `NET=mqtt MQTT=ws://127.0.0.1:8888` (an MQTT broker run locally), both servers at once, and PeerJS unreachable (falls back to MQTT); `online-errors` (wrong code, third player, host stopping); `online-lag` prints how far behind the guest runs. The sandbox these were built in can't open WebSockets to the internet, so the public servers themselves weren't reached from here. WebRTC is untested in Safari's engine (the Linux WebKitGTK build has none), but light mode over the relay needs only WebSockets.
 
+## Jobs 11–15
+
+Each new load has one trick, written in its own cargo class, and a job built around it:
+
+- **Chandelier** (`Chandelier.ts`): twelve crystal drops swing as one damped pendulum. It's driven by the load's real sideways acceleration in the world, not by "felt gravity" in the load's frame: carried loads rock a degree or two with every step, close to the drops' natural swing, and that rocking pumped them up until they clinked all the way. They hang straight down however the chandelier tilts. Swung past `CLINK` they chip (`GAIN` sets how hard starts and stops swing them).
+- **Beehive** (`Beehive.ts`): `anger` rises with sideways acceleration above 3 m/s² (jerky starts and stops) and with real bumps, and drains slowly while moving and faster standing still. At 0.7 a swarm comes out, chases a mover, stings (knocks them over) and turns on the other one, until anger falls back under ~0.3 and they go home. The smooth bot never upsets them; the keyboard-style bot peaks at 0.6.
+- **Jelly** (`Jelly.ts`): a world-frame 2D spring (2.2 Hz) plus an up-down squish, shown by shearing and squashing the mould. Wobbling past `TEAR` tears it. The smooth bot delivers it at 99%; the keyboard-style bot at about 86%.
+- **Snowman** (`Snowman.ts`): melts like the ice swan, but out in the sun all the time (`SUN` is added to the warmth everywhere). Shade is a heater with negative power (under the parasols and trees, in the freezer and the tent); barbecues are a new heater style (`grill`). The bot loses ~10% on the way.
+- **Rocket** (`Rocket.ts`): carried lying down like the clock, resting on two of its X-shaped fins so it doesn't roll. Welders (a new heater style, `welder`, with sparks) raise its `heat`; at 100% the engine burns for 1.4 s, pushing it nose-first (an impulse each physics step: a force added in Rapier stays on until it's reset, which once fired it off at 74 m/s) and scorching it 10%. Cold air (the fans) cools it.
+
+The `newjobs` scenario checks each trick on its own. Hand-made jobs also roll a **variant** each play (`levels/variants.ts`: time of day, rain or snow from the job's `variety`), sent to the online guest with the level; and **bonus goals** (`goals`: no falls, under a time, keep it above a condition) pay $60 each the first time.
+
 ## Random jobs
 
 `src/levels/gen/`: a seeded generator strings course pieces together (ramps, stairs, doors, slaloms, wrecking balls, traffic with a traffic island, laser gates, ice, pedestrians, conveyor belts, lifts, swing doors, a bridge with no railings, a cable car, a see-saw, corners), in nine settings (docks, suburb, park, snow, office, sky islands, beach, building site, downtown), at day, sunset or night, each with a client line (“Mrs. Patel needs…”) drawn last so it never changes the course, with a start kit for the cargo (the same stands and heights as the hand-made jobs), a checkpoint every three obstacles and a drop-off at the end. Pieces are written in their own frame (enter at the origin heading -Z), so a course can turn west or east (never back toward the camera). Each piece also writes the test bot's route through it, so any job can be checked: `GEN=<number> CARGO=<kind> … run.mjs deliver`.
@@ -146,6 +160,8 @@ Fairness rules learned from the bot: wrecking balls swing slowly (7.5–8.8 s a 
 The painting and the balloons are in random jobs too (ten kinds of cargo): the painting starts in job 9's padded slot and goes onto job 9's gallery easel, and never goes round a corner or over a conveyor belt (it leans back from its picture, so turned round on the way it would lean off the easel, not onto it; the belt drags the movers round); the balloons start on job 10's stand, are tied onto a party table at the drop-off, keep away from doorways, swing doors and the cable car (the bouquet floats above door height), and if let go they're lost 9 m above the highest floor (back to the last checkpoint). Both are picked up off their stands by the bot as players do.
 
 Sweeps (the bot plays a batch of numbered jobs, cycling the cargo): the first one delivered 7 of 16; after the fixes above, 13 of 16, and the three failures (pedestrians shoving the movers into a rail, and a lift leaving with one mover still stepping on) led to the pedestrian and lift rules. With all the pieces in build 7, 15 of 16 (the one failure, a belt carrying the glass into the railing, led to the bot starting belts upstream), plus 13 of 13 jobs chosen for crossings, wrecking balls and see-saws. Run one with a loop over `GEN=<n> CARGO=<kind> … run.mjs deliver` and grep each log for `"state":"delivered"`. Build 10 (denser courses with tips): 8 of 8, one of each cargo (TV, aquarium, clock, glass, cake, painting, balloons, piano), all at 94–100%; Mild chaos jobs: 5 of 6 (the glass failure was a gust on ice, since softened).
+
+Build 11 added more pieces (`gen/pieces2.ts`: collapsing planks, a level crossing with trains, a sliding crane beam, sprinklers, an escalator, a narrow ledge, stepping stones, mud, spinning arms), variants of older ones (a four-cone slalom, double wrecking balls, lorries in the traffic, two or three laser gates), eight more settings (market, airport, factory, rooftops at sunset, a haunted graveyard at night, desert, jungle, pirate cove) and twists for random jobs (rain, fog, hilly, extra-fragile ×1.5 pay, no checkpoints ×1.3 pay). Sweeps of the new pieces: the first batch's only failures were the spinners (now further apart), the second 14 of 14.
 
 ## Daily
 
@@ -157,11 +173,15 @@ Sweeps (the bot plays a batch of numbered jobs, cycling the cargo): the first on
 
 Online: every body it can throw (8 rocks, 4 beach balls, 8 boxes, 4 barrels, 8 chickens) is made up front, disabled and parked far below, in the same order on both laptops, so the guest's copy moves them from the host's snapshots like any other body. What bodies don't show (the quake, the wind, the UFO, the fog, the money notes, what's on) is in `netState`; banners are a game event. Moon gravity and super jumps change the shared tuning while they last; the director puts it back when the event ends and when the job is left. New events stop once the job is delivered or lost. `trigger(id)` starts one on demand (tests).
 
+Build 11 doubled the events (28 in all; the list is `CHAOS_EVENTS` in `src/game/chaos.ts`, kept out of the menus so they stay a surprise). Most of the new ones live in a second hazard, `ChaosCompanion` (`hazards/chaos2.ts`), that the director hands them to. A siren banner comes 1.2–1.8 s before each one, and on Mayhem and ULTRA two sometimes come together as a named combo. Chaos courses can also include four obstacles of their own (a turntable, bumpers, trampolines, cannons). **Chaos Daily** is one chaos course a day for everyone (level 5 at weekends), with its own best and share line.
+
 The bot isn't made for chaos (it doesn't dodge), so sweeps only check that Mild chaos jobs stay deliverable; see the chaos and online-gen scenarios for the rest.
 
 ## The Locker
 
 `src/game/outfits.ts` (items, quests, wallet, stats), `src/render/accessories.ts` (hats, face things and back things made of primitives; anything named `spin` or `flap` is animated by the rig) and `PlayerRig.applyOutfit`. The wallet is credited with every successful payout (an existing save starts with the sum of its best payouts); stats for quests start from the saved bests too. Online, the guest sends its P1 outfit when it joins; the host builds the job with `[its P1, the guest's]` (the guest's colour changes if it's the same) and sends the pair with the level, and sends each job's result so the guest's wallet and quests count it too.
+
+**Rank and extras.** Lifetime earnings (`stats.earned`) set the company rank (`RANKS`: Trainee $0 … CEO $90,000); some items need a rank. Trails, dances, emote packs and cargo skins are Locker slots like hats. **Ghosts** (`game/ghost.ts`) record the movers and the load 8 times a second and keep the fastest delivery per hand-made job in local storage.
 
 ## Tuning still needed
 
@@ -177,6 +197,7 @@ Every number below lives in `src/config/tuning.ts` and has a slider in the dev p
 - **Laser gates:** `on`/`off`/`phase` in the museum level (2.2 s on, 3.2 s off, staggered).
 - **The egg's kicks:** strength and interval in `DinoEgg.preStep`.
 - **The piano:** castor friction and damping in `UprightPiano.ts`; the cable car's `speed`/`spacing` in the hills level.
+- **Jobs 11–15:** the chandelier's `GAIN`/`CLINK`, the bees' anger rates, the jelly's `GAIN`/`TEAR`, the snowman's `MELT`/`SUN` and the shade's `power`, the rocket's heat rate and the welders' `radius`/`power`.
 
 For reference, this is the cargo condition the bot delivered with (same in Chromium and WebKit):
 
@@ -190,6 +211,11 @@ For reference, this is the cargo condition the bot delivered with (same in Chrom
 | Ice swan | 93.8% (almost all of it melting; 93.7% in WebKit) |
 | Dinosaur egg | 100% (through the pendulum and all three laser gates; same in WebKit) |
 | Upright piano | 100% (down the hill, past the cable car and the crooked street) |
+| Chandelier | 100% (keyboard-style: crystals clink, ~1% lost to them) |
+| Beehive | 100% (the bees stay calm; keyboard-style they buzz but don't swarm) |
+| Giant jelly | 99% (keyboard-style: ~86%) |
+| Snowman | ~90% (melting) |
+| Space rocket | 100% (down the middle, clear of the sparks) |
 
 The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop precisely or re-grab a dropped corner. It delivers the clock at ~87% but often stalls or drops things elsewhere, so treat its numbers as a worst case.
 
@@ -201,8 +227,8 @@ The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop p
 - **Online play hasn't been tried between two real Macs yet.** Everything except Safari's own WebRTC was tested (see Online play above). If the friend sees a black picture for more than a few seconds, the automatic fallback should kick in; if they never connect, being on the same Wi-Fi is the usual fix.
 - **Online has a little lag for the guest:** their keys travel to the host and the picture comes back, typically 0.1–0.2 s on home Wi-Fi.
 - **Randomness.** Pedestrians, the dog and the drunk wander, so the aquarium job plays out differently each run.
-- **Chaos jobs and the Locker are new** and so far only played by the test bot and the scenarios. Chaos is tuned so the bot (which doesn't dodge anything) delivers about 5 in 6 Mild jobs; how wild Mayhem and ULTRA feel to people, and whether the prices in the Locker feel right, need a playtest.
-- **The single file is about 9 MB** because the 3D models are embedded in it, so it takes a moment to open. The GitHub Pages version loads the models as separate files.
+- **Chaos jobs, the Locker and jobs 11–15 are new** and so far only played by the test bot and the scenarios. Chaos is tuned so the bot (which doesn't dodge anything) delivers about 5 in 6 Mild jobs; how wild Mayhem and ULTRA feel to people, and whether the prices in the Locker feel right, need a playtest.
+- **The single file is about 11 MB** because the 3D models are embedded in it, so it takes a moment to open. The GitHub Pages version loads the models as separate files.
 - **Saved bests** live in Safari's local storage. In Private Browsing, or wherever storage is blocked for local files, the game still runs but forgets bests when it closes.
 - **Bot coverage has gaps.** The bot finishes each half of the clock and glass jobs, but its full runs sometimes stall: at the van ramp on the clock job, and somewhere in the glass job when both halves are chained. Those are limits of the bot's steering, but they're the spots most worth a human playtest.
 - **Performance** was measured in headless Chromium. Physics and game logic take 1–2.3 ms per frame in every level. Rendering cost on a real Mac is unmeasured. The Graphics setting trades resolution and shadow detail for speed.

@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const scenario = process.argv[2] ?? 'fileboot';
-const out = process.argv[3] ?? '/tmp/claude-0/-home-user-bc/5820d62c-083f-5115-866a-7d02ebbd36ce/scratchpad/wkshots';
+const out = process.argv[3] ?? 'test-shots-webkit';
 mkdirSync(out, { recursive: true });
 const base = process.env.FF_URL ?? pathToFileURL(resolve('play/FragileFreight.html')).href;
 const bridge = process.env.WK_BRIDGE;

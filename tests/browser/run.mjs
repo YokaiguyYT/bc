@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
 const scenario = process.argv[2] ?? 'basic';
-const out = process.argv[3] ?? '/tmp/claude-0/-home-user-bc/5820d62c-083f-5115-866a-7d02ebbd36ce/scratchpad/shots';
+const out = process.argv[3] ?? 'test-shots';
 mkdirSync(out, { recursive: true });
 const port = 5199;
 const url0 = process.env.FF_URL;

@@ -28,3 +28,5 @@ scripts/.combine-sheets.mjs
 
 # agents' working copies
 .claude/worktrees/
+test-shots/
+test-shots-webkit/
