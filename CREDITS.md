@@ -12,11 +12,13 @@ the movers and the levels are built from primitive shapes in code.
 | --- | --- | --- | --- |
 | armchair | [Armchair - Household Props Challenge](https://sketchfab.com/3d-models/armchair-household-props-challenge-7b36a98d4b4c40a7bff78b61ecf9fc55) | [zhixson](https://sketchfab.com/zhixson) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | barrier | [low poly road barrier](https://sketchfab.com/3d-models/low-poly-road-barrier-e2b2282e32dc48c6bf31369cd800690a) | [muji](https://sketchfab.com/muji) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
+| beehive | [Beehive](https://sketchfab.com/3d-models/beehive-ec62db5c4f03456ea929057506d073f3) | [dom](https://sketchfab.com/dom-dom) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | bench | [Church bench v.2](https://sketchfab.com/3d-models/church-bench-v2-a412a1b140bf41c0a342056afce6185a) | [Ryoce](https://sketchfab.com/Ryoce) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | bicycle | [Low poly bicycle](https://sketchfab.com/3d-models/low-poly-bicycle-0f35b95712d44704a5521829a5ebdb42) | [takeawalk](https://sketchfab.com/takeawalk) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | bookshelf | [PSX Style Wooden Bookshelf (Low Poly)](https://sketchfab.com/3d-models/psx-style-wooden-bookshelf-low-poly-bf8be00f3d344ebdafd701fb90d65497) | [My Name Is This](https://sketchfab.com/profileFromHere) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | cementMixer | [Free Low Poly Concrete Mixer](https://sketchfab.com/3d-models/free-low-poly-concrete-mixer-8bb9bf77e9014feab2ee197ca924c95f) | [warcool](https://sketchfab.com/warcool) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | chandelier | [Chandelier](https://sketchfab.com/3d-models/chandelier-fb1d8d60d3354b7d888741de33090f23) | [djangospel](https://sketchfab.com/djangospel) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
+| chicken | [Low Poly Chicken](https://sketchfab.com/3d-models/low-poly-chicken-29e61a713bd3413c8fc74c8453a1ada1) | [Tiberiu Uncu](https://sketchfab.com/pangolinbc) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | circusTent | [Circus Tent](https://sketchfab.com/3d-models/circus-tent-367ad4b7004240f2a4df1351b1ce50f2) | [BeaBea](https://sketchfab.com/beabea.) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | coatRack | [Blass Coat Rack](https://sketchfab.com/3d-models/blass-coat-rack-221bb803aa064a7584fdc2435e0ada56) | [Purple Ark Studio](https://sketchfab.com/PurpleArkStudio) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | cone | [Orange street cone](https://sketchfab.com/3d-models/orange-street-cone-77da362c4cb44295a838fd778f70f31b) | [SpatialNeglect](https://sketchfab.com/jeandiz) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
@@ -43,6 +45,7 @@ the movers and the levels are built from primitive shapes in code.
 | movingTruck | [Low Poly Truck](https://sketchfab.com/3d-models/low-poly-truck-98826ebd44e2492298ac925461509216) | [Arifido._](https://sketchfab.com/Arifido._) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | muscleCar | [Classic Muscle car](https://sketchfab.com/3d-models/classic-muscle-car-641efc889e5f4543bae51d0922e6f4b3) | [Lexyc16](https://sketchfab.com/Lexyc16) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | officeChair | [Simple Low Poly Office Chair](https://sketchfab.com/3d-models/simple-low-poly-office-chair-f27a1912734943aab7521adf1fe6fa51) | [Andrew.Mischenko](https://sketchfab.com/Andrew.Mischenko) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
+| oilBarrel | [PS1 Barrel](https://sketchfab.com/3d-models/ps1-barrel-1b5b3fdd524e4c9caa2996aea84ddb76) | [abomination](https://sketchfab.com/ab0mination) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | pallet | [Wooden Pallet](https://sketchfab.com/3d-models/wooden-pallet-db88dd47c3674127a353393d6532bbc5) | [BytesCrafter](https://sketchfab.com/BytesCrafter) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | parasol | [Parasol lowpoly - beach umbrella](https://sketchfab.com/3d-models/parasol-lowpoly-beach-umbrella-bac8486298ab41ab884fccb867f1527b) | [Harold.Llanos](https://sketchfab.com/Harold.Llanos) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | piano | [Grand piano](https://sketchfab.com/3d-models/grand-piano-7b66f863f989420fb4c26f875dbaf9eb) | [djangospel](https://sketchfab.com/djangospel) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
@@ -61,6 +64,8 @@ the movers and the levels are built from primitive shapes in code.
 | trashCan | [Trash Can and Garbage Bag low poly](https://sketchfab.com/3d-models/trash-can-and-garbage-bag-low-poly-63cdc7dbfa8741d7b65a856f7acca148) | [daniel.2U](https://sketchfab.com/daniel.2U) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | trawler | [Trawler](https://sketchfab.com/3d-models/trawler-421f3239115c44539686fcb62835f115) | [JasperTobias](https://sketchfab.com/JasperTobias) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | tree | [Giant Low Poly Tree](https://sketchfab.com/3d-models/giant-low-poly-tree-acfd2b7f80894848b56c2ac8e7e59572) | [Sahir Virmani](https://sketchfab.com/sahirvirmani) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
+| trex | [Tyrannosaurus Rex](https://sketchfab.com/3d-models/tyrannosaurus-rex-c31b594a1050458b9b35f3300d762ac9) | [Master Galanodel](https://sketchfab.com/Master_Galanodel) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
+| ufo | [Ufo](https://sketchfab.com/3d-models/ufo-2d55eec1da344c9a9943abafbd07f0f9) | [yanix](https://sketchfab.com/yanix) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | van | [White Van - PS1 Low Poly](https://sketchfab.com/3d-models/white-van-ps1-low-poly-1cac40905d494bae8108a556d870e23e) | [Wersaus33](https://sketchfab.com/wersaus33) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | vendingMachine | [PSX - Vending Machine](https://sketchfab.com/3d-models/psx-vending-machine-aff31f282155471d8222287596c7ac59) | [Kasugay𓅂](https://sketchfab.com/Kasugay) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
 | washer | [Washing machine](https://sketchfab.com/3d-models/washing-machine-768b055ec4714ee580d12c07d6f0c24b) | [Alex](https://sketchfab.com/alexburghes) | [CC Attribution](http://creativecommons.org/licenses/by/4.0/) |
@@ -83,4 +88,4 @@ This file is generated by `npm run fetch-models` — edit `scripts/models.config
 
 ## Sound and music
 
-Every sound effect and the music are synthesized live with the Web Audio API — no audio files.
+None yet: audio is planned, not yet implemented (when it comes, it will be synthesized live with the Web Audio API, with no audio files).

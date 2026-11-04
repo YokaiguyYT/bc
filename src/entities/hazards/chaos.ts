@@ -10,6 +10,7 @@ import { CHAOS_COMBOS, CHAOS_EVENTS, chaosLevel, type ChaosEvent, type ChaosHelp
 import type { Player } from '../Player';
 import { registerHazard, Hazard } from './registry';
 import { bonkPlayers, num } from './common';
+import { models } from '../../render/models';
 
 /**
  * A chaos job's director: every few seconds something crazy happens around
@@ -221,6 +222,7 @@ export class ChaosDirector implements Hazard {
   // the UFO (where it hovers) and the fog (how thick, 0..1, eased on each laptop)
   private ufo: THREE.Vector3 | null = null;
   private ufoObj = new THREE.Group();
+  private ufoMixer: THREE.AnimationMixer | null = null;
   private beam: THREE.Mesh;
   private fog = false;
   private fogK = 0;
@@ -254,14 +256,23 @@ export class ChaosDirector implements Hazard {
       this.root.add(g);
       this.noteObjs.push(g);
     }
-    // a flying saucer with a little green pilot, and its tractor beam
-    const hull = mesh(new THREE.SphereGeometry(1.5, 28, 12), glossy(0xb8c2cc, 0.25, 0.7));
-    hull.scale.set(1, 0.28, 1);
-    const dome = mesh(new THREE.SphereGeometry(0.62, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1 }), false);
-    dome.position.y = 0.25;
-    const pilot = mesh(new THREE.SphereGeometry(0.22, 12, 10), jelly(0x7bdc4a, 0.5), false);
-    pilot.position.y = 0.42;
-    this.ufoObj.add(hull, dome, pilot);
+    // a flying saucer (the Sketchfab one if it's loaded, else one of our own with a little green pilot), and its tractor beam
+    if (models.has('ufo')) {
+      const u = models.instance('ufo', [3, 1.3, 3]);
+      this.ufoObj.add(u.object);
+      if (u.clips.length && u.root) {
+        this.ufoMixer = new THREE.AnimationMixer(u.root);
+        this.ufoMixer.clipAction(u.clips[0]).play();
+      }
+    } else {
+      const hull = mesh(new THREE.SphereGeometry(1.5, 28, 12), glossy(0xb8c2cc, 0.25, 0.7));
+      hull.scale.set(1, 0.28, 1);
+      const dome = mesh(new THREE.SphereGeometry(0.62, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1 }), false);
+      dome.position.y = 0.25;
+      const pilot = mesh(new THREE.SphereGeometry(0.22, 12, 10), jelly(0x7bdc4a, 0.5), false);
+      pilot.position.y = 0.42;
+      this.ufoObj.add(hull, dome, pilot);
+    }
     for (let i = 0; i < 8; i++) {
       const light = mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffe14a : 0xff5a4f }), false);
       const a = (i / 8) * Math.PI * 2;
@@ -324,11 +335,14 @@ export class ChaosDirector implements Hazard {
         break;
       case 'barrel': {
         desc = RAPIER.ColliderDesc.cylinder(0.45, 0.38).setMass(30).setRestitution(0.1);
-        obj.add(mesh(L.barrel, L.barrelMat));
-        for (const y of [-0.25, 0.25]) {
-          const b = mesh(L.band, L.bandMat, false);
-          b.position.y = y;
-          obj.add(b);
+        if (models.has('oilBarrel')) obj.add(models.instance('oilBarrel', [0.76, 0.9, 0.76]).object);
+        else {
+          obj.add(mesh(L.barrel, L.barrelMat));
+          for (const y of [-0.25, 0.25]) {
+            const b = mesh(L.band, L.bandMat, false);
+            b.position.y = y;
+            obj.add(b);
+          }
         }
         hazard = true;
         material = 'metal';
@@ -336,9 +350,16 @@ export class ChaosDirector implements Hazard {
       }
       case 'chicken': {
         desc = RAPIER.ColliderDesc.ball(0.24).setMass(2.5).setRestitution(0.3);
-        const c = chicken();
-        obj.add(c.obj);
-        t.wings = c.wings;
+        if (models.has('chicken')) {
+          const m = models.instance('chicken', [0.36, 0.52, 0.52]);
+          m.object.position.y = 0.02;
+          obj.add(m.object);
+          t.wings = [];
+        } else {
+          const c = chicken();
+          obj.add(c.obj);
+          t.wings = c.wings;
+        }
         material = 'soft';
         break;
       }
@@ -918,6 +939,7 @@ export class ChaosDirector implements Hazard {
       o.lerp(u, Math.min(1, dt * 3));
       o.y += Math.sin(time * 2.5) * 0.004;
       this.ufoObj.rotation.y += dt * 1.8;
+      this.ufoMixer?.update(dt);
       const floor = this.groundAt(o.x, o.y - 13, o.z);
       const h = floor === null ? 8 : Math.max(0.5, o.y - 0.2 - floor);
       this.beam.scale.set(1, h, 1);

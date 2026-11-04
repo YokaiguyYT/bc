@@ -10,6 +10,7 @@ import type { ChaosActs, ChaosHelp } from '../../game/chaos';
 import type { Player } from '../Player';
 import { registerHazard, Hazard } from './registry';
 import { bonkPlayers } from './common';
+import { models } from '../../render/models';
 
 /**
  * The chaos director's companion: plays the newer kinds of chaos (blackout,
@@ -164,6 +165,7 @@ class ChaosCompanion implements Hazard, ChaosActs {
   private tornadoObj = new THREE.Group();
   private water: THREE.Mesh;
   private dinoStep = 0;
+  private dinoMixer: THREE.AnimationMixer | null = null;
   private dinoLook = new THREE.Vector3(46, PARK_Y, 40);
 
   constructor(
@@ -196,7 +198,20 @@ class ChaosCompanion implements Hazard, ChaosActs {
     const db = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(46, PARK_Y, 40).setEnabled(false));
     const dc = world.createCollider(RAPIER.ColliderDesc.capsule(0.75, 0.75).setTranslation(0, 1.5, 0).setCollisionGroups(groups(G.HAZARD, SOLID | G.DEBRIS)), db);
     sim.physics.setInfo(dc, { kind: 'hazard', material: 'body', grabbable: false });
-    const t = trex();
+    // (the Sketchfab T-Rex, walking, if it's loaded; else one of our own)
+    let t: { obj: THREE.Object3D; legs: THREE.Object3D[] };
+    if (models.has('trex')) {
+      const m = models.instance('trex', [1.9, 4.2, 6.4]);
+      const g = new THREE.Group();
+      m.object.position.y = m.size[1] / 2;
+      g.add(m.object);
+      t = { obj: g, legs: [] };
+      if (m.clips.length && m.root) {
+        this.dinoMixer = new THREE.AnimationMixer(m.root);
+        const walk = m.clips.find((c) => /walk|run/i.test(c.name)) ?? m.clips[0];
+        this.dinoMixer.clipAction(walk).play();
+      }
+    } else t = trex();
     t.obj.visible = false;
     this.root.add(t.obj);
     sim.physics.link(db, t.obj);
@@ -659,6 +674,8 @@ class ChaosCompanion implements Hazard, ChaosActs {
       const moved = Math.hypot(dp.x - this.dinoLook.x, dp.z - this.dinoLook.z);
       if (moved < 3) this.dinoStep += moved / 0.75;
       d.legs.forEach((leg) => (leg.rotation.x = Math.sin(this.dinoStep * Math.PI * 0.5 + ((leg.userData.side as number) > 0 ? 0 : Math.PI)) * 0.55));
+      // (the model's own walk, in step with how far it went)
+      this.dinoMixer?.update(Math.min(0.1, moved / 2.2));
       if (Math.floor(this.dinoStep / 2) !== Math.floor((this.dinoStep - moved / 0.75) / 2)) {
         this.sim.shake?.(0.3);
         this.sim.fx?.burst('dust', dp.clone().add(new THREE.Vector3(0, 0.1, 0)), { count: 10, speed: 2.4, up: 0.6, size: 0.2, life: 0.8, gravity: -0.2, drag: 2.5 });

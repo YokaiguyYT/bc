@@ -19,4 +19,8 @@ export default async function ({ page, base, shot }) {
   await go('dino', 4.2, 'look_dino');
   await go('disco', 1.0, 'look_disco');
   await go('bananas', 0.4, 'look_bananas');
+  await go('ufo', 2.5, 'look_ufo');
+  await go('stampede', 1.4, 'look_chickens');
+  await go('barrels', 2.2, 'look_barrels');
+  await go('dino', 6.0, 'look_dino2');
 }

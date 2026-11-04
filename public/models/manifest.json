@@ -932,6 +932,83 @@
       "url": "https://sketchfab.com/3d-models/circus-tent-367ad4b7004240f2a4df1351b1ce50f2",
       "license": "CC Attribution",
       "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "trex": {
+      "file": "trex.glb",
+      "size": [
+        1.9,
+        4.2,
+        6.4
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Tyrannosaurus Rex",
+      "author": "Master Galanodel",
+      "authorUrl": "https://sketchfab.com/Master_Galanodel",
+      "url": "https://sketchfab.com/3d-models/tyrannosaurus-rex-c31b594a1050458b9b35f3300d762ac9",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "chicken": {
+      "file": "chicken.glb",
+      "size": [
+        0.34,
+        0.5,
+        0.5
+      ],
+      "style": "keep",
+      "title": "Low Poly Chicken",
+      "author": "Tiberiu Uncu",
+      "authorUrl": "https://sketchfab.com/pangolinbc",
+      "url": "https://sketchfab.com/3d-models/low-poly-chicken-29e61a713bd3413c8fc74c8453a1ada1",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "ufo": {
+      "file": "ufo.glb",
+      "size": [
+        3,
+        1.3,
+        3
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Ufo",
+      "author": "yanix",
+      "authorUrl": "https://sketchfab.com/yanix",
+      "url": "https://sketchfab.com/3d-models/ufo-2d55eec1da344c9a9943abafbd07f0f9",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "oilBarrel": {
+      "file": "oilBarrel.glb",
+      "size": [
+        0.76,
+        0.9,
+        0.76
+      ],
+      "style": "keep",
+      "title": "PS1 Barrel",
+      "author": "abomination",
+      "authorUrl": "https://sketchfab.com/ab0mination",
+      "url": "https://sketchfab.com/3d-models/ps1-barrel-1b5b3fdd524e4c9caa2996aea84ddb76",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "beehive": {
+      "file": "beehive.glb",
+      "size": [
+        0.5,
+        0.7,
+        0.5
+      ],
+      "style": "keep",
+      "title": "Beehive",
+      "author": "dom",
+      "authorUrl": "https://sketchfab.com/dom-dom",
+      "url": "https://sketchfab.com/3d-models/beehive-ec62db5c4f03456ea929057506d073f3",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
     }
   }
 }
