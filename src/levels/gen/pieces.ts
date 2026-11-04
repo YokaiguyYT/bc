@@ -28,6 +28,8 @@ export interface GenCtx {
   tipScale?: number;
   /** A chaos job (1..5): its funfair pieces come up too. */
   chaos?: number;
+  /** An 'up and down' job: more (and bigger) slopes and stairs. */
+  hilly?: boolean;
 }
 
 /** Bot steps: [x, z, formation] waypoints (level coordinates), or a wait. */
@@ -192,12 +194,12 @@ const flat: Piece = {
 
 const rampPiece: Piece = {
   id: 'ramp',
-  weight: () => 0.75,
+  weight: (g) => (g.hilly ? 2.4 : 0.75),
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;
     const up = r.chance(0.55);
-    const rise = r.range(1.0, 2.0) * (up ? 1 : -1);
+    const rise = r.range(1.0, 2.0) * (b.g.hilly ? 1.5 : 1) * (up ? 1 : -1);
     const slope = Math.min(b.g.kit.maxSlope, 10) * r.range(0.75, 1) * DEG;
     const L = Math.abs(rise) / Math.tan(slope);
     const f = b.f;
@@ -220,7 +222,7 @@ const rampPiece: Piece = {
 
 const stairsPiece: Piece = {
   id: 'stairs',
-  weight: (g) => (g.kit.stairs ? 0.8 : 0),
+  weight: (g) => (g.kit.stairs ? (g.hilly ? 2 : 0.8) : 0),
   build(b) {
     const r = b.g.rng;
     const t = b.g.theme;
@@ -281,7 +283,8 @@ const slalom: Piece = {
     const r = b.g.rng;
     const t = b.g.theme;
     const k = b.g.kit;
-    const n = 3;
+    // (now and then a longer one)
+    const n = r.chance(0.35) ? 4 : 3;
     const step = r.range(3.6, 4.4);
     const L = step * (n + 1);
     b.ground(0, -L);
@@ -309,8 +312,10 @@ const wreckingBall: Piece = {
   weight: (g) => 0.5 + g.difficulty * 0.7,
   build(b) {
     const r = b.g.rng;
-    const L = 11;
-    const z = -L / 2;
+    // on harder jobs, sometimes two balls one after the other
+    const two = b.g.difficulty > 0.45 && r.chance(0.4);
+    const L = two ? 15 : 11;
+    const z = two ? -4.5 : -L / 2;
     b.ground(0, -L);
     const pivot = b.f.p(0, 8.4, z);
     // a load carried end to end is three metres long, and the piano is slow: both take longer to get clear,
@@ -330,6 +335,19 @@ const wreckingBall: Piece = {
     b.wait({ wait: 'ball', at: [pivot[0], pivot[2]] });
     // (end to end the bot steers the leader: take it far enough that the back mover is clear too)
     b.go(0, z - 2.0 - (inline ? 2.8 : 0));
+    if (two) {
+      const z2 = -10.5;
+      const pivot2 = b.f.p(0, 8.4, z2);
+      b.world({
+        type: 'hazard',
+        kind: 'wreckingBall',
+        pos: pivot2,
+        params: { length: 7.2, amp: 52, period: (slow ? 11.8 : 8.8) - b.g.difficulty * 1.3 + r.range(-0.3, 0.3), yaw: b.f.yaw(90), radius: 0.55, phase: r.next() },
+      });
+      b.go(0, z2 + 1.8);
+      b.wait({ wait: 'ball', at: [pivot2[0], pivot2[2]] });
+      b.go(0, z2 - 2.0 - (inline ? 2.8 : 0));
+    }
     b.go(0, -L);
     b.tip(0, z + 2, 'Wait for the ball to swing past, then go!', 3.5);
     return { length: L };
@@ -367,11 +385,14 @@ const traffic: Piece = {
       { type: 'box', pos: [W / 2 + 1.2, 0.25, (medA + medB) / 2], size: [1.2, 0.5, med - 0.3], color: 0xf2f2ee, radius: 0.1 },
     );
     for (const z of [laneA, laneB]) for (let i = 0; i < 6; i++) b.add({ type: 'box', pos: [-1.9 + i * 0.76, 0.008, z], size: [0.42, 0.012, lane - 0.6], color: 0xf4f4f0, collide: false, castShadow: false });
-    const speed = r.range(3.4, 4.4) + b.g.difficulty * 1.2;
+    // sometimes it's lorries: slower, but long
+    const trucks = r.chance(0.35);
+    const speed = (r.range(3.4, 4.4) + b.g.difficulty * 1.2) * (trucks ? 0.8 : 1);
     const count = b.g.difficulty > 0.7 ? 3 : 2;
+    const models = trucks ? ['movingTruck', 'van', 'cementMixer'] : undefined;
     b.world(
-      { type: 'hazard', kind: 'car', pos: f.p(-reach, 0, laneA), params: { dirYaw: f.yaw(90), length: reach * 2, speed, count, phase: r.next() } },
-      { type: 'hazard', kind: 'car', pos: f.p(reach, 0, laneB), params: { dirYaw: f.yaw(-90), length: reach * 2, speed: speed * r.range(0.85, 1.1), count, phase: r.next() } },
+      { type: 'hazard', kind: 'car', pos: f.p(-reach, 0, laneA), params: { dirYaw: f.yaw(90), length: reach * 2, speed, count, phase: r.next(), ...(models ? { models } : {}) } },
+      { type: 'hazard', kind: 'car', pos: f.p(reach, 0, laneB), params: { dirYaw: f.yaw(-90), length: reach * 2, speed: speed * r.range(0.85, 1.1), count, phase: r.next(), ...(models ? { models: [...models].reverse() } : {}) } },
     );
     const x = f.p(0, 0, 0)[0];
     const zr = (z: number) => {
@@ -384,9 +405,10 @@ const traffic: Piece = {
     const ahead = 6 + speed * 3.4;
     b.cash((r.chance(0.5) ? -1 : 1) * 1.6, (medA + medB) / 2, { risky: true });
     b.go(0, z0 + 0.7);
-    b.wait({ wait: 'gap', x, z: zr(laneA), ahead, behind: 5 });
+    const behind = trucks ? 9 : 5;
+    b.wait({ wait: 'gap', x, z: zr(laneA), ahead, behind });
     b.go(0, (medA + medB) / 2);
-    b.wait({ wait: 'gap', x, z: zr(laneB), ahead, behind: 5 });
+    b.wait({ wait: 'gap', x, z: zr(laneB), ahead, behind });
     b.go(0, z1 - 1.2);
     b.go(0, -L);
     b.tip(0, z0 + 1, 'Look both ways! One lane at a time: wait on the island.', 3);
@@ -401,11 +423,15 @@ const lasers: Piece = {
   weight: (g, h) => (north(h) && g.kit.form !== 'inline' ? 0.4 + g.difficulty * 0.6 : 0),
   build(b) {
     const r = b.g.rng;
-    const L = 12;
-    const zs = [-L * 0.33, -L * 0.7];
+    const three = r.chance(0.35);
+    const L = three ? 16 : 12;
+    const zs = three ? [-4, -8, -12] : [-L * 0.33, -L * 0.7];
+    const on = r.range(1.8, 2.6);
+    const off = r.range(2.8, 3.6);
+    const beams = 3 + Math.floor(r.range(0, 3));
     b.ground(0, -L);
     zs.forEach((z, i) => {
-      b.world({ type: 'hazard', kind: 'laser', pos: b.f.p(0, 0, z), rot: [0, b.f.yaw(0), 0], params: { width: W, beams: 4, on: 2.2, off: 3.2, phase: i * 1.7 + r.range(0, 1) } });
+      b.world({ type: 'hazard', kind: 'laser', pos: b.f.p(0, 0, z), rot: [0, b.f.yaw(0), 0], params: { width: W, beams, on, off, phase: i * 1.7 + r.range(0, 1) } });
     });
     b.cash(r.range(-1.5, 1.5), (zs[0] + zs[1]) / 2, { risky: true });
     for (const z of zs) {

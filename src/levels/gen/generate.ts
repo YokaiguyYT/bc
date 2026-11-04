@@ -3,7 +3,10 @@ import type { CargoKind, GenParams, LevelDef, LevelObject, Vec3 } from '../types
 import { Rng, hashSeed } from './rng';
 import { Frame } from './frame';
 import { GEN_CARGO, KITS, THEMES } from './kits';
-import { Build, BotStep, checkpointPiece, GenCtx, goalPiece, PIECES, startPiece } from './pieces';
+import { Build, BotStep, checkpointPiece, GenCtx, goalPiece, PIECES as PIECES1, startPiece } from './pieces';
+import { PIECES2 } from './pieces2';
+
+const PIECES = [...PIECES1, ...PIECES2];
 import { CARGO_INFO } from '../../entities/cargo/info';
 import type { Theme } from '../../render/Renderer';
 
@@ -38,29 +41,39 @@ export const TWISTS: Record<string, { icon: string; name: string; text: string }
   tips: { icon: '💵', name: 'Big tippers', text: 'Every tip pays double.' },
   long: { icon: '🛣️', name: 'Long haul', text: 'Three more obstacles than usual.' },
   busy: { icon: '🚦', name: 'Busy streets', text: 'More traffic, more pedestrians.' },
+  rain: { icon: '🌧️', name: 'Rainy day', text: 'Wet floors are a bit slippery.' },
+  fog: { icon: '🌫️', name: 'Foggy', text: "You can't see far ahead." },
+  fragile: { icon: '🥚', name: 'Extra fragile', text: 'Twice the damage, but it pays 50% more.' },
+  nocp: { icon: '🚫', name: 'No checkpoints', text: 'One go, start to finish (it pays 30% more).' },
+  hills: { icon: '⛰️', name: 'Up and down', text: 'A hilly route: slopes, stairs, escalators.' },
 };
+
+const RAIN: Partial<Theme> = { skyTop: 0x5d6976, skyHorizon: 0xa6b0ba, fog: 0x9ea8b2, sunIntensity: 1.3, hemiIntensity: 0.95, cloudColor: 0x8a929a };
+const FOG: Partial<Theme> = { fog: 0xd8dde2, fogNear: 3, fogFar: 24, skyHorizon: 0xd8dde2 };
 
 /** Some jobs happen at sunset or at night (the look only; the course is the same kind). */
 const SUNSET: Partial<Theme> = { sunDir: [-0.75, 0.42, 0.3], skyTop: 0x5a78c8, skyHorizon: 0xffbe8a, fog: 0xffd2a8, sun: 0xffc890, sunIntensity: 2.5, hemiSky: 0xffdcb8, hemiGround: 0x8a6a58, cloudColor: 0xffd8c4 };
 const NIGHT: Partial<Theme> = { skyTop: 0x16203a, skyHorizon: 0x3a4670, fog: 0x2a3358, sun: 0xc8d6ff, sunIntensity: 1.6, sunDir: [0.3, 0.85, 0.45], hemiSky: 0xa8b4e0, hemiGround: 0x5a5068, hemiIntensity: 1.1, cloudColor: 0x5a6488, exposure: 1.08 };
 
 /** Extra seconds a hazard costs (waiting for gaps and swings), for par time. */
-const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2, seesaw: 3, turntable: 2, bumpers: 4, trampolines: 4, cannons: 6 };
+const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2, seesaw: 3, turntable: 2, bumpers: 4, trampolines: 4, cannons: 6, collapse: 1, train: 8, crane: 6, sprinklers: 2, ledge: 1, stones: 2, mud: 3, spinners: 3 };
 
 export function generateJob(p: GenParams): LevelDef {
   const rng = new Rng(p.seed);
   // always draw the same numbers, then apply any choices given: otherwise naming
   // the cargo (as the online guest's copy does) would shift everything after it
-  const rolled = { cargo: rng.pick(GEN_CARGO), theme: rng.pick(THEMES), difficulty: rng.range(0.25, 0.7), extra: rng.range(0, 2), hour: rng.next() };
+  const rolled = { cargo: rng.pick(GEN_CARGO), theme: rng.pick(THEMES), difficulty: rng.range(0.25, 0.7), extra: rng.range(0, 2), hour: rng.next(), twist: rng.next() };
   const cargo: CargoKind = p.cargo && KITS[p.cargo] ? p.cargo : rolled.cargo;
-  const twist = p.twist && TWISTS[p.twist] ? p.twist : null;
+  // a twist: today's job has one; a random job sometimes does (not chaos jobs: they've enough going on)
+  const keys = Object.keys(TWISTS);
+  const twist = p.twist && TWISTS[p.twist] ? p.twist : !p.chaos && !p.twist && rolled.twist < 0.3 ? keys[Math.floor((rolled.twist / 0.3) * keys.length)] : null;
   const kit = KITS[cargo]!;
   const theme = rolled.theme;
   // a chaos job: the course itself a bit harder, and not too long (the chaos is the point)
   const chaos = p.chaos ? Math.max(1, Math.min(5, Math.round(p.chaos))) : 0;
   const difficulty = Math.max(0, Math.min(1, p.difficulty ?? (chaos ? 0.3 + 0.1 * chaos : rolled.difficulty)));
   const count = p.pieces ?? (chaos ? 4 + chaos : Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0));
-  const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1, chaos };
+  const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1, chaos, hilly: twist === 'hills' };
   const when = twist === 'night' ? 'night' : theme.when ? theme.when : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
   const opener = rng.pick(OPENERS);
   const lead = when === 'night' ? rng.pick(NIGHT_OPENERS) : opener;
@@ -110,7 +123,7 @@ export function generateJob(p: GenParams): LevelDef {
     since++;
     par += e.length * 1.4 + (WAIT[piece.id] ?? 0);
     // a checkpoint every three obstacles or so (not right before the finish)
-    if (since >= 3 && i < count - 1) {
+    if (since >= 3 && i < count - 1 && twist !== 'nocp') {
       b = new Build(f, g);
       const cp = checkpointPiece(b);
       take(b);
@@ -146,13 +159,15 @@ export function generateJob(p: GenParams): LevelDef {
     generated: true,
     gen: { seed: p.seed, cargo, difficulty, pieces: count, label, ...(twist ? { twist } : {}), ...(chaos ? { chaos, chaosMask: p.chaosMask ?? 15 } : {}) },
     id: `gen-${p.seed}-${cargo}${chaos ? `-c${chaos}` : ''}`,
-    ...(lv ? { payScale: lv.pay } : {}),
+    ...(lv || twist === 'fragile' || twist === 'nocp' ? { payScale: (lv?.pay ?? 1) * (twist === 'fragile' ? 1.5 : twist === 'nocp' ? 1.3 : 1) } : {}),
+    ...(twist === 'rain' ? { weather: 'rain' as const } : {}),
+    ...(twist === 'fragile' ? { damageScale: 2 } : {}),
     name: title,
     tagline: `${label} #${p.seed}`,
     order: 1000,
     hidden: true,
     cargo,
-    theme: { ...theme.sky, ...(when === 'sunset' ? SUNSET : when === 'night' ? NIGHT : {}) },
+    theme: { ...theme.sky, ...(when === 'sunset' ? SUNSET : when === 'night' ? NIGHT : {}), ...(twist === 'rain' ? RAIN : twist === 'fog' ? FOG : {}) },
     cameraYaw: 0,
     spawn: start.spawn,
     goal: fin.goal,
@@ -162,7 +177,7 @@ export function generateJob(p: GenParams): LevelDef {
     ...(cargo === 'balloons' ? { ceilingY: high + 9 } : {}),
     parTime: Math.max(45, Math.round(par / 5) * 5),
     objects,
-    hints: [...(lv ? [`${lv.icon} ${lv.name}: expect anything. It pays ×${lv.pay}.`] : []), client, `${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}${when === 'day' ? '' : when === 'night' ? ', at night' : ', at sunset'}.`],
+    hints: [...(lv ? [`${lv.icon} ${lv.name}: expect anything. It pays ×${lv.pay}.`] : []), ...(twist ? [`${TWISTS[twist].icon} ${TWISTS[twist].name}: ${TWISTS[twist].text}`] : []), client, `${label} #${p.seed}: ${info.name}, ${count} obstacles${checkpoints.length ? `, ${checkpoints.length} checkpoint${checkpoints.length > 1 ? 's' : ''}` : ''}${when === 'day' ? '' : when === 'night' ? ', at night' : ', at sunset'}.`],
     tips,
     // the bot starts with a mover either side, as in the hand-made routes (picking it up off the stand is the pickup test's job)
     bot: {

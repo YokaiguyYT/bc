@@ -142,7 +142,10 @@ export interface HazardObj {
     | 'turntable'
     | 'bumper'
     | 'trampoline'
-    | 'cannon';
+    | 'cannon'
+    | 'collapse'
+    | 'train'
+    | 'craneBeam';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */

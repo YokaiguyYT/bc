@@ -777,6 +777,35 @@ export default async function ({ page, base, shot }) {
         }
         return t;
       }
+      if (w.wait === 'train') {
+        // a level crossing: wait for the barriers to come down and go up again (the train's been)
+        const trains = s.hazards.filter((h) => h.pos && typeof h.down === 'boolean' && typeof h.speed === 'number');
+        const tr = trains.reduce((a, b) => (Math.hypot(b.pos.x - w.at[0], b.pos.z - w.at[1]) < Math.hypot(a.pos.x - w.at[0], a.pos.z - w.at[1]) ? b : a));
+        while (t < 40 && !tr.down) {
+          g.advance(1 / 30, 60, false);
+          t += 1 / 30;
+        }
+        while (t < 40 && tr.down) {
+          g.advance(1 / 30, 60, false);
+          t += 1 / 30;
+        }
+        return t;
+      }
+      if (w.wait === 'crane') {
+        // go as the crane's beam arrives at one side (it waits there a while)
+        const cranes = s.hazards.filter((h) => h.pos && typeof h.dwell === 'number' && typeof h.cycle === 'function');
+        const cr = cranes.reduce((a, b) => (Math.hypot(b.pos.x - w.at[0], b.pos.z - w.at[1]) < Math.hypot(a.pos.x - w.at[0], a.pos.z - w.at[1]) ? b : a));
+        const ok = () => {
+          const c = cr.cycle(s.physics.time);
+          const half = cr.period / 2;
+          return (c > 0.1 && c < 0.6) || (c > half + 0.1 && c < half + 0.6);
+        };
+        while (t < 30 && !ok()) {
+          g.advance(1 / 60, 60, false);
+          t += 1 / 60;
+        }
+        return t;
+      }
       if (w.wait === 'cannon') {
         // go just after the cannon nearest `at` fires (its ball is across and away)
         const cans = s.hazards.filter((h) => h.pos && typeof h.period === 'number' && typeof h.phase === 'number' && Array.isArray(h.balls));

@@ -10,3 +10,4 @@ import './tips';
 import './chaos';
 import './chaos2';
 import './funhouse';
+import './course2';
