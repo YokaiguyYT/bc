@@ -13,9 +13,17 @@ export interface Outfit {
   hat: string;
   face: string;
   back: string;
+  /** Footprints: what each step leaves behind. */
+  trail: string;
+  /** What they do once the job's delivered. */
+  dance: string;
+  /** What the number keys make them say (a pack of four). */
+  emotes: string;
+  /** How the cargo looks (Player 1's choice counts: it's the company's cargo). */
+  skin: string;
 }
 
-export type Slot = 'color' | 'hat' | 'face' | 'back';
+export type Slot = 'color' | 'hat' | 'face' | 'back' | 'trail' | 'dance' | 'emotes' | 'skin';
 
 export interface Item {
   name: string;
@@ -26,6 +34,10 @@ export interface Item {
   /** Colours: the mover's body colour. */
   hex?: number;
   icon: string;
+  /** Unlocked by reaching this company rank (RANKS index) instead of bought. */
+  rank?: number;
+  /** Emote packs: the four lines. */
+  lines?: string[];
 }
 
 export const ITEMS: Record<Slot, Record<string, Item>> = {
@@ -83,18 +95,89 @@ export const ITEMS: Record<Slot, Record<string, Item>> = {
     balloon: { name: 'A balloon', price: 0, quest: 'chaos3', icon: '🎈' },
     jetpack: { name: 'Jetpack', price: 0, quest: 'rich', icon: '🚀' },
   },
+  trail: {
+    none: { name: 'Nothing', price: 0, icon: '👣' },
+    dust: { name: 'Dust clouds', price: 0, icon: '💨' },
+    snow: { name: 'Snowflakes', price: 400, icon: '❄️' },
+    hearts: { name: 'Hearts', price: 500, icon: '💕' },
+    bubbles: { name: 'Bubbles', price: 600, icon: '🫧' },
+    fire: { name: 'Hot feet', price: 1500, icon: '🔥' },
+    sparkles: { name: 'Sparkles', price: 0, rank: 2, icon: '✨' },
+    flowers: { name: 'Flower petals', price: 0, rank: 4, icon: '🌸' },
+    rainbow: { name: 'Rainbow', price: 0, rank: 6, icon: '🌈' },
+    money: { name: 'Money', price: 0, rank: 8, icon: '💸' },
+  },
+  dance: {
+    wave: { name: 'Little hop', price: 0, icon: '🙌' },
+    spin: { name: 'Spin', price: 0, icon: '🌀' },
+    jump: { name: 'Jumping jacks', price: 300, icon: '🦘' },
+    worm: { name: 'The wiggle', price: 900, icon: '🐛' },
+    flex: { name: 'Flex', price: 0, rank: 3, icon: '💪' },
+    conga: { name: 'Conga', price: 0, rank: 5, icon: '💃' },
+    boss: { name: 'Victory lap', price: 0, rank: 7, icon: '🏃' },
+  },
+  emotes: {
+    classic: { name: 'Classic', price: 0, icon: '👋', lines: ['👋 Hi!', '👍 Nice!', '😬 Careful!', '✋ Wait!'] },
+    pro: { name: 'Pro mover', price: 300, icon: '⬆️', lines: ['⬆️ Lift!', '⬇️ Down!', '↩️ Back up!', '➡️ This way!'] },
+    silly: { name: 'Silly', price: 500, icon: '🐔', lines: ['🐔 Bawk!', '🤪 Wheee!', '😱 AAAH!', '💃 Dance!'] },
+    pirate: { name: 'Pirate', price: 700, icon: '🏴‍☠️', lines: ['🏴‍☠️ Arr!', '⚓ Steady!', '🦜 Squawk!', '💰 Treasure!'] },
+    fancy: { name: 'Fancy', price: 0, rank: 5, icon: '🎩', lines: ['🎩 Indubitably.', '🫖 Tea break?', '🧐 Hmm, yes.', '👏 Bravo!'] },
+    boss: { name: 'The boss', price: 0, rank: 8, icon: '💼', lines: ['💼 Synergy!', '📈 Profit!', '☕ Coffee?', '🏆 Promoted!'] },
+  },
+  skin: {
+    none: { name: 'As it comes', price: 0, icon: '📦' },
+    sparkle: { name: 'Sparkly', price: 0, rank: 1, icon: '✨' },
+    rainbow: { name: 'Rainbow glow', price: 2000, icon: '🌈' },
+    gold: { name: 'Solid gold', price: 0, rank: 7, icon: '🏆' },
+  },
 };
+
+/** Company ranks, by what the company's earned in all (a new rank can unlock things in the Locker). */
+export const RANKS: { name: string; at: number; icon: string }[] = [
+  { name: 'Trainee', at: 0, icon: '🧑‍🎓' },
+  { name: 'Mover', at: 1000, icon: '📦' },
+  { name: 'Senior Mover', at: 3500, icon: '💪' },
+  { name: 'Crew Lead', at: 8000, icon: '📋' },
+  { name: 'Foreman', at: 15000, icon: '🦺' },
+  { name: 'Depot Manager', at: 25000, icon: '🏭' },
+  { name: 'Regional Manager', at: 40000, icon: '🗺️' },
+  { name: 'VP of Moving', at: 60000, icon: '💼' },
+  { name: 'CEO', at: 90000, icon: '👑' },
+];
+
+export function rankOf(earned: number) {
+  let r = 0;
+  RANKS.forEach((k, i) => earned >= k.at && (r = i));
+  return r;
+}
+
+/** The company's rank now, and how far to the next one (0..1). */
+export function companyRank() {
+  const earned = loadStats().earned;
+  const i = rankOf(earned);
+  const next = RANKS[i + 1];
+  return { i, rank: RANKS[i], next: next ?? null, progress: next ? (earned - RANKS[i].at) / (next.at - RANKS[i].at) : 1, earned };
+}
+
+/** The four lines a mover's number keys say. */
+export function emoteLines(pack: string | undefined) {
+  return ITEMS.emotes[pack ?? 'classic']?.lines ?? ITEMS.emotes.classic.lines!;
+}
 
 export const SLOTS: { slot: Slot; name: string }[] = [
   { slot: 'color', name: 'Colour' },
   { slot: 'hat', name: 'Hat' },
   { slot: 'face', name: 'Face' },
   { slot: 'back', name: 'On the back' },
+  { slot: 'trail', name: 'Trail' },
+  { slot: 'dance', name: 'Dance' },
+  { slot: 'emotes', name: 'Emotes' },
+  { slot: 'skin', name: 'Cargo' },
 ];
 
 export const DEFAULT_OUTFITS: [Outfit, Outfit] = [
-  { color: 'orange', hat: 'cap', face: 'none', back: 'none' },
-  { color: 'blue', hat: 'cap', face: 'none', back: 'none' },
+  { color: 'orange', hat: 'cap', face: 'none', back: 'none', trail: 'none', dance: 'wave', emotes: 'classic', skin: 'none' },
+  { color: 'blue', hat: 'cap', face: 'none', back: 'none', trail: 'none', dance: 'spin', emotes: 'classic', skin: 'none' },
 ];
 
 /** Things the game counts for quests. */
@@ -111,6 +194,8 @@ export interface Stats {
   surprises: number;
   /** The biggest payout of any one job. */
   bestPayout: number;
+  /** Everything the company's been paid (for its rank). */
+  earned: number;
   /** Hand-made jobs delivered, and with three stars. */
   jobs: string[];
   threeStars: string[];
@@ -187,9 +272,17 @@ function saveWardrobe(w: Wardrobe) {
 }
 
 export function loadStats(): Stats {
-  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, chaosAny: 0, surprises: 0, bestPayout: 0, jobs: [], threeStars: [] };
+  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, chaosAny: 0, surprises: 0, bestPayout: 0, earned: 0, jobs: [], threeStars: [] };
   const saved = loadJSON<Partial<Stats>>(STATS);
-  if (saved) return { ...base, ...saved };
+  if (saved) {
+    // (saved before ranks: start the company's earnings from its best payouts)
+    if (saved.earned === undefined) {
+      saved.earned = totalEarnings();
+      saveJSON(STATS, saved);
+    }
+    return { ...base, ...saved };
+  }
+  base.earned = totalEarnings();
   // the first time: count what this laptop did before the Locker existed
   const prog = loadProgress();
   for (const [id, b] of Object.entries(prog)) {
@@ -208,6 +301,7 @@ export function loadStats(): Stats {
 export function owns(w: Wardrobe, slot: Slot, item: string) {
   const it = ITEMS[slot][item];
   if (!it) return false;
+  if (it.rank !== undefined) return rankOf(loadStats().earned) >= it.rank;
   if (it.price === 0 && !it.quest) return true;
   if (it.quest) return w.done.includes(it.quest);
   return w.owned.includes(id(slot, item));
@@ -267,6 +361,8 @@ export function activeOutfits(): [Outfit, Outfit] {
 
 export interface Payday {
   cash: number;
+  /** A promotion (the new rank), and what it unlocked in the Locker. */
+  rankUp: { rank: (typeof RANKS)[number]; items: { slot: Slot; item: Item }[] } | null;
   /** Quests finished just now, with what they unlocked. */
   quests: { quest: Quest; item: { slot: Slot; id: string; item: Item } | null }[];
 }
@@ -278,6 +374,7 @@ export function track(
   streak: number,
 ): Payday {
   const s = loadStats();
+  const rank0 = rankOf(s.earned);
   if (r.success) {
     s.deliveries++;
     if (r.condition >= 0.995) s.flawless++;
@@ -291,6 +388,7 @@ export function track(
       s.surprises += job.surprises ?? 0;
     }
     s.bestPayout = Math.max(s.bestPayout, r.payout);
+    s.earned += r.payout;
     if (job.kind === 'level' && job.levelId && job.levelId !== 'playground') {
       if (!s.jobs.includes(job.levelId)) s.jobs.push(job.levelId);
       if (r.stars >= 3 && !s.threeStars.includes(job.levelId)) s.threeStars.push(job.levelId);
@@ -300,7 +398,15 @@ export function track(
   const w = loadWardrobe();
   if (r.success) w.cash += r.payout;
   saveWardrobe(w);
-  return { cash: r.success ? r.payout : 0, quests: claimQuests(streak) };
+  // a promotion? (and what it unlocks)
+  const rank1 = rankOf(s.earned);
+  let rankUp: Payday['rankUp'] = null;
+  if (rank1 > rank0) {
+    const items: { slot: Slot; item: Item }[] = [];
+    for (const { slot } of SLOTS) for (const it of Object.values(ITEMS[slot])) if (it.rank !== undefined && it.rank > rank0 && it.rank <= rank1) items.push({ slot, item: it });
+    rankUp = { rank: RANKS[rank1], items };
+  }
+  return { cash: r.success ? r.payout : 0, rankUp, quests: claimQuests(streak) };
 }
 
 /** Hand over the prizes of quests finished since last time (each just once). */

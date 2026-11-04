@@ -1797,3 +1797,30 @@ button.btn .cash {
   pointer-events: none;
   background: radial-gradient(ellipse 34% 40% at 50% 52%, rgba(6, 6, 16, 0) 0%, rgba(6, 6, 16, 0.55) 55%, rgba(6, 6, 16, 0.97) 100%);
 }
+.locker .rank-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  flex-wrap: wrap;
+}
+.locker .rank-bar .track {
+  flex: 1;
+  min-width: 90px;
+  height: 10px;
+  border-radius: 5px;
+  border: 2px solid var(--ink);
+  background: #eee5d4;
+  overflow: hidden;
+}
+.locker .rank-bar .track i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffd23f, #ff7a3d);
+}
+.locker .rank-bar small {
+  color: var(--ink-soft);
+}
+.quest-won.promo {
+  background: linear-gradient(90deg, #fff4cc, #e6f7ea);
+}

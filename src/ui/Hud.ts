@@ -95,7 +95,7 @@ export class Hud {
       s.events.on('goal', () => this.banner('DELIVERED!')),
       s.events.on('cargoBreak', () => this.banner(breakLine(s.def.cargo))),
       s.events.on('respawn', () => this.banner('WHOOPS!', true)),
-      s.events.on('emote', (e) => this.bubble(e.player, EMOTES[e.kind] ?? '')),
+      s.events.on('emote', (e) => this.bubble(e.player, e.text ?? EMOTES[e.kind] ?? '')),
       s.events.on('tip', (e) => this.tipPop(e.amount)),
       s.events.on('chaos', (e) => {
         // the siren before something happens

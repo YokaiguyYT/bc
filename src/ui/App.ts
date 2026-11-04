@@ -20,7 +20,7 @@ import { dailySeed, generateJob, hashSeed, randomSeed, TWISTS } from '../levels/
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
-import { activeOutfits, buy, claimQuests, ITEMS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
+import { activeOutfits, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
@@ -189,7 +189,8 @@ export class App {
   private emote(player: number, kind: number) {
     const s = this.game.session;
     if (!s || s.mirror || !this.emoteReady(player)) return;
-    s.events.emit('emote', { player, kind });
+    // (in that mover's own emote pack, from the Locker)
+    s.events.emit('emote', { player, kind, text: emoteLines(s.outfits[player]?.emotes)[kind] });
   }
 
   private updateFocus() {
@@ -379,7 +380,10 @@ export class App {
        </div>
        ${this.menuNudge()}
        ${this.game.keyboard.movedP2 ? '<div class="hint-line" style="color:var(--ink)"><b>New for Player 2:</b> arrows to move, <b>K</b> to jump, <b>L</b> to grab. Other layouts are under Controls.</div>' : ''}
-       <div class="hint-line">Navigate with arrows / WASD · Return or Space to pick</div>`,
+       <div class="hint-line">${(() => {
+         const cr = companyRank();
+         return cr.earned > 0 ? `${cr.rank.icon} ${cr.rank.name} · ` : '';
+       })()}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showPlay());
     this.bind('m-locker', () => this.showLocker());
@@ -606,6 +610,7 @@ export class App {
     if (won.length) this.toast(won.map(({ quest, item }) => `🏆 Quest done: ${quest.name}${item ? `! ${item.item.icon} ${item.item.name} unlocked` : ''}`).join(' · '));
     const w = loadWardrobe();
     const st = loadStats();
+    const cr = companyRank();
     const days = streak().current;
     const p = this.lockerPlayer;
     const tab = this.lockerTab;
@@ -649,10 +654,12 @@ export class App {
           const has = owns(w, tab, id);
           const on = outfit[tab] === id;
           const q = it.quest ? QUESTS.find((x) => x.id === it.quest) : null;
-          const state = on ? 'Wearing' : has ? 'Wear' : q ? `🔒 ${esc(q.name)}` : formatMoney(it.price);
-          const cls = on ? 'on' : has ? 'own' : q ? 'locked' : w.cash >= it.price ? 'buy' : 'pricey';
+          const rk = it.rank !== undefined ? RANKS[it.rank] : null;
+          const state = on ? (tab === 'emotes' || tab === 'dance' || tab === 'trail' || tab === 'skin' ? 'Chosen' : 'Wearing') : has ? (tab === 'color' || tab === 'hat' || tab === 'face' || tab === 'back' ? 'Wear' : 'Choose') : q ? `🔒 ${esc(q.name)}` : rk ? `🔒 ${rk.icon} ${esc(rk.name)}` : formatMoney(it.price);
+          const cls = on ? 'on' : has ? 'own' : q || rk ? 'locked' : w.cash >= it.price ? 'buy' : 'pricey';
           const icon = tab === 'color' ? `<span class="swatch big" style="background:${swatch(id)}"></span>` : it.icon;
-          return `<button class="item-card ${cls}" data-nav id="lk-i-${id}" ${q ? `title="${esc(q.text)}"` : ''}><div class="icon">${icon}</div><div class="name">${esc(it.name)}</div><div class="state">${state}</div></button>`;
+          const title = q ? q.text : rk ? `Reach the rank of ${rk.name}` : it.lines ? it.lines.join(' · ') : '';
+          return `<button class="item-card ${cls}" data-nav id="lk-i-${id}" ${title ? `title="${esc(title)}"` : ''}><div class="icon">${icon}</div><div class="name">${esc(it.name)}</div><div class="state">${state}</div></button>`;
         })
         .join('')}</div>`;
     }
@@ -660,6 +667,8 @@ export class App {
       'locker',
       `<div class="panel locker">
          <div class="locker-head"><div class="logo" style="font-size:40px">LOCKER</div><div class="wallet" title="every delivery pays in">💵 ${formatMoney(w.cash)}</div></div>
+         <div class="rank-bar" title="the company's rank goes up with everything it earns">${cr.rank.icon} <b>${cr.rank.name}</b>${cr.next ? `<span class="track"><i style="width:${Math.round(cr.progress * 100)}%"></i></span><small>${formatMoney(cr.next.at - cr.earned)} to ${cr.next.icon} ${cr.next.name}</small>` : '<small>the top of the company!</small>'}</div>
+         ${tab === 'skin' ? '<p class="hint-line" style="margin:0">The cargo’s look: Player 1’s choice counts (it’s the company’s cargo).</p>' : tab === 'emotes' ? '<p class="hint-line" style="margin:0">What the number keys say. Point at a pack to see its lines.</p>' : ''}
          <div class="row tabs">${players}<button class="btn small tab" data-nav id="lk-rand" title="put on a random mix of what you own">🎲 Surprise me</button></div>
          <div class="row tabs">${tabs}</div>
          ${body}
@@ -696,6 +705,11 @@ export class App {
           if (it.quest) {
             const q = QUESTS.find((x) => x.id === it.quest);
             this.toast(`🔒 ${it.icon} ${it.name}: win it from the quest “${q?.name}” (${q?.text}).`);
+            return;
+          }
+          if (it.rank !== undefined) {
+            const rk = RANKS[it.rank];
+            this.toast(`🔒 ${it.icon} ${it.name}: the company gets it at the rank of ${rk.icon} ${rk.name} (${formatMoney(rk.at)} earned in all).`);
             return;
           }
           if (!buy(tab, id)) {
@@ -910,6 +924,7 @@ export class App {
         <div class="setting"><span>Graphics</span>${seg('quality', [['low', 'Fast'], ['medium', 'Balanced'], ['high', 'Pretty']], st.quality)}</div>
         <div class="setting"><span>Cargo toughness</span>${seg('damage', [['1', 'Normal'], ['0.5', 'Sturdy'], ['0', 'Unbreakable']], String(st.damage ?? 1))}</div>
         <div class="setting"><span>Screen shake</span>${seg('shake', [['1', 'On'], ['0', 'Off']], st.shake ? '1' : '0')}</div>
+        <div class="setting"><span>Ghost of your best run</span>${seg('ghost', [['1', 'On'], ['0', 'Off']], st.ghost === false ? '0' : '1')}</div>
         <div class="setting"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" value="${st.master}" data-vol="master"></div>
         <div class="setting"><span>Music</span><input type="range" min="0" max="1" step="0.05" value="${st.music}" data-vol="music"></div>
         <div class="setting"><span>Sound effects</span><input type="range" min="0" max="1" step="0.05" value="${st.sfx}" data-vol="sfx"></div>
@@ -930,6 +945,7 @@ export class App {
             st.damage = parseFloat(v);
             tuning.damage.scale = st.damage;
           } else if (name === 'shake') st.shake = v === '1';
+          else if (name === 'ghost') st.ghost = v === '1';
           this.game.saveSettings();
           segEl.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === btn));
         }),
@@ -1027,6 +1043,7 @@ export class App {
 
   private wireSession(s: LevelSession) {
     this.audio.attach(s);
+    s.ghostOn = this.game.settings.ghost !== false && !s.mirror;
     s.events.on('cargoDamage', () => {
       if (!this.game.settings.shake) s.cameraRig.addShake(-1);
     });
@@ -1269,6 +1286,7 @@ export class App {
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
+        ${s.ghostSaved && this.game.settings.ghost !== false ? '<p style="font-size:14px">👻 Your fastest run yet: next time, its ghost runs alongside you.</p>' : ''}
         ${shareBlock}
         ${this.paydayBlock(payday)}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
@@ -1319,8 +1337,11 @@ export class App {
           `<div class="quest-won"><span class="q-icon">${item?.item.icon ?? '🏆'}</span><span><b>Quest done: ${esc(quest.name)}!</b>${item ? ` The <b>${esc(item.item.name)}</b> is in the Locker.` : ''}</span></div>`,
       )
       .join('');
-    if (!p.cash && !quests) return '';
-    return `<div class="payday">${p.cash ? `<p>💵 <b>+${formatMoney(p.cash)}</b> to the Locker wallet (now ${formatMoney(loadWardrobe().cash)})</p>` : ''}${quests}</div>`;
+    const promo = p.rankUp
+      ? `<div class="quest-won promo"><span class="q-icon">${p.rankUp.rank.icon}</span><span><b>Promoted! The company is now ${esc(p.rankUp.rank.name)}.</b>${p.rankUp.items.length ? ` New in the Locker: ${p.rankUp.items.map((x) => `${x.item.icon} ${esc(x.item.name)}`).join(', ')}.` : ''}</span></div>`
+      : '';
+    if (!p.cash && !quests && !promo) return '';
+    return `<div class="payday">${p.cash ? `<p>💵 <b>+${formatMoney(p.cash)}</b> to the Locker wallet (now ${formatMoney(loadWardrobe().cash)})</p>` : ''}${promo}${quests}</div>`;
   }
 
   /** Back from a job to where it was picked: the job list for a hand-made job, the Play screen otherwise. */

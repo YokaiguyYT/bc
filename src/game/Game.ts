@@ -13,6 +13,8 @@ export interface Settings {
   music: number;
   sfx: number;
   shake: boolean;
+  /** Hand-made jobs: the ghost of your best run (on unless switched off). */
+  ghost?: boolean;
   /** Cargo damage multiplier (1 normal, 0.5 sturdy, 0 unbreakable). */
   damage: number;
 }

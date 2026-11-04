@@ -31,7 +31,7 @@ export interface GameEvents {
   /** Something crazy started in a chaos job (see game/chaos.ts). */
   chaos: { kind: string; text: string };
   /** A player says something (EMOTES[kind]) over their head. */
-  emote: { player: number; kind: number };
+  emote: { player: number; kind: number; text?: string };
 }
 
 /** What the number keys make a mover say. */

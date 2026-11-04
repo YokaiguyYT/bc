@@ -14,6 +14,8 @@ import { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import { DEFAULT_THEME } from '../render/Renderer';
 import { activeOutfits, ITEMS, type Outfit } from './outfits';
+import { danceIntent, dressCargo, trailBurst } from './flair';
+import { GhostRecorder, GhostView } from './ghost';
 import type { Keyboard, MoveState } from '../input/Keyboard';
 import type { Touch } from '../input/Touch';
 import { tuning } from '../config/tuning';
@@ -119,6 +121,15 @@ export class LevelSession {
   mirror: MirrorDriver | null = null;
   /** True while the per-frame looks run (online: what happens then isn't sent to the guest). */
   inVisuals = false;
+  /** Sparkles round the cargo (a Locker skin), or null. */
+  private cargoSkin: ((dt: number, time: number) => void) | null = null;
+  /** Hand-made jobs: show the ghost of your best run (the app sets this from Settings). */
+  ghostOn = false;
+  private ghostRec: GhostRecorder | null = null;
+  private ghostView: GhostView | null = null;
+  private ghostTried = false;
+  /** This delivery was your fastest: it's the new ghost. */
+  ghostSaved = false;
 
   constructor(
     readonly def: LevelDef,
@@ -180,6 +191,8 @@ export class LevelSession {
       this.root.add(rig.root);
     }
     this.cargo = createCargo(def.cargo, this.sim, { pos: s.cargo, yaw: 0, rot: s.cargoRot, vel: s.vel });
+    // the company's cargo skin (Player 1's pick in the Locker)
+    this.cargoSkin = dressCargo(this.cargo, outfits[0].skin);
     this.sim.players = this.players;
     this.sim.cargo = this.cargo;
 
@@ -205,6 +218,8 @@ export class LevelSession {
     this.cameraRig.reset(def.cameraYaw, this.focusPoints());
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
+    // footprints (a Locker trail)
+    this.events.on('step', (e) => trailBurst(this.effects, this.outfits[e.player]?.trail, e.pos));
     this.events.on('cargoBreak', () => this.cameraRig.addShake(0.5));
     this.events.on('tip', (e) => {
       this.tips += e.amount;
@@ -291,6 +306,9 @@ export class LevelSession {
     }
 
     // (chaos can slow the clock down or speed it up)
+    // delivered: everybody does their victory dance (from the Locker)
+    if (this.state === 'delivered' && !this.mirror && !this.attractMode && !this.scriptedInput && !this.paused)
+      this.players.forEach((p, i) => danceIntent(p, this.outfits[i]?.dance ?? 'wave', this.stateTime, frameDt, i, v3(this.def.goal.pos)));
     const dt = this.paused || this.mirror ? 0 : frameDt * (this.sim.timeScale ?? 1);
     if (dt > 0) {
       this.physics.advance(dt);
@@ -298,6 +316,7 @@ export class LevelSession {
       this.stateTime += dt;
       this.checkZones(dt);
     }
+    this.ghosts();
     this.inVisuals = true;
     this.physics.syncVisuals();
     for (const r of this.rigs) r.update(frameDt);
@@ -306,6 +325,7 @@ export class LevelSession {
     this.goalZone.update(frameDt, this.goalProgress / this.goalNeeded);
     this.cpZones.forEach((z, i) => z.update(frameDt, i <= this.checkpoint ? 1 : 0));
     if (this.def.weather === 'rain') this.rain(frameDt);
+    this.cargoSkin?.(frameDt, this.physics.time);
     this.effects.update(frameDt);
     this.inVisuals = false;
     this.mirror?.afterVisuals?.(this);
@@ -463,7 +483,22 @@ export class LevelSession {
     this.events.emit('respawn', { pos: s.cargo.clone() });
   }
 
+  /** Hand-made jobs: record this run, and play back your best one alongside it. */
+  private ghosts() {
+    if (this.def.generated || this.attractMode || this.mirror || this.state !== 'playing') return;
+    this.ghostRec ??= new GhostRecorder();
+    this.ghostRec.sample(this.time, [this.players[0].bodyPos, this.players[1].bodyPos, this.cargo.position(new THREE.Vector3())]);
+    if (this.ghostOn && !this.ghostTried) {
+      this.ghostTried = true;
+      const size = new THREE.Box3().setFromObject(this.cargo.visual).getSize(new THREE.Vector3());
+      this.ghostView = GhostView.load(this.def.id, size);
+      if (this.ghostView) this.root.add(this.ghostView.root);
+    }
+    this.ghostView?.update(this.time);
+  }
+
   private finish(success: boolean) {
+    if (success && this.ghostRec && !this.def.generated && !this.attractMode) this.ghostSaved = this.ghostRec.save(this.def.id, this.time);
     const condition = this.cargo.destroyed ? 0 : this.cargo.health;
     const value = this.cargo.value;
     const base = success ? value * condition : 0;

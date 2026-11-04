@@ -235,19 +235,20 @@ const spinners: Piece = {
   weight: (g) => (g.kit.door <= 3.4 ? 0.55 : 0),
   build(b) {
     const r = b.g.rng;
-    const L = 12;
+    const L = 15;
     b.ground(0, -L);
     let s = r.chance(0.5) ? 1 : -1;
-    const rad = 1.6;
-    for (const z of [-4, -8.5]) {
+    const rad = 1.4;
+    // (far enough apart to swing a long load across from one clear side to the other between them)
+    for (const z of [-4, -11]) {
       const x = s * (W / 2 - rad - 0.1);
-      b.world({ type: 'hazard', kind: 'spinner', pos: b.f.p(x, 0.6, z), params: { arms: 2, length: rad * 2, height: 0.45, thickness: 0.14, speed: (r.chance(0.5) ? 1 : -1) * (1.1 + b.g.difficulty * 0.6), bonk: true, color: 0xff5a4f } });
+      b.world({ type: 'hazard', kind: 'spinner', pos: b.f.p(x, 0.48, z), params: { arms: 2, length: rad * 2, height: 0.4, thickness: 0.14, speed: (r.chance(0.5) ? 1 : -1) * (1.1 + b.g.difficulty * 0.6), bonk: true, color: 0xff5a4f } });
       const lane = -s * (W / 2 - (W - 2 * rad - 0.2) / 2);
-      b.go(lane * 0.8, z + 1.8, b.g.kit.tight);
-      b.go(lane * 0.8, z - 1.8, b.g.kit.tight);
+      b.go(lane * 0.8, z + 2.0, b.g.kit.tight);
+      b.go(lane * 0.8, z - 2.0, b.g.kit.tight);
       s = -s;
     }
-    b.cash(0, -6.2, { risky: true });
+    b.cash(0, -7.5, { risky: true });
     b.go(0, -L);
     b.tip(0, -1.5, 'Spinning bars! Keep to the clear side.', 3);
     return { length: L };
