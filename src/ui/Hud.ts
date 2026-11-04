@@ -347,6 +347,16 @@ function breakLine(kind: string) {
       return 'RUINED!';
     case 'balloons':
       return 'POP POP POP!';
+    case 'chandelier':
+      return 'TINKLE… CRASH!';
+    case 'beehive':
+      return 'BZZZZZZZ!';
+    case 'jelly':
+      return 'SPLODGE!';
+    case 'snowman':
+      return 'SLUSH!';
+    case 'rocket':
+      return 'HOUSTON, PROBLEM!';
     default:
       return 'SMASHED!';
   }

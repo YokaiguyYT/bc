@@ -15,13 +15,18 @@ const Y = new THREE.Vector3(0, 1, 0);
  * heat lamps over a buffet, or an invisible spot (power < 0 is colder than
  * outdoors, like a walk-in freezer).
  * params: radius (m), power (melt multiplier at the centre, fading to 0 at the
- * radius), style 'fireplace' | 'patio' | 'lamp' | 'none'. A fireplace faces
- * its rotation's +Z.
+ * radius), style 'fireplace' | 'patio' | 'lamp' | 'welder' (a welding bench
+ * throwing sparks) | 'grill' (a barbecue) | 'none'. A fireplace faces its
+ * rotation's +Z.
  */
 class Heater implements Hazard {
   private group = new THREE.Group();
   private flames: THREE.Mesh[] = [];
   private t = Math.random() * 10;
+  /** Where sparks fly from (welders), and when the next shower is due. */
+  private sparks: THREE.Vector3 | null = null;
+  private sparkT = 0;
+  private smoke: THREE.Vector3 | null = null;
 
   constructor(
     o: HazardObj,
@@ -30,7 +35,7 @@ class Heater implements Hazard {
     const p = o.params;
     const pos = v3(o.pos);
     const yaw = (o.rot?.[1] ?? 0) * DEG;
-    const style = str<'fireplace' | 'patio' | 'lamp' | 'none'>(p, 'style', 'patio');
+    const style = str<'fireplace' | 'patio' | 'lamp' | 'welder' | 'grill' | 'none'>(p, 'style', 'patio');
     this.group.position.copy(pos);
     this.group.rotation.y = yaw;
     sim.scene.add(this.group);
@@ -39,10 +44,13 @@ class Heater implements Hazard {
     if (style === 'fireplace') centre.add(new THREE.Vector3(0, 0.7, 0.9).applyAxisAngle(Y, yaw));
     else if (style === 'patio') centre.y += 1.1;
     else if (style === 'lamp') centre.y -= 0.7;
+    else if (style === 'welder' || style === 'grill') centre.y += 1.0;
     sim.heat?.push({ pos: centre, radius: num(p, 'radius', 3), power: num(p, 'power', 1) });
     if (style === 'fireplace') this.fireplace(pos, yaw);
     else if (style === 'patio') this.patio(pos);
     else if (style === 'lamp') this.lamp();
+    else if (style === 'welder') this.welder(pos, yaw);
+    else if (style === 'grill') this.grill(pos, yaw);
   }
 
   private solid(desc: InstanceType<typeof RAPIER.ColliderDesc>, at: THREE.Vector3, yaw: number) {
@@ -125,10 +133,77 @@ class Heater implements Hazard {
     this.group.add(shade, bulb, cord);
   }
 
+  /** A welding bench: a steel table with a torch on an arm, spitting sparks. */
+  private welder(pos: THREE.Vector3, yaw: number) {
+    const steel = glossy(0x7d8794, 0.4, 0.7);
+    const dark = matte(0x2b2b33);
+    const add = (geo: THREE.BufferGeometry, mat: THREE.Material, at: [number, number, number]) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(...at);
+      m.castShadow = m.receiveShadow = true;
+      this.group.add(m);
+      return m;
+    };
+    add(new THREE.BoxGeometry(1.1, 0.08, 0.7), steel, [0, 0.82, 0]);
+    for (const [x, z] of [[-0.48, -0.28], [0.48, -0.28], [-0.48, 0.28], [0.48, 0.28]]) add(new THREE.BoxGeometry(0.06, 0.8, 0.06), dark, [x, 0.4, z]);
+    // a lump of metal being welded, and the torch on its arm
+    add(new THREE.BoxGeometry(0.42, 0.16, 0.3), matte(0x5a6270), [0, 0.94, 0]);
+    add(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), dark, [-0.35, 1.3, -0.2]).rotation.z = -0.9;
+    const tip = add(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0xbfe4ff, emissive: 0x9fd8ff, emissiveIntensity: 2.4 }), [0.05, 1.04, -0.05]);
+    this.flames.push(tip);
+    this.sparks = pos.clone().add(new THREE.Vector3(0.05, 1.04, -0.05).applyAxisAngle(Y, yaw));
+    this.solid(RAPIER.ColliderDesc.cuboid(0.55, 0.45, 0.35), pos.clone().add(new THREE.Vector3(0, 0.45, 0)), yaw);
+  }
+
+  /** A kettle barbecue with glowing coals and a wisp of smoke. */
+  private grill(pos: THREE.Vector3, yaw: number) {
+    const black = glossy(0x2b2b33, 0.5, 0.3);
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), black);
+    bowl.position.y = 0.85;
+    (bowl.material as THREE.Material).side = THREE.DoubleSide;
+    const coals = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0xff5a10, emissive: 0xff3a00, emissiveIntensity: 1.6 }));
+    coals.position.y = 0.8;
+    this.flames.push(coals);
+    const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.01, 16), glossy(0xb0b5bc, 0.3, 0.8));
+    rack.position.y = 0.86;
+    this.group.add(bowl, coals, rack);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.7, 6), black);
+      leg.position.set(Math.cos(a) * 0.24, 0.35, Math.sin(a) * 0.24);
+      leg.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+      this.group.add(leg);
+    }
+    // sausages
+    for (let i = 0; i < 4; i++) {
+      const s = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.16, 4, 8), matte(0x9c4a2a));
+      s.rotation.z = Math.PI / 2;
+      s.position.set(0, 0.89, -0.15 + i * 0.1);
+      this.group.add(s);
+    }
+    this.group.traverse((o) => ((o as THREE.Mesh).castShadow = true));
+    this.smoke = pos.clone().add(new THREE.Vector3(0, 1.0, 0));
+    this.solid(RAPIER.ColliderDesc.cylinder(0.45, 0.36), pos.clone().add(new THREE.Vector3(0, 0.45, 0)), yaw);
+  }
+
   preStep() {}
 
   update(dt: number) {
     this.t += dt;
+    // welding sparks (a shower every so often) and barbecue smoke
+    if (this.sparks || this.smoke) {
+      this.sparkT -= dt;
+      if (this.sparkT <= 0) {
+        if (this.sparks) {
+          this.sparkT = 0.08;
+          const on = Math.sin(this.t * 1.7) > -0.3;
+          if (on) this.sim.fx?.burst('spark', this.sparks, { count: 3, speed: 2.6, up: 1.6, size: 0.025, life: 0.5, gravity: 9, colors: [0xffe28a, 0xffb347, 0xffffff] });
+        } else if (this.smoke) {
+          this.sparkT = 0.35;
+          this.sim.fx?.burst('smoke', this.smoke, { count: 1, speed: 0.15, up: 0.6, size: 0.25, life: 2.2, gravity: -0.4, drag: 1, colors: [0xd9d9d9, 0xbfbfbf] });
+        }
+      }
+    }
     this.flames.forEach((f, i) => {
       const k = 1 + 0.16 * Math.sin(this.t * 13 + i * 2.1) + 0.08 * Math.sin(this.t * 31 + i);
       f.scale.set(1, k, 1);

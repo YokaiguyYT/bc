@@ -12,6 +12,11 @@ import { DinoEgg } from './DinoEgg';
 import { UprightPiano } from './UprightPiano';
 import { Painting } from './Painting';
 import { Balloons } from './Balloons';
+import { Chandelier } from './Chandelier';
+import { Beehive } from './Beehive';
+import { Jelly } from './Jelly';
+import { Snowman } from './Snowman';
+import { Rocket } from './Rocket';
 
 type Factory = (sim: Sim, opts: CargoOptions) => Cargo;
 
@@ -27,6 +32,11 @@ const registry: Partial<Record<CargoKind, Factory>> = {
   piano: (sim, o) => new UprightPiano(sim, o),
   painting: (sim, o) => new Painting(sim, o),
   balloons: (sim, o) => new Balloons(sim, o),
+  chandelier: (sim, o) => new Chandelier(sim, o),
+  beehive: (sim, o) => new Beehive(sim, o),
+  jelly: (sim, o) => new Jelly(sim, o),
+  snowman: (sim, o) => new Snowman(sim, o),
+  rocket: (sim, o) => new Rocket(sim, o),
 };
 
 export function registerCargo(kind: CargoKind, f: Factory) {

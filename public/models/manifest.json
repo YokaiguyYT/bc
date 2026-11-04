@@ -1250,6 +1250,21 @@
       "url": "https://sketchfab.com/3d-models/industrial-control-box-sci-fi-3b8ee703978949dfabb33f399126b8eb",
       "license": "CC Attribution",
       "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "rocket": {
+      "file": "rocket.glb",
+      "size": [
+        0.62,
+        2.4,
+        0.62
+      ],
+      "style": "keep",
+      "title": "Rocket",
+      "author": "farooq.smurf",
+      "authorUrl": "https://sketchfab.com/farooq.smurf",
+      "url": "https://sketchfab.com/3d-models/rocket-6856376b849a47d6ae30504dd7d06543",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
     }
   }
 }

@@ -938,6 +938,17 @@
       ],
       "style": "keep",
       "maxTexture": 256
+    },
+    "rocket": {
+      "uid": "6856376b849a47d6ae30504dd7d06543",
+      "name": "Rocket",
+      "size": [
+        0.62,
+        2.4,
+        0.62
+      ],
+      "style": "keep",
+      "maxTexture": 256
     }
   }
 }

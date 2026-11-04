@@ -13,4 +13,9 @@ export const CARGO_INFO: Record<CargoKind, { name: string; icon: string; value: 
   piano: { name: 'Upright Piano', icon: '🎹', value: 1800, blurb: 'Rolls on its castors. On a hill it wants to run.' },
   painting: { name: 'Masterpiece', icon: '🖼️', value: 1600, blurb: 'Big, light, and catches the wind like a sail.' },
   balloons: { name: 'Balloon Bouquet', icon: '🎈', value: 500, blurb: 'Floats off if you let go. Pointy things pop it.' },
+  chandelier: { name: 'Crystal Chandelier', icon: '💎', value: 2400, blurb: 'The crystals swing. Swing them too hard and they clink off.' },
+  beehive: { name: 'Beehive', icon: '🐝', value: 1300, blurb: 'Jolt it and the bees get cross. Very cross.' },
+  jelly: { name: 'Giant Jelly', icon: '🍮', value: 1000, blurb: 'Wibbles at every start and stop. Too much wobble tears it.' },
+  snowman: { name: 'Snowman', icon: '⛄', value: 1200, blurb: 'Melts in the sun. Stick to the shade.' },
+  rocket: { name: 'Space Rocket', icon: '🚀', value: 2600, blurb: 'Long and heavy. Overheat it and the engine lights!' },
 };

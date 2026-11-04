@@ -24,7 +24,7 @@ export type Surface =
   | 'paint'
   | 'snow';
 
-export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake' | 'swan' | 'egg' | 'piano' | 'painting' | 'balloons';
+export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake' | 'swan' | 'egg' | 'piano' | 'painting' | 'balloons' | 'chandelier' | 'beehive' | 'jelly' | 'snowman' | 'rocket';
 
 interface Base {
   pos: Vec3;

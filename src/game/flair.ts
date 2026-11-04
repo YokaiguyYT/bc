@@ -93,7 +93,7 @@ export function danceIntent(p: Player, dance: string, t: number, dt: number, i: 
 export function dressCargo(cargo: Cargo, skin: string | undefined): ((dt: number, time: number) => void) | null {
   if (!skin || skin === 'none') return null;
   // (loads with materials of their own that change as you go keep their looks: only the sparkles)
-  const special = ['swan', 'aquarium', 'balloons', 'glass'].includes(cargo.kind);
+  const special = ['swan', 'aquarium', 'balloons', 'glass', 'rocket', 'snowman'].includes(cargo.kind);
   const mats: THREE.MeshStandardMaterial[] = [];
   if ((skin === 'gold' || skin === 'rainbow') && !special)
     cargo.visual.traverse((o) => {

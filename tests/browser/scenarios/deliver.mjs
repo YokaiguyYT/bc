@@ -333,6 +333,48 @@ const ROUTES = {
     stairs: { keep: true, path: [[8, -8.8, 'inline'], [12.4, -8.8, 'inline'], [12.4, -6.2, 'inline']] },
     hall: { keep: true, path: [[11.6, 3.4, 'inline'], [6.6, 4.6, 'inline'], [6, 7.0, 'inline'], [6, 12.5, 'inline'], [6, 18.6, 'inline'], [6, 22.6, 'inline']], place: true },
   },
+  // chandelier: out of the storeroom, between the waltzers, up the grand stairs, onto the stage
+  'ballroom-full': {
+    store: {
+      start: true,
+      path: [
+        [0, 15.6, 'broad'],
+        [0, 12.6, 'broad'],
+        [0, 5.4, 'broad'],
+        { wait: 'walkers', at: [0, 3.0], along: [1, 0] },
+        [0, 0.4, 'broad'],
+        { wait: 'walkers', at: [0, -2.0], along: [1, 0] },
+        [0, -4.6, 'broad'],
+        [0, -9.4, 'broad'],
+        [0, -13.5, 'broad'],
+        [0, -17.2, 'broad'],
+        { wait: 'walkers', at: [0, -19.6], along: [1, 0] },
+        [0, -21.8, 'broad'],
+        [0, -24.6, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // beehive: out of the shed, past the chickens and the dog, through the gate, over the
+  // footbridge, through the orchard's sprinklers and onto the stand
+  'bees-full': {
+    shed: {
+      start: true,
+      path: [
+        [0, 14.0, 'broad'],
+        [0, 11.0, 'broad'],
+        [0, 4.0, 'broad'],
+        [0, 1.6, 'broad'],
+        [0, -1.2, 'broad'],
+        [0, -6.4, 'broad'],
+        [0, -12.0, 'broad'],
+        [0, -18.0, 'broad'],
+        [0, -24.0, 'broad'],
+        [0, -28.4, 'broad'],
+      ],
+      place: true,
+    },
+  },
   delivery: {
     // after the truck ride: out of the truck bed onto the dock
     unload: { wait: 15, cargo: null, path: [[3.5, -35]] },
@@ -959,6 +1001,8 @@ export default async function ({ page, base, shot }) {
     }
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));
+    // DUMP=<expression with s = the session>: print it at the end (debugging)
+    if (process.env.DUMP) console.log('dump', await page.evaluate((e) => { const s = window.__FF.game.session; void s; return JSON.stringify(eval(e)); }, process.env.DUMP));
     const ch = await page.evaluate(() => window.__chaos ?? []);
     if (ch.length) console.log('chaos:', ch.join(', '));
   }
