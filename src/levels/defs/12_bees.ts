@@ -21,6 +21,14 @@ const stand = (x: number, y: number, z: number): LevelObject[] => [
   { type: 'box', pos: [x, y + (STAND - 0.08) / 2, z], size: [0.8, STAND - 0.08, 0.6], visible: false },
 ];
 
+/** A beehive (decor): white boxes, a lid and a landing board, like the one being moved. */
+const hive = (x: number, y: number, z: number, s = 0.85): LevelObject[] => [
+  { type: 'box', pos: [x, y + 0.2 * s, z], size: [0.68 * s, 0.4 * s, 0.48 * s], color: 0xfbfaf6, radius: 0.02 },
+  { type: 'box', pos: [x, y + 0.6 * s, z], size: [0.68 * s, 0.38 * s, 0.48 * s], color: 0xf5e6b8, radius: 0.02 },
+  { type: 'box', pos: [x, y + 0.84 * s, z], size: [0.76 * s, 0.1 * s, 0.56 * s], color: 0xd9a93f, radius: 0.02 },
+  { type: 'box', pos: [x, y + 0.04 * s, z + 0.3 * s], size: [0.5 * s, 0.03, 0.14 * s], color: 0x9c6b3e, collide: false },
+];
+
 /** A little apple tree (decor that stands in the way). */
 const appleTree = (x: number, z: number, s = 1): LevelObject[] => [
   { type: 'cylinder', pos: [x, 0.7 * s, z], radius: 0.13 * s, height: 1.4 * s, color: 0x6e4a2c, segments: 10 },
@@ -55,11 +63,11 @@ const objects: LevelObject[] = [
   ...wall([-4, 0, 13], [4, 0, 13], 2.6, { surface: 'woodDark', color: 0x8a5a36, fade: true, doors: [[0.5, 3.2, 2.3]] }),
   { type: 'sign', pos: [0, 2.4, 12.9], size: [3.0, 0.42, 0.05], text: 'BUZZ FARM HONEY', color: 0xe9a23b, rot: [0, 180, 0] },
   ...stand(0, 0, 16.5),
-  ...counter([-3.4, 0, 16.5], [1.0, 0.9, 4.6], 0xf2ede4, WOOD, 90),
+  ...counter([-3.4, 0, 16.5], [1.0, 0.9, 4.6], 0xf2ede4, WOOD),
   // honey jars on the counter
   ...Array.from({ length: 8 }, (_, i): LevelObject => ({ type: 'cylinder', pos: [-3.35 + (i % 2) * 0.25, 1.0, 14.8 + Math.floor(i / 2) * 0.9], radius: 0.08, height: 0.18, color: 0xf2a81a, collide: false })),
-  { type: 'model', model: 'beehive', pos: [3.3, 0, 18.9], size: [0.5, 0.7, 0.5] },
-  { type: 'model', model: 'beehive', pos: [3.3, 0, 14.1], size: [0.5, 0.7, 0.5] },
+  ...hive(3.3, 0, 18.9),
+  ...hive(3.3, 0, 14.1),
 
   // ---- the farmyard: chickens on the left, the dog's pen on the right, a barn
   { type: 'hazard', kind: 'pigeons', pos: [-3.2, 0, 8.2], params: { count: 5, radius: 1.3, model: 'chicken', size: [0.3, 0.5, 0.5] } },
@@ -96,7 +104,7 @@ const objects: LevelObject[] = [
 
   // ---- the apiary at the far end: the new hive's stand among the others
   { type: 'box', pos: [0, 0.006, -27.5], size: [9, 0.012, 4], color: 0xd8c08a, collide: false, castShadow: false, radius: 0.003 },
-  ...([-4.4, -2.7, 2.7, 4.4] as const).flatMap((x) => [...stand(x, 0, -28.4), { type: 'model' as const, model: 'beehive', pos: [x, STAND, -28.4] as Vec3, size: [0.6, 0.8, 0.5] as Vec3 }]),
+  ...([-4.4, -2.7, 2.7, 4.4] as const).flatMap((x) => [...stand(x, 0, -28.4), ...hive(x, STAND, -28.4)]),
   ...stand(0, 0, -28.4),
   { type: 'sign', pos: [0, 1.9, -30.2], size: [2.4, 0.5, 0.05], text: 'NEW HIVE HERE', color: 0xe9a23b, post: true },
   ...fence([-5.5, 0, -30.6], [5.5, 0, -30.6], 0x8a5a36, 1.0),

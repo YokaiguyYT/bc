@@ -242,7 +242,7 @@
     },
     "excavator": {
       "uid": "f870526642e14e4b9a8b9999cfa71a66",
-      "name": "low p\u00f4ly excavator",
+      "name": "low pôly excavator",
       "size": [
         3.2,
         3.4,
@@ -752,17 +752,6 @@
       "style": "keep",
       "maxTexture": 128
     },
-    "beehive": {
-      "uid": "ec62db5c4f03456ea929057506d073f3",
-      "name": "Beehive",
-      "size": [
-        0.5,
-        0.7,
-        0.5
-      ],
-      "style": "keep",
-      "maxTexture": 256
-    },
     "marketStall": {
       "uid": "2735bf5e9dd84a50827496c755b313a8",
       "name": "Low Poly Market Stall 1",
@@ -842,7 +831,7 @@
     },
     "cactus": {
       "uid": "e9ddaa7722ad4f11888de6edccc7382c",
-      "name": "Cactus / \u041a\u0430\u043a\u0442\u0443\u0441 (Low poly)",
+      "name": "Cactus / Кактус (Low poly)",
       "size": [
         0.7,
         1.7,

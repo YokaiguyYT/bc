@@ -995,21 +995,6 @@
       "license": "CC Attribution",
       "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
     },
-    "beehive": {
-      "file": "beehive.glb",
-      "size": [
-        0.5,
-        0.7,
-        0.5
-      ],
-      "style": "keep",
-      "title": "Beehive",
-      "author": "dom",
-      "authorUrl": "https://sketchfab.com/dom-dom",
-      "url": "https://sketchfab.com/3d-models/beehive-ec62db5c4f03456ea929057506d073f3",
-      "license": "CC Attribution",
-      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
-    },
     "marketStall": {
       "file": "marketStall.glb",
       "size": [

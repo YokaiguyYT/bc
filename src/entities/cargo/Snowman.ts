@@ -12,7 +12,7 @@ const BW = 0.9;
 const BH = 0.12;
 const BD = 0.62;
 /** Health melted per second at "warmth 1"; out in the sun it's SUN, shade takes it off. */
-const MELT = 0.0011;
+const MELT = 0.0024;
 const SUN = 1.6;
 /** The snowballs: radius and centre height above the board's middle. */
 const BALLS: [number, number][] = [

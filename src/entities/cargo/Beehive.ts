@@ -3,7 +3,7 @@ import { RAPIER } from '../../physics/rapier';
 import { Cargo, CargoOptions, Fragility } from './Cargo';
 import type { Sim } from '../../game/Sim';
 import { matte } from '../../render/materials';
-import { models } from '../../render/models';
+import { roundedBox } from '../../levels/LevelBuilder';
 import { clamp } from '../../util/math';
 
 /** The hive's box (body origin = its centre). */
@@ -77,26 +77,50 @@ export class Beehive extends Cargo {
   }
 
   protected buildVisual() {
-    if (models.has('beehive')) {
-      const m = models.instance('beehive', [W, H, D]);
-      this.visual.add(m.object);
-      return;
+    // a hive: two white boxes (the brood box and a honey super) on a floor, a
+    // gold lid, the entrance slot and its landing board, and a bee painted on
+    const add = (size: [number, number, number], y: number, color: number, z = 0) => {
+      const m = new THREE.Mesh(roundedBox(size, 0.015, 0.6), matte(color));
+      m.position.set(0, y, z);
+      m.castShadow = m.receiveShadow = true;
+      this.visual.add(m);
+      return m;
+    };
+    const b = -H / 2;
+    add([W, 0.06, D], b + 0.03, 0x9c6b3e);
+    add([W - 0.02, 0.4, D - 0.02], b + 0.06 + 0.2, 0xfbfaf6);
+    add([W - 0.02, 0.3, D - 0.02], b + 0.46 + 0.15, 0xf5e6b8);
+    add([W + 0.05, 0.1, D + 0.05], H / 2 - 0.05, 0xd9a93f);
+    add([W - 0.12, 0.02, 0.012], b + 0.46, 0xd9c48a, D / 2 - 0.005);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.03, 0.02), matte(0x2b1d10));
+    slot.position.set(0, b + 0.08, D / 2);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.025, 0.12), matte(0x9c6b3e));
+    board.position.set(0, b + 0.05, D / 2 + 0.06);
+    this.visual.add(slot, board);
+    // the bee sign
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = '#ffc21a';
+    ctx.beginPath();
+    ctx.ellipse(64, 70, 34, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2b2b33';
+    for (const x of [52, 72]) ctx.fillRect(x, 48, 9, 44);
+    ctx.beginPath();
+    ctx.arc(98, 66, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,235,255,0.9)';
+    for (const dx of [-14, 10]) {
+      ctx.beginPath();
+      ctx.ellipse(62 + dx, 36, 12, 20, dx * 0.03, 0, Math.PI * 2);
+      ctx.fill();
     }
-    // stacked boxes with a lid and a landing board
-    const colors = [0xf5c16c, 0xe9a23b, 0xf5c16c, 0xe9a23b];
-    const bh = (H - 0.08) / colors.length;
-    colors.forEach((c, i) => {
-      const box = new THREE.Mesh(new THREE.BoxGeometry(W - 0.02, bh - 0.01, D - 0.02), matte(c));
-      box.position.y = -H / 2 + bh * (i + 0.5);
-      box.castShadow = box.receiveShadow = true;
-      this.visual.add(box);
-    });
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(W + 0.04, 0.08, D + 0.04), matte(0xfbfaf6));
-    lid.position.y = H / 2 - 0.04;
-    lid.castShadow = true;
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.02), matte(0x2b1d10));
-    slot.position.set(0, -H / 2 + 0.06, D / 2);
-    this.visual.add(lid, slot);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26), new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.9 }));
+    sign.position.set(0, b + 0.3, D / 2 + 0.002);
+    this.visual.add(sign);
   }
 
   preStep(dt: number) {
@@ -109,9 +133,9 @@ export class Beehive extends Cargo {
     this.acc.lerp(_w.copy(_a).sub(this.lastV).divideScalar(dt), 1 - Math.exp(-dt / 0.06));
     this.lastV.copy(_a);
     const still = _a.length() < 0.3;
-    this.anger += Math.max(0, this.acc.length() - 2.5) * 0.045 * dt;
+    this.anger += Math.max(0, Math.hypot(this.acc.x, this.acc.z) - 3) * 0.35 * dt;
     this.anger += Math.max(0, this.recentShock - 0.9) * 0.9 * dt;
-    this.anger -= (still ? 0.07 : 0.012) * dt;
+    this.anger -= (still ? 0.07 : 0.01) * dt;
     this.anger = clamp(this.anger, 0, 1);
     this.peak = Math.max(this.peak, this.anger);
     const ps = this.sim.players ?? [];

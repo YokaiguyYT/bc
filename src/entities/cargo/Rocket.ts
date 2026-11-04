@@ -120,9 +120,9 @@ export class Rocket extends Cargo {
       this.burn -= dt;
       const r = this.body.rotation();
       _v.copy(UP).applyQuaternion(_q.set(r.x, r.y, r.z, r.w));
-      const f = this.body.mass() * 13;
-      this.body.addForce({ x: _v.x * f, y: _v.y * f * 0.3, z: _v.z * f }, true);
-      if (this.burn <= 0) this.body.resetForces(true);
+      // (an impulse each step: forces added in Rapier stay on until they're reset)
+      const f = this.body.mass() * 13 * dt;
+      this.body.applyImpulse({ x: _v.x * f, y: _v.y * f * 0.3, z: _v.z * f }, true);
       return;
     }
     if (w > 0.3) this.heat += (w - 0.3) * 0.16 * dt;

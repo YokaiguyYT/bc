@@ -375,6 +375,69 @@ const ROUTES = {
       place: true,
     },
   },
+  // jelly: out of the kitchen between the chefs, through the swing doors, across the
+  // restaurant between the waiters, up onto the dais and onto the cake stand
+  'jelly-full': {
+    kitchen: {
+      start: true,
+      path: [
+        [0, 14.4, 'broad'],
+        { wait: 'walkers', at: [0, 12.2], along: [1, 0] },
+        [0, 11.0, 'broad'],
+        [0, 8.4, 'broad'],
+        [0, 5.4, 'broad'],
+        { wait: 'walkers', at: [0, 3.6], along: [1, 0] },
+        [0, 0.4, 'broad'],
+        { wait: 'walkers', at: [0, -1.6], along: [1, 0] },
+        [0, -3.6, 'broad'],
+        [0, -8.6, 'broad'],
+        [0, -12.0, 'broad'],
+        [0, -15.6, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // snowman: out of the freezer, through the park from shade to shade (waiting for the
+  // picnickers in the shade), over the hump bridge and into the cold tent
+  'snowman-full': {
+    freezer: {
+      start: true,
+      path: [
+        [0, 17.6, 'broad'],
+        [0, 13.0, 'broad'],
+        [0, 9.4, 'broad'],
+        { wait: 'walkers', at: [0, 7.6], along: [1, 0] },
+        [0, 1.6, 'broad'],
+        [0, -8.4, 'broad'],
+        { wait: 'walkers', at: [0, -10.6], along: [1, 0] },
+        [0, -15.4, 'broad'],
+        [0, -19.0, 'broad'],
+        [0, -24.0, 'broad'],
+        [0, -28.4, 'broad'],
+        [0, -32.4, 'broad'],
+      ],
+      place: true,
+    },
+  },
+  // rocket: carried end to end down the middle of the hangar (clear of the welders' sparks),
+  // between the workers, past the cooling fans, up the ramp and onto the launch rail
+  'rocket-full': {
+    hangar: {
+      start: true,
+      path: [
+        [0, 15.0, 'inline'],
+        { wait: 'walkers', at: [0, 10.6], along: [1, 0] },
+        [0, 4.4, 'inline'],
+        { wait: 'walkers', at: [0, 0.6], along: [1, 0] },
+        [0, -4.2, 'inline'],
+        [0, -10.0, 'inline'],
+        [0, -14.4, 'inline'],
+        [0, -21.6, 'inline'],
+        [0, -27.2, 'inline'],
+      ],
+      place: true,
+    },
+  },
   delivery: {
     // after the truck ride: out of the truck bed onto the dock
     unload: { wait: 15, cargo: null, path: [[3.5, -35]] },

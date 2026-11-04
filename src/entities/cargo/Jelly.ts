@@ -12,9 +12,13 @@ const PLATE_H = 0.06;
 const JELLY_R = 0.38;
 const JELLY_H = 0.58;
 /** Wobbling harder than this tears it. */
-const TEAR = 0.62;
+const TEAR = 0.85;
+/** How hard speeding up and slowing down sets it wobbling. */
+const GAIN = 0.5;
 
 const _v = new THREE.Vector3();
+const _w = new THREE.Vector3();
+const _q = new THREE.Quaternion();
 const _m = new THREE.Matrix4();
 const _s = new THREE.Matrix4();
 
@@ -62,7 +66,10 @@ export class Jelly extends Cargo {
   readonly fragility: Fragility = { safeShock: 1.6, perShock: 0.12, maxPerHit: 0.3, spinLimit: 3.0, spinDamage: 0.06 };
   readonly care = 0.8;
 
-  private wob = new Wobble(2.2, 0.045, 1.6);
+  /** The wobble, in the world (x: toward +X, y: toward +Z), so tilting the platter doesn't pump it. */
+  private wob = new Wobble(2.2, 0.06, 1.6);
+  private lastV = new THREE.Vector3();
+  private acc = new THREE.Vector3();
   /** Up-down squish (a spring of its own). */
   private sq = new Wobble(3.4, 0.08, 0.5);
   private jelly!: THREE.Group;
@@ -122,14 +129,16 @@ export class Jelly extends Cargo {
 
   preStep(dt: number) {
     if (this.destroyed) return;
-    // the top lags behind: it leans the way "felt gravity" leans, and bounces back
-    const g = this.gEff;
-    const gy = Math.max(3, -g.y);
-    this.wob.step(dt, clamp((g.x / gy) * 2.4, -1.6, 1.6), clamp((g.z / gy) * 2.4, -1.6, 1.6));
-    this.sq.step(dt, clamp((-g.y - 9.8) / 9.8, -0.5, 0.5), 0);
+    // the top lags behind when it speeds up, stops or turns, and bounces back
+    const v = this.body.linvel();
+    _v.set(v.x, v.y, v.z);
+    this.acc.lerp(_w.copy(_v).sub(this.lastV).divideScalar(dt), 1 - Math.exp(-dt / 0.05));
+    this.lastV.copy(_v);
+    this.wob.step(dt, clamp((-this.acc.x / 9.8) * GAIN, -1.6, 1.6), clamp((-this.acc.z / 9.8) * GAIN, -1.6, 1.6));
+    this.sq.step(dt, clamp((this.acc.y / 9.8) * 0.5, -0.5, 0.5), 0);
     const amp = Math.hypot(this.wob.x, this.wob.y);
     if (amp > TEAR) {
-      this.damage((amp - TEAR) * 0.45 * dt);
+      this.damage((amp - TEAR) * 0.35 * dt);
       this.tearT -= dt;
       if (this.tearT <= 0) {
         this.tearT = 0.15;
@@ -140,7 +149,7 @@ export class Jelly extends Cargo {
 
   /** Bits of jelly flying off the top. */
   private flick(amp: number) {
-    const p = this.visual.localToWorld(_v.set(this.wob.x * 0.25, PLATE_H + JELLY_H * 0.85, this.wob.y * 0.25));
+    const p = this.visual.localToWorld(_v.set(0, PLATE_H + JELLY_H * 0.85, 0)).add(_w.set(this.wob.x * 0.25, 0, this.wob.y * 0.25));
     this.sim.fx?.burst('blob', p, { count: 2 + Math.round(amp * 2), speed: 1.4 * amp, up: 0.8, size: 0.05, life: 1.2, gravity: 10, colors: [0xff2d55, 0xff5c7a] });
   }
 
@@ -148,8 +157,11 @@ export class Jelly extends Cargo {
   private shape() {
     const k = this.destroyed ? 0 : 1;
     const q = clamp(this.sq.x * 0.35 * k, -0.2, 0.2) + this.sag;
-    const sx = this.wob.x * 0.42 * k;
-    const sz = this.wob.y * 0.42 * k;
+    // the world-frame wobble, turned into the platter's own frame
+    const r = this.body.rotation();
+    _w.set(this.wob.x, 0, this.wob.y).applyQuaternion(_q.set(r.x, r.y, r.z, r.w).invert());
+    const sx = _w.x * 0.42 * k;
+    const sz = _w.z * 0.42 * k;
     _m.makeScale(1 + q * 0.5, Math.max(0.15, 1 - q), 1 + q * 0.5);
     _s.makeShear(0, 0, sx, sz, 0, 0);
     _m.premultiply(_s);
