@@ -227,7 +227,7 @@ export abstract class Cargo {
   /** Apply damage directly (hazards, spills...). */
   damage(amount: number, shock = 0, at?: THREE.Vector3) {
     if (this.destroyed || this.grace > 0) return;
-    amount *= tuning.damage.scale;
+    amount *= tuning.damage.scale * (this.sim.damageScale ?? 1);
     if (amount <= 0) return;
     this.health = clamp(this.health - amount, 0, 1);
     const p = at ? this.lastHitPos.copy(at) : this.contactPoint(this.lastHitPos);

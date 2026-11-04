@@ -12,6 +12,8 @@ export interface ColliderInfo {
   owner?: unknown;
   /** Conveyor belts: things touching this surface get dragged at this velocity. */
   surfaceVelocity?: THREE.Vector3;
+  /** Mud: movers walk this much slower on it. */
+  slow?: number;
   /** Can a hand latch onto it? (defaults to true for solid things) */
   grabbable?: boolean;
   /** Sound material for impacts. */

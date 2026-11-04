@@ -198,6 +198,8 @@ export class LevelSession {
     this.cameraRig = new CameraRig(renderer.camera);
     this.sim.shake = (a) => this.cameraRig.addShake(a);
     this.sim.live = () => this.state === 'playing' && !this.attractMode;
+    this.sim.wet = def.weather === 'rain';
+    this.sim.damageScale = def.damageScale ?? 1;
     const exposure = renderer.theme.exposure;
     this.sim.exposure = (k) => (renderer.renderer.toneMappingExposure = exposure * k);
     this.cameraRig.reset(def.cameraYaw, this.focusPoints());
@@ -303,6 +305,7 @@ export class LevelSession {
     for (const h of this.hazards) h.update(frameDt, this.physics.time);
     this.goalZone.update(frameDt, this.goalProgress / this.goalNeeded);
     this.cpZones.forEach((z, i) => z.update(frameDt, i <= this.checkpoint ? 1 : 0));
+    if (this.def.weather === 'rain') this.rain(frameDt);
     this.effects.update(frameDt);
     this.inVisuals = false;
     this.mirror?.afterVisuals?.(this);
@@ -486,6 +489,21 @@ export class LevelSession {
       cargoName: this.cargo.displayName,
     };
     if (!success) this.state = 'failed';
+  }
+
+  private rainT = 0;
+  /** Rain falling round the camera's view (looks only). */
+  private rain(dt: number) {
+    this.rainT += dt;
+    const c = this.cameraRig.focusPoint;
+    const down = new THREE.Vector3(0.12, -1, 0.05);
+    while (this.rainT > 1 / 90) {
+      this.rainT -= 1 / 90;
+      for (let i = 0; i < 3; i++) {
+        const at = new THREE.Vector3(c.x + (Math.random() - 0.5) * 22, c.y + 6 + Math.random() * 4, c.z + (Math.random() - 0.5) * 22);
+        this.effects.burst('drop', at, { count: 1, speed: 15, spread: 0.02, dir: down, size: 0.022, life: 0.75, gravity: 6, drag: 0, colors: [0xbcd8f0, 0xdcecf8], ground: c.y - 1.2 });
+      }
+    }
   }
 
   /** Live payout estimate for the HUD. */

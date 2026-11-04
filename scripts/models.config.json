@@ -762,6 +762,182 @@
       ],
       "style": "keep",
       "maxTexture": 256
+    },
+    "marketStall": {
+      "uid": "2735bf5e9dd84a50827496c755b313a8",
+      "name": "Low Poly Market Stall 1",
+      "size": [
+        2.2,
+        2.4,
+        1.4
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "suitcase": {
+      "uid": "ebd270a67e0948f38084481bb41450f7",
+      "name": "Suitcase - PS1 Low Poly",
+      "size": [
+        0.62,
+        0.46,
+        0.26
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "palmTree": {
+      "uid": "d141941578044b0f861ca83b36d4c411",
+      "name": "Coconut Tree",
+      "size": [
+        2.2,
+        4.6,
+        2.2
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "headstone": {
+      "uid": "466c86edf4ad4c648acb48c5192512cd",
+      "name": "Headstone",
+      "size": [
+        0.6,
+        0.9,
+        0.25
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "pumpkin": {
+      "uid": "326c568d1afa4d79aad08d6883ec7659",
+      "name": "FREE Halloween Pumpkin - Low Poly",
+      "size": [
+        0.55,
+        0.5,
+        0.55
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "deadTree": {
+      "uid": "31d4fb51a0744cf6916d90928d5a936e",
+      "name": "Low Poly Dead Tree",
+      "size": [
+        1.8,
+        3.4,
+        1.8
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "anchor": {
+      "uid": "eae6dca44f934789920ea38bb9de2e2a",
+      "name": "Toon Low-Poly Anchor",
+      "size": [
+        0.9,
+        1.4,
+        0.35
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "cactus": {
+      "uid": "e9ddaa7722ad4f11888de6edccc7382c",
+      "name": "Cactus / \u041a\u0430\u043a\u0442\u0443\u0441 (Low poly)",
+      "size": [
+        0.7,
+        1.7,
+        0.45
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "treasureChest": {
+      "uid": "7e50a5b9f5294aa98d623975d8300d8f",
+      "name": "Treasure Chest",
+      "size": [
+        0.8,
+        0.62,
+        0.55
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "acUnit": {
+      "uid": "fa05a3fce62345a29641a2763e99ac60",
+      "name": "Air Conditioner - PS1 Low Poly",
+      "size": [
+        0.9,
+        0.75,
+        0.45
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "waterTower": {
+      "uid": "0ad0519581f24fc28998d6439fd96869",
+      "name": "Low Poly Water Tower",
+      "size": [
+        2.2,
+        4.6,
+        2.2
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "crate": {
+      "uid": "78b49c06cbaa4ba19365b9864bbc8845",
+      "name": "Stylized Low Poly Wooden Crate",
+      "size": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "bananaCrate": {
+      "uid": "92da1b5c23384a7393819dd33e195dde",
+      "name": "Low Poly Wooden Crate of Bananas N64 PSX style",
+      "size": [
+        0.7,
+        0.62,
+        0.5
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "shrub": {
+      "uid": "013144890fc24115937487781e8d3953",
+      "name": "Low Poly Shrub",
+      "size": [
+        0.9,
+        0.8,
+        0.9
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "factoryMachine": {
+      "uid": "fe72a89566b04b45b79d3e9297a6a5cf",
+      "name": "Low-Poly Conveyor for SCADA & HMI",
+      "size": [
+        2.2,
+        1.6,
+        1.2
+      ],
+      "style": "keep",
+      "maxTexture": 256
+    },
+    "controlBox": {
+      "uid": "3b8ee703978949dfabb33f399126b8eb",
+      "name": "Industrial Control Box - Sci-Fi",
+      "size": [
+        0.7,
+        1.4,
+        0.45
+      ],
+      "style": "keep",
+      "maxTexture": 256
     }
   }
 }

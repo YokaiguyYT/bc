@@ -122,6 +122,8 @@ export class Player {
   speedScale = 1;
   /** Every floor is ice (a chaos job's flash freeze). */
   slippery = false;
+  /** On mud: walking speed multiplier. */
+  groundSlow = 1;
 
   // ground
   grounded = false;
@@ -482,6 +484,7 @@ export class Player {
     const info = this.sim.physics.info(hit.collider);
     if (info?.surfaceVelocity) this.groundVel.add(info.surfaceVelocity);
     this.groundFriction = hit.collider.friction();
+    this.groundSlow = info?.slow ?? 1;
   }
 
   private updateState(dt: number) {
@@ -540,7 +543,7 @@ export class Player {
       move.multiplyScalar(1 / mlen);
       mlen = 1;
     }
-    let speed = T.move.maxSpeed * this.speedScale;
+    let speed = T.move.maxSpeed * this.speedScale * (this.grounded ? this.groundSlow : 1);
     if (this.isHolding()) {
       const heavy = clamp(this.heldMass() / 40, 0, 1);
       speed *= T.move.carrySpeed * (1 - T.move.heavyCarrySlowdown * heavy);
@@ -561,6 +564,8 @@ export class Player {
       accel += (Math.min(accel, T.move.carryAccel) - accel) * load;
     }
     if (this.grounded && (this.groundFriction < T.move.slipperyFriction || this.slippery)) accel *= T.move.slipperyAccelScale;
+    // rain: wet floors are a bit slippery
+    else if (this.grounded && this.sim.wet) accel *= 0.6;
     const need = _c.set(goal.x - v.x, 0, goal.z - v.z).multiplyScalar(1 / dt);
     const nl = need.length();
     if (nl > accel) need.multiplyScalar(accel / nl);

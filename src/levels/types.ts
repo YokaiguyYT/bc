@@ -55,6 +55,8 @@ export interface BoxObj extends Base {
   grabbable?: boolean;
   /** Conveyor belt surface velocity (m/s). */
   surfaceVel?: Vec3;
+  /** Mud and the like: movers walk this much slower on it (0.5 = half speed). */
+  slow?: number;
   castShadow?: boolean;
   /** Texture metres-per-repeat override. */
   tile?: number;
@@ -192,11 +194,18 @@ export interface GenParams {
   chaosMask?: number;
 }
 
+/** What the sky's doing (random jobs' rain twist). */
+export type Weather = 'rain';
+
 export interface LevelDef {
   /** Made by the job generator. */
   generated?: boolean;
   /** The payout is multiplied by this (chaos jobs pay more). */
   payScale?: number;
+  /** Rain (wet floors, a bit slippery). */
+  weather?: Weather;
+  /** The cargo takes this much more damage. */
+  damageScale?: number;
   gen?: GenParams;
   /** Tests: the delivery bot's route through a generated job. */
   bot?: unknown;

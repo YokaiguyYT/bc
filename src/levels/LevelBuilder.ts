@@ -196,6 +196,7 @@ export class LevelBuilder {
     }
     if (o.collide !== false) {
       const c = this.staticCollider(RAPIER.ColliderDesc.cuboid(...half), o.pos, q, surface, o.friction, o.surfaceVel);
+      if (o.slow) this.sim.physics.info(c)!.slow = o.slow;
       if (o.grabbable === false) this.sim.physics.info(c)!.grabbable = false;
     }
     if (o.visible !== false) {

@@ -1009,6 +1009,247 @@
       "url": "https://sketchfab.com/3d-models/beehive-ec62db5c4f03456ea929057506d073f3",
       "license": "CC Attribution",
       "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "marketStall": {
+      "file": "marketStall.glb",
+      "size": [
+        2.2,
+        2.4,
+        1.4
+      ],
+      "style": "keep",
+      "title": "Low Poly Market Stall 1",
+      "author": "jjmax30",
+      "authorUrl": "https://sketchfab.com/jjmax30",
+      "url": "https://sketchfab.com/3d-models/low-poly-market-stall-1-2735bf5e9dd84a50827496c755b313a8",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "suitcase": {
+      "file": "suitcase.glb",
+      "size": [
+        0.62,
+        0.46,
+        0.26
+      ],
+      "style": "keep",
+      "title": "Suitcase - PS1 Low Poly",
+      "author": "Wersaus33",
+      "authorUrl": "https://sketchfab.com/wersaus33",
+      "url": "https://sketchfab.com/3d-models/suitcase-ps1-low-poly-ebd270a67e0948f38084481bb41450f7",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "palmTree": {
+      "file": "palmTree.glb",
+      "size": [
+        2.2,
+        4.6,
+        2.2
+      ],
+      "style": "keep",
+      "title": "Coconut Tree",
+      "author": "sujirour",
+      "authorUrl": "https://sketchfab.com/sujirour",
+      "url": "https://sketchfab.com/3d-models/coconut-tree-d141941578044b0f861ca83b36d4c411",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "headstone": {
+      "file": "headstone.glb",
+      "size": [
+        0.6,
+        0.9,
+        0.25
+      ],
+      "style": "keep",
+      "title": "Headstone",
+      "author": "Kaine",
+      "authorUrl": "https://sketchfab.com/kaine027",
+      "url": "https://sketchfab.com/3d-models/headstone-466c86edf4ad4c648acb48c5192512cd",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "pumpkin": {
+      "file": "pumpkin.glb",
+      "size": [
+        0.55,
+        0.5,
+        0.55
+      ],
+      "style": "keep",
+      "title": "FREE Halloween Pumpkin - Low Poly",
+      "author": "SophieJu",
+      "authorUrl": "https://sketchfab.com/SophieJu",
+      "url": "https://sketchfab.com/3d-models/free-halloween-pumpkin-low-poly-326c568d1afa4d79aad08d6883ec7659",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "deadTree": {
+      "file": "deadTree.glb",
+      "size": [
+        1.8,
+        3.4,
+        1.8
+      ],
+      "style": "keep",
+      "title": "Low Poly Dead Tree",
+      "author": "dvnc.tech",
+      "authorUrl": "https://sketchfab.com/dvnc.tech",
+      "url": "https://sketchfab.com/3d-models/low-poly-dead-tree-31d4fb51a0744cf6916d90928d5a936e",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "anchor": {
+      "file": "anchor.glb",
+      "size": [
+        0.9,
+        1.4,
+        0.35
+      ],
+      "style": "keep",
+      "title": "Toon Low-Poly Anchor",
+      "author": "Dakotes",
+      "authorUrl": "https://sketchfab.com/lantripdakota",
+      "url": "https://sketchfab.com/3d-models/toon-low-poly-anchor-eae6dca44f934789920ea38bb9de2e2a",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "cactus": {
+      "file": "cactus.glb",
+      "size": [
+        0.7,
+        1.7,
+        0.45
+      ],
+      "style": "keep",
+      "title": "Cactus / Кактус (Low poly)",
+      "author": "marishka1611",
+      "authorUrl": "https://sketchfab.com/marishka1611",
+      "url": "https://sketchfab.com/3d-models/cactus-low-poly-e9ddaa7722ad4f11888de6edccc7382c",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "treasureChest": {
+      "file": "treasureChest.glb",
+      "size": [
+        0.8,
+        0.62,
+        0.55
+      ],
+      "style": "keep",
+      "title": "Treasure Chest",
+      "author": "Taha Bin Ashar",
+      "authorUrl": "https://sketchfab.com/tahabinasharchaudhary",
+      "url": "https://sketchfab.com/3d-models/treasure-chest-7e50a5b9f5294aa98d623975d8300d8f",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "acUnit": {
+      "file": "acUnit.glb",
+      "size": [
+        0.9,
+        0.75,
+        0.45
+      ],
+      "style": "keep",
+      "title": "Air Conditioner - PS1 Low Poly",
+      "author": "Wersaus33",
+      "authorUrl": "https://sketchfab.com/wersaus33",
+      "url": "https://sketchfab.com/3d-models/air-conditioner-ps1-low-poly-fa05a3fce62345a29641a2763e99ac60",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "waterTower": {
+      "file": "waterTower.glb",
+      "size": [
+        2.2,
+        4.6,
+        2.2
+      ],
+      "style": "keep",
+      "title": "Low Poly Water Tower",
+      "author": "MHKstudio",
+      "authorUrl": "https://sketchfab.com/mhkstudio",
+      "url": "https://sketchfab.com/3d-models/low-poly-water-tower-0ad0519581f24fc28998d6439fd96869",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "crate": {
+      "file": "crate.glb",
+      "size": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "style": "keep",
+      "title": "Stylized Low Poly Wooden Crate",
+      "author": "mnichols",
+      "authorUrl": "https://sketchfab.com/mnichols",
+      "url": "https://sketchfab.com/3d-models/stylized-low-poly-wooden-crate-78b49c06cbaa4ba19365b9864bbc8845",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "bananaCrate": {
+      "file": "bananaCrate.glb",
+      "size": [
+        0.7,
+        0.62,
+        0.5
+      ],
+      "style": "keep",
+      "title": "Low Poly Wooden Crate of Bananas N64 PSX style",
+      "author": "zhya",
+      "authorUrl": "https://sketchfab.com/zzzhya",
+      "url": "https://sketchfab.com/3d-models/low-poly-wooden-crate-of-bananas-n64-psx-style-92da1b5c23384a7393819dd33e195dde",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "shrub": {
+      "file": "shrub.glb",
+      "size": [
+        0.9,
+        0.8,
+        0.9
+      ],
+      "style": "keep",
+      "title": "Low Poly Shrub",
+      "author": "Art Is Scary",
+      "authorUrl": "https://sketchfab.com/Art_Is_Scary",
+      "url": "https://sketchfab.com/3d-models/low-poly-shrub-013144890fc24115937487781e8d3953",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "factoryMachine": {
+      "file": "factoryMachine.glb",
+      "size": [
+        2.2,
+        1.6,
+        1.2
+      ],
+      "style": "keep",
+      "animated": true,
+      "title": "Low-Poly Conveyor for SCADA & HMI",
+      "author": "bucbucket",
+      "authorUrl": "https://sketchfab.com/bucbucket",
+      "url": "https://sketchfab.com/3d-models/low-poly-conveyor-for-scada-hmi-fe72a89566b04b45b79d3e9297a6a5cf",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
+    },
+    "controlBox": {
+      "file": "controlBox.glb",
+      "size": [
+        0.7,
+        1.4,
+        0.45
+      ],
+      "style": "keep",
+      "title": "Industrial Control Box - Sci-Fi",
+      "author": "PolyDavid",
+      "authorUrl": "https://sketchfab.com/PolyDavid",
+      "url": "https://sketchfab.com/3d-models/industrial-control-box-sci-fi-3b8ee703978949dfabb33f399126b8eb",
+      "license": "CC Attribution",
+      "licenseUrl": "http://creativecommons.org/licenses/by/4.0/"
     }
   }
 }

@@ -61,7 +61,7 @@ export function generateJob(p: GenParams): LevelDef {
   const difficulty = Math.max(0, Math.min(1, p.difficulty ?? (chaos ? 0.3 + 0.1 * chaos : rolled.difficulty)));
   const count = p.pieces ?? (chaos ? 4 + chaos : Math.round(4 + difficulty * 6 + rolled.extra) + (twist === 'long' ? 3 : 0));
   const g: GenCtx = { rng, kit, theme, difficulty, cargo, tipScale: twist === 'tips' ? 2 : 1, chaos };
-  const when = twist === 'night' ? 'night' : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
+  const when = twist === 'night' ? 'night' : theme.when ? theme.when : rolled.hour < 0.62 ? 'day' : rolled.hour < 0.84 ? 'sunset' : 'night';
   const opener = rng.pick(OPENERS);
   const lead = when === 'night' ? rng.pick(NIGHT_OPENERS) : opener;
   const place = rng.pick(theme.places);

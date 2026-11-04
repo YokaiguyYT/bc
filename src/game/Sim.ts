@@ -119,6 +119,10 @@ export interface Sim {
   shake?: (amount: number) => void;
   /** Still being played (not yet delivered or lost). */
   live?: () => boolean;
+  /** Rain: floors are wet (a bit slippery). */
+  wet?: boolean;
+  /** The cargo takes this much more damage (a 'fragile' twist). */
+  damageScale?: number;
   /** Chaos jobs: left and right swapped on the keys, the game clock's speed, and how bright the picture is (1 = as the level set it). */
   flipControls?: boolean;
   timeScale?: number;
