@@ -1,3 +1,4 @@
+import type * as THREE from 'three';
 /**
  * Chaos jobs: random courses where crazy things keep happening (see
  * entities/hazards/chaos.ts). How much and what kinds are picked on the Chaos
@@ -46,6 +47,8 @@ export interface ChaosEvent {
   text: string;
   /** Seconds it lasts. */
   dur: number;
+  /** Only from this chaos level up. */
+  min?: number;
 }
 
 export const CHAOS_EVENTS: ChaosEvent[] = [
@@ -64,6 +67,55 @@ export const CHAOS_EVENTS: ChaosEvent[] = [
   { id: 'chickenRain', kind: 8, text: "🐔 IT'S RAINING CHICKENS!", dur: 9 },
   { id: 'ufo', kind: 4, text: '🛸 UFO! HOLD ON TO IT!', dur: 7 },
   { id: 'fog', kind: 2, text: '🌫️ PEA-SOUPER FOG!', dur: 10 },
+  // (these are played by the companion hazard, entities/hazards/chaos2.ts)
+  { id: 'blackout', kind: 2, text: '🌑 BLACKOUT!', dur: 9 },
+  { id: 'boulder', kind: 1, text: '🪨 BOULDER! RUN!', dur: 10 },
+  { id: 'tornado', kind: 2, text: '🌪️ TORNADO!', dur: 8 },
+  { id: 'bananas', kind: 1, text: '🍌 BANANA PEELS!', dur: 14 },
+  { id: 'lava', kind: 2, text: '🔥 THE FLOOR IS LAVA!', dur: 9 },
+  { id: 'bees', kind: 8, text: '🐝 BEES!!', dur: 8 },
+  { id: 'swap', kind: 4, text: '🔁 SWAP!', dur: 2, min: 2 },
+  { id: 'mirror', kind: 4, text: '🔄 MIRROR CONTROLS! LEFT IS RIGHT!', dur: 6, min: 5 },
+  { id: 'disco', kind: 4, text: '🕺 DISCO! EVERYBODY DANCE!', dur: 5 },
+  { id: 'flood', kind: 2, text: '🌊 FLOOD!', dur: 10 },
+  { id: 'dino', kind: 8, text: '🦖 DINO STOMP!', dur: 9 },
+  { id: 'slowmo', kind: 4, text: '🐌 SLOW-MO!', dur: 3 },
+  { id: 'fastfwd', kind: 4, text: '⏩ FAST-FORWARD!', dur: 8 },
 ];
+
+/** Mayhem and ULTRA: two at once, with a name of their own. */
+export const CHAOS_COMBOS: { ids: [string, string]; text: string; min?: number }[] = [
+  { ids: ['moon', 'gust'], text: '🌙🌪️ SPACE STORM!' },
+  { ids: ['blackout', 'chickenRain'], text: '🌑🐔 CHICKENS IN THE DARK!' },
+  { ids: ['ice', 'barrels'], text: '🧊🛢️ BARREL BOBSLED!' },
+  { ids: ['speed', 'bananas'], text: '👟🍌 SLIPPERY SPRINT!' },
+  { ids: ['flood', 'balls'], text: '🌊🏐 POOL PARTY!' },
+  { ids: ['fog', 'boulder'], text: "🌫️🪨 SOMETHING'S COMING…" },
+  { ids: ['disco', 'meteors'], text: '🕺☄️ METEOR DISCO!' },
+  { ids: ['jump', 'lava'], text: '🦘🔥 HOT HOPS!' },
+  { ids: ['tornado', 'boxes'], text: '🌪️📦 BOX TWISTER!' },
+  { ids: ['dino', 'quake'], text: '🦖🌋 JURASSIC QUAKE!' },
+  { ids: ['slowmo', 'meteors'], text: '🐌☄️ BULLET TIME!' },
+  { ids: ['bees', 'fog'], text: '🐝🌫️ ANGRY FOG!' },
+  { ids: ['mirror', 'speed'], text: '🔄👟 WRONG WAY, FAST!', min: 5 },
+  { ids: ['blackout', 'dino'], text: '🌑🦖 WHAT WAS THAT?!' },
+];
+
+/** What a chaos job's director hands to its companion (the newer kinds of chaos). */
+export interface ChaosActs {
+  handles(id: string): boolean;
+  start(id: string, a: { t0: number; t1: number; center: THREE.Vector3; fwd: THREE.Vector3; side: THREE.Vector3 }, help: ChaosHelp): void;
+  tick(id: string, now: number, dt: number): void;
+  end(id: string): void;
+}
+
+export interface ChaosHelp {
+  level: number;
+  rand(): number;
+  /** Floor this far from `c` (or null where there's none). */
+  spot(c: THREE.Vector3, rMin: number, rMax: number): THREE.Vector3 | null;
+  groundAt(x: number, y: number, z: number): number | null;
+  center(): THREE.Vector3;
+}
 
 export const chaosLevel = (n: number | undefined) => CHAOS_LEVELS[Math.max(1, Math.min(5, Math.round(n ?? 1))) - 1];

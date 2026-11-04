@@ -131,6 +131,7 @@ export function generateJob(p: GenParams): LevelDef {
   if (chaos) {
     const route = [0, 0, ...stretches.flat()].map((x) => +x.toFixed(2));
     objects.push({ type: 'hazard', kind: 'chaos', pos: [0, 0, 0], params: { level: chaos, mask: p.chaosMask ?? 15, seed: p.seed, path: route } });
+    objects.push({ type: 'hazard', kind: 'chaosActs', pos: [0, 0, 0] });
   }
   const info = CARGO_INFO[cargo];
   const label = p.label ?? (chaos ? 'Chaos job' : 'Random job');

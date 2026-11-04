@@ -6,7 +6,7 @@ import type { HazardObj } from '../../levels/types';
 import { G, groups, SOLID } from '../../physics/groups';
 import { glossy, jelly, matte } from '../../render/materials';
 import { tuning } from '../../config/tuning';
-import { CHAOS_EVENTS, chaosLevel, type ChaosEvent } from '../../game/chaos';
+import { CHAOS_COMBOS, CHAOS_EVENTS, chaosLevel, type ChaosEvent, type ChaosHelp } from '../../game/chaos';
 import type { Player } from '../Player';
 import { registerHazard, Hazard } from './registry';
 import { bonkPlayers, num } from './common';
@@ -358,13 +358,14 @@ export class ChaosDirector implements Hazard {
     const now = this.sim.time();
     this.time = now;
     // nothing new once the load is lost
-    if (now >= this.nextAt && !this.sim.cargo?.destroyed && (this.sim.live?.() ?? true)) {
-      this.fire(now);
-      // Mayhem and up: sometimes two at once
-      const two = this.level >= 5 ? 0.35 : this.level >= 4 ? 0.15 : 0;
-      if (this.rand() < two) this.fire(now);
+    const live = !this.sim.cargo?.destroyed && (this.sim.live?.() ?? true);
+    if (now >= this.nextAt && live) {
+      this.schedule(now);
       this.nextAt = now + chaosLevel(this.level).every * (0.7 + this.rand() * 0.6);
     }
+    // the siren's gone: here it comes
+    for (const p of this.pending.filter((x) => now >= x.at)) if (live) this.launch(p.evs, p.text, now);
+    this.pending = this.pending.filter((x) => now < x.at);
     for (const a of this.active) this.tick(a, now, dt);
     for (const a of this.active.filter((x) => now >= x.t1)) this.end(a);
     this.active = this.active.filter((x) => now < x.t1);
@@ -373,26 +374,66 @@ export class ChaosDirector implements Hazard {
     this.things.forEach((t) => this.keep(t, now, dt));
   }
 
-  /** Tests: start this one now (on the host). */
+  /** Tests: start this one now (on the host), with no warning first. */
   trigger(id: string) {
-    this.fire(this.sim.time(), id);
+    const ev = CHAOS_EVENTS.find((e) => e.id === id);
+    if (ev && !this.active.some((a) => a.ev.id === id)) this.launch([ev], ev.text, this.sim.time());
   }
 
-  private fire(now: number, only?: string) {
-    const busy = new Set(this.active.map((a) => a.ev.id));
-    const choices = CHAOS_EVENTS.filter((e) => (only ? e.id === only : this.mask & e.kind && e.id !== this.lastId) && !busy.has(e.id));
-    if (!choices.length) return;
-    const ev = choices[Math.floor(this.rand() * choices.length)];
-    this.lastId = ev.id;
+  /** Coming up, after the siren. */
+  private pending: { evs: ChaosEvent[]; text: string; at: number }[] = [];
+
+  /** Pick what's next (on Mayhem and ULTRA sometimes a named pair), sound the siren, and start it a moment later. */
+  private schedule(now: number) {
+    const L = this.level;
+    const busy = new Set([...this.active.map((a) => a.ev.id), ...this.pending.flatMap((p) => p.evs.map((e) => e.id))]);
+    const ok = (e: ChaosEvent | undefined): e is ChaosEvent => !!e && !busy.has(e.id) && (e.min ?? 1) <= L && !!(this.mask & e.kind);
+    const find = (id: string) => CHAOS_EVENTS.find((e) => e.id === id);
+    let evs: ChaosEvent[] | null = null;
+    let text = '';
+    if (this.rand() < (L >= 5 ? 0.45 : L >= 4 ? 0.25 : 0)) {
+      const combos = CHAOS_COMBOS.filter((c) => (c.min ?? 1) <= L && c.ids.every((id) => ok(find(id))));
+      if (combos.length) {
+        const c = combos[Math.floor(this.rand() * combos.length)];
+        evs = c.ids.map((id) => find(id)!);
+        text = c.text;
+      }
+    }
+    if (!evs) {
+      const choices = CHAOS_EVENTS.filter((e) => ok(e) && e.id !== this.lastId);
+      if (!choices.length) return;
+      const ev = choices[Math.floor(this.rand() * choices.length)];
+      evs = [ev];
+      text = ev.text;
+    }
+    this.lastId = evs[evs.length - 1].id;
+    // a moment's warning (less on the higher levels)
+    this.pending.push({ evs, text, at: now + 1.8 - 0.15 * L });
+    this.sim.events.emit('chaos', { kind: 'warn', text: '⚠️ INCOMING!' });
+  }
+
+  private launch(evs: ChaosEvent[], text: string, now: number) {
     const center = this.center();
     const fwd = this.ahead(center);
     const side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
-    const a: Active = { ev, t0: now, t1: now + ev.dur, center, fwd, side, left: 0, next: now, from: this.rand() < 0.5 ? 1 : -1 };
-    this.active.push(a);
-    this.fired++;
-    this.start(a);
-    this.sim.events.emit('chaos', { kind: ev.id, text: ev.text });
+    for (const ev of evs) {
+      if (this.active.some((a) => a.ev.id === ev.id)) continue;
+      const a: Active = { ev, t0: now, t1: now + ev.dur, center: center.clone(), fwd, side, left: 0, next: now, from: this.rand() < 0.5 ? 1 : -1 };
+      this.active.push(a);
+      this.fired++;
+      this.start(a);
+    }
+    this.sim.events.emit('chaos', { kind: evs.map((e) => e.id).join('+'), text });
   }
+
+  /** What the companion (the newer kinds of chaos) gets to work with. */
+  private help: ChaosHelp = {
+    level: 1,
+    rand: () => this.rand(),
+    spot: (c, a, b) => this.spot(c, a, b),
+    groundAt: (x, y, z) => this.groundAt(x, y, z),
+    center: () => this.center(),
+  };
 
   /** Where the action is: the cargo (the movers are usually with it), or the movers if it's gone. */
   private center() {
@@ -447,6 +488,12 @@ export class ChaosDirector implements Hazard {
   }
 
   private start(a: Active) {
+    const acts = this.sim.chaosActs;
+    if (acts?.handles(a.ev.id)) {
+      this.help.level = this.level;
+      acts.start(a.ev.id, a, this.help);
+      return;
+    }
     const L = this.level;
     const c = a.center;
     switch (a.ev.id) {
@@ -520,6 +567,8 @@ export class ChaosDirector implements Hazard {
   }
 
   private end(a: Active) {
+    const acts = this.sim.chaosActs;
+    if (acts?.handles(a.ev.id)) return acts.end(a.ev.id);
     switch (a.ev.id) {
       case 'gust':
         this.gust = null;
@@ -550,6 +599,8 @@ export class ChaosDirector implements Hazard {
   }
 
   private tick(a: Active, now: number, dt: number) {
+    const acts = this.sim.chaosActs;
+    if (acts?.handles(a.ev.id)) return acts.tick(a.ev.id, now, dt);
     const L = this.level;
     // staggered spawns
     while (a.left > 0 && now >= a.next) {

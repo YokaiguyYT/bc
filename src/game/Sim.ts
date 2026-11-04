@@ -119,6 +119,12 @@ export interface Sim {
   shake?: (amount: number) => void;
   /** Still being played (not yet delivered or lost). */
   live?: () => boolean;
+  /** Chaos jobs: left and right swapped on the keys, the game clock's speed, and how bright the picture is (1 = as the level set it). */
+  flipControls?: boolean;
+  timeScale?: number;
+  exposure?: (k: number) => void;
+  /** Chaos jobs: the companion that plays the newer kinds of chaos. */
+  chaosActs?: import('./chaos').ChaosActs;
 }
 
 export interface HeatSource {

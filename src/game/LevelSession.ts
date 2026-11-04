@@ -198,6 +198,8 @@ export class LevelSession {
     this.cameraRig = new CameraRig(renderer.camera);
     this.sim.shake = (a) => this.cameraRig.addShake(a);
     this.sim.live = () => this.state === 'playing' && !this.attractMode;
+    const exposure = renderer.theme.exposure;
+    this.sim.exposure = (k) => (renderer.renderer.toneMappingExposure = exposure * k);
     this.cameraRig.reset(def.cameraYaw, this.focusPoints());
 
     this.events.on('knock', (e) => this.cameraRig.addShake(Math.min(0.5, e.strength * 0.03)));
@@ -270,15 +272,24 @@ export class LevelSession {
         let m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
         if (i === 0 && this.touch) m = this.touch.merge(m);
         const ctl = playing && this.state !== 'delivered';
-        p.intent.moveX = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
-        p.intent.moveZ = !ctl ? 0 : m.world ? m.y : camR.z * m.x + camF.z * m.y;
+        let mx = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
+        let mz = !ctl ? 0 : m.world ? m.y : camR.z * m.x + camF.z * m.y;
+        // chaos: mirror controls (left and right swap, seen from this camera)
+        if (this.sim.flipControls) {
+          const along = mx * camR.x + mz * camR.z;
+          mx -= 2 * along * camR.x;
+          mz -= 2 * along * camR.z;
+        }
+        p.intent.moveX = mx;
+        p.intent.moveZ = mz;
         p.intent.jump = ctl && m.jump;
         if (ctl && m.jumpPressed) p.intent.jumpPressed = true;
         p.intent.grab = (ctl || this.state === 'delivered') && m.grab;
       });
     }
 
-    const dt = this.paused || this.mirror ? 0 : frameDt;
+    // (chaos can slow the clock down or speed it up)
+    const dt = this.paused || this.mirror ? 0 : frameDt * (this.sim.timeScale ?? 1);
     if (dt > 0) {
       this.physics.advance(dt);
       this.time += this.state === 'playing' ? dt : 0;

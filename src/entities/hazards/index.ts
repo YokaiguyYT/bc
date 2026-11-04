@@ -8,3 +8,4 @@ import './riders';
 import './museum';
 import './tips';
 import './chaos';
+import './chaos2';

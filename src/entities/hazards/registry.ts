@@ -22,6 +22,8 @@ export interface Hazard {
   mirrorFrame?(time: number): void;
   /** A line for the HUD about what it's up to (chaos jobs). */
   hudLine?(): string;
+  /** How dark the screen should go round the edges, 0..1 (a chaos blackout). */
+  dark?(): number;
   dispose(): void;
 }
 

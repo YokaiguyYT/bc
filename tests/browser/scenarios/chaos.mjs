@@ -50,8 +50,8 @@ export default async function ({ page, base, shot }) {
   await key('ArrowRight');
   await shot('chaos_setup');
   // no spoilers: the screen doesn't list what can happen
-  const spoil = await page.evaluate(() => document.querySelector('.chaos-setup')?.textContent ?? '');
-  check("the Chaos screen doesn't spoil the surprises", !/meteor|chicken|UFO|quake|gravity|barrel/i.test(spoil) && !document.querySelector('.chaos-kind'), spoil.slice(0, 120));
+  const spoil = await page.evaluate(() => (document.querySelector('.chaos-kind') ? 'KINDS ' : '') + (document.querySelector('.chaos-setup')?.textContent ?? ''));
+  check("the Chaos screen doesn't spoil the surprises", !/meteor|chicken|UFO|quake|gravity|barrel|KINDS/i.test(spoil), spoil.slice(0, 120));
 
   // a friend's chaos job number, played at the slider's level
   await click('#ch-num');
@@ -84,6 +84,14 @@ export default async function ({ page, base, shot }) {
   await page.evaluate(() => (window.__FF.tuning.damage.scale = 0));
   const D = 'window.__FF.game.session.hazards.find((h) => h.trigger)';
   const trigger = (id) => page.evaluate(`(${D}).trigger(${JSON.stringify(id)})`);
+  // (everyone and the load back at the start, as if after a fall: each check starts from the same place)
+  const calm = async () => {
+    await page.evaluate(() => {
+      const s = window.__FF.game.session;
+      s.respawnAll(false);
+    });
+    await adv(0.6);
+  };
   // (one at a time for the tour: nothing random in between)
   await page.evaluate(`(${D}).nextAt = 1e9`);
   const live = (kind) => page.evaluate(`(${D}).things.filter((t) => t.kind === ${JSON.stringify(kind)} && t.live).length`);
@@ -134,6 +142,7 @@ export default async function ({ page, base, shot }) {
   const after = await page.evaluate(() => window.__FF.game.session.players.map((p) => [p.speedScale, p.slippery]));
   check('…both wear off', after.every(([s, i]) => s === 1 && !i), after);
 
+  await calm();
   await trigger('stampede');
   await adv(1.5);
   const ch = await live('chicken');
@@ -143,6 +152,7 @@ export default async function ({ page, base, shot }) {
   await shot('chaos_chickens');
   await adv(10);
 
+  await calm();
   await trigger('barrels');
   await adv(2);
   check('rolling barrels', (await live('barrel')) >= 2, await live('barrel'));
@@ -186,6 +196,7 @@ export default async function ({ page, base, shot }) {
     const s = window.__FF.game.session;
     for (const p of s.players) for (const h of p.hands) if (h.grip) p.release(h);
   });
+  await calm();
   const y0 = await page.evaluate(() => window.__FF.game.session.cargo.body.translation().y);
   await trigger('ufo');
   await adv(3);
@@ -207,15 +218,142 @@ export default async function ({ page, base, shot }) {
   const far2 = await page.evaluate(() => window.__FF.game.renderer.scene.fog.far);
   check('…and clears', Math.abs(far2 - far0) < 1, [far0, far2]);
 
-  // left alone, things just happen
+  // ---- the newer kinds (played by the director's companion)
+  const A = 'window.__FF.game.session.hazards.find((h) => h.handles)';
+  const sess = (fn) => page.evaluate(fn);
+  const P = (i) => `window.__FF.game.session.players[${i}]`;
+  const knocked = () => sess(() => window.__FF.game.session.players.map((p) => p.state));
+  const exposure = () => sess(() => window.__FF.game.renderer.renderer.toneMappingExposure);
+  const e0 = await exposure();
+  await trigger('blackout');
+  await adv(2);
+  const e1 = await exposure();
+  check('blackout: lights down', e1 < e0 * 0.4, [e0, +e1.toFixed(3)]);
+  await shot('chaos_blackout');
+  await adv(9);
+  const e2 = await exposure();
+  check('…and back up', Math.abs(e2 - e0) < 0.02, [e0, +e2.toFixed(3)]);
+
+  await trigger('disco');
+  await adv(0.5);
+  const dance = await sess(() => window.__FF.game.session.players.map((p) => Math.hypot(p.intent.moveX, p.intent.moveZ)));
+  check('disco: everybody dances', dance.every((m) => m > 0.1), dance.map((m) => +m.toFixed(2)));
+  await shot('chaos_disco');
+  await adv(6);
+
+  const before = await sess(() => window.__FF.game.session.players.map((p) => [p.bodyPos.x, p.bodyPos.z]));
+  await calm();
+  await trigger('swap');
+  await adv(0.3);
+  const after2 = await sess(() => window.__FF.game.session.players.map((p) => [p.bodyPos.x, p.bodyPos.z]));
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.8;
+  check('swap: the movers trade places', near(after2[0], before[1]) && near(after2[1], before[0]), [before, after2]);
+  await adv(2);
+
+  await trigger('mirror');
+  await adv(0.2);
+  check('mirror controls', await sess(() => window.__FF.game.session.sim.flipControls === true), null);
+  await adv(7);
+  check('…and normal again', await sess(() => !window.__FF.game.session.sim.flipControls), null);
+
+  await trigger('slowmo');
+  await adv(0.1);
+  const ts1 = await sess(() => window.__FF.game.session.sim.timeScale);
+  await adv(9);
+  const ts2 = await sess(() => window.__FF.game.session.sim.timeScale);
+  await trigger('fastfwd');
+  await adv(0.1);
+  const ts3 = await sess(() => window.__FF.game.session.sim.timeScale);
+  await adv(6);
+  const ts4 = await sess(() => window.__FF.game.session.sim.timeScale);
+  check('slow-mo, then normal; fast-forward, then normal', ts1 < 0.5 && ts2 === 1 && ts3 > 1.5 && ts4 === 1, [ts1, ts2, ts3, ts4]);
+
+  await calm();
+  await trigger('boulder');
+  await adv(1.5);
+  const bv = await page.evaluate(`(() => { const b = (${A}).boulder; const v = b.body.linvel(); return [b.live, Math.hypot(v.x, v.z)]; })()`);
+  check('boulder: rolling', bv[0] && bv[1] > 2, bv);
+  await shot('chaos_boulder');
+  await adv(10);
+  check('…and gone after', !(await page.evaluate(`(${A}).boulder.live`)), null);
+
+  await calm();
+  await trigger('dino');
+  await adv(2);
+  const dn = await page.evaluate(`(() => { const d = (${A}).dino; const p = d.body.translation(); return [d.live, p.x, p.z]; })()`);
+  check('dino stomp: a dinosaur walks across', dn[0], dn);
+  await shot('chaos_dino');
+  await adv(9);
+  check('…and leaves', !(await page.evaluate(`(${A}).dino.live`)), null);
+
+  await trigger('tornado');
+  await adv(2);
+  check('tornado', await page.evaluate(`!!(${A}).tornado && (${A}).tornadoObj.visible`), null);
+  await shot('chaos_tornado');
+  await adv(8);
+
+  await calm();
+  await trigger('bananas');
+  await adv(0.3);
+  const peel = await page.evaluate(`(() => { const p = (${A}).peels; return p && p.spots.length ? [p.spots[0].x, p.spots[0].y, p.spots[0].z] : null; })()`);
+  check('banana peels', !!peel, peel);
+  if (peel) {
+    await page.evaluate(`${P(0)}.teleport(new ${P(0)}.bodyPos.constructor(${peel[0]}, ${peel[1]}, ${peel[2]}), 0)`);
+    await adv(0.4);
+    const st = await knocked();
+    check('…step on one and down you go', st[0] !== 'active', st);
+  }
+  await shot('chaos_bananas');
+  await adv(15);
+
+  await calm();
+  await trigger('lava');
+  await adv(2.2);
+  const hot = await page.evaluate(`(() => { const l = (${A}).lava; return l && l.spots.length ? [l.spots[0].x, l.spots[0].y, l.spots[0].z] : null; })()`);
+  check('the floor is lava', !!hot, hot);
+  if (hot) {
+    await page.evaluate(`${P(1)}.teleport(new ${P(1)}.bodyPos.constructor(${hot[0]}, ${hot[1]}, ${hot[2]}), 0)`);
+    await page.evaluate(() => {
+      window.__hot = 0;
+      window.__FF.game.session.events.on('hazard', (e) => e.kind === 'lava' && window.__hot++);
+    });
+    await adv(0.3);
+    const hops = await page.evaluate(() => window.__hot);
+    check('…hot feet: a mover in it hops out', hops > 0, hops);
+  }
+  await shot('chaos_lava');
+  await adv(9);
+
+  await calm();
+  await trigger('bees');
+  const bd0 = await page.evaluate(`(() => { const a = ${A}; const t = window.__FF.game.session.players[a.beeTarget % 2].bodyPos; return a.bees.distanceTo(t); })()`);
+  await adv(1.5);
+  const bd1 = await page.evaluate(`(() => { const a = ${A}; if (!a.bees) return 0; const t = window.__FF.game.session.players[a.beeTarget % 2].bodyPos; return a.bees.distanceTo(t); })()`);
+  check('bees chase a mover', bd1 < bd0 - 1, [+bd0.toFixed(1), +bd1.toFixed(1)]);
+  await shot('chaos_bees');
+  await adv(8);
+
+  await calm();
+  await trigger('flood');
+  await adv(3);
+  const fl = await page.evaluate(`(() => { const a = ${A}; return a.flood ? [a.flood.y, a.water.visible, window.__FF.game.session.players.map((p) => p.speedScale)] : null; })()`);
+  check('flood: water rises, movers wade', !!fl && fl[1] && fl[2].some((x) => x < 1), fl);
+  await shot('chaos_flood');
+  await adv(9);
+  check('…and drains', await page.evaluate(`!(${A}).flood && window.__FF.game.session.players.every((p) => p.speedScale === 1)`), null);
+
+  // left alone, things just happen (with a siren first, and on ULTRA sometimes two at once)
   await page.evaluate(`(${D}).nextAt = 0`);
   await page.evaluate(() => {
     window.__seen = [];
-    window.__FF.game.session.events.on('chaos', (e) => window.__seen.push(e.kind));
+    window.__FF.game.session.events.on('chaos', (e) => window.__seen.push(`${window.__FF.game.session.physics.time.toFixed(1)} ${e.kind}`));
   });
-  await adv(30);
+  await adv(60);
   const happened = await page.evaluate(() => window.__seen);
-  check('on ULTRA, things happen by themselves', happened.length >= 4, happened);
+  const warns = happened.filter((h) => h.endsWith(' warn')).length;
+  check('on ULTRA, things happen by themselves', happened.length - warns >= 6, happened);
+  check('…each after a siren', warns >= happened.length - warns - 1, [warns, happened.length - warns]);
+  check('…sometimes two at once', happened.some((h) => h.includes('+')), happened.filter((h) => h.includes('+')));
 
   // super jump then quit mid-jump: the world is put back
   await trigger('jump');

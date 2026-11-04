@@ -53,6 +53,7 @@ export class Hud {
     // badges and the like in each mover's own colour (the Locker can change it)
     s.players.forEach((p, i) => this.el.style.setProperty(i === 0 ? '--p1' : '--p2', '#' + p.color.toString(16).padStart(6, '0')));
     this.el.innerHTML = `
+      <div class="blackout"></div>
       <div class="card cargo-card">
         <div class="title"><span>${info.icon} ${info.name}</span><span>${formatMoney(info.value)}</span></div>
         <div class="bar"><div class="fill"></div><div class="pct">100%</div></div>
@@ -97,6 +98,8 @@ export class Hud {
       s.events.on('emote', (e) => this.bubble(e.player, EMOTES[e.kind] ?? '')),
       s.events.on('tip', (e) => this.tipPop(e.amount)),
       s.events.on('chaos', (e) => {
+        // the siren before something happens
+        if (e.kind === 'warn') return this.banner(e.text, true, 'chaos warn');
         // two at once: the second one goes underneath
         const now = performance.now();
         const second = now - this.lastChaos < 700;
@@ -105,6 +108,8 @@ export class Hud {
       }),
     );
     this.chaos = s.hazards.find((h) => h.hudLine) ?? null;
+    this.darkener = s.hazards.find((h) => h.dark) ?? null;
+    this.blackout = q('.blackout');
     this.chaosLine = q('.chaos-line');
     if (this.chaos) this.chaosLine.style.display = '';
     this.banner(s.def.name.toUpperCase(), true);
@@ -136,6 +141,9 @@ export class Hud {
   private chaos: Hazard | null = null;
   private chaosLine: HTMLElement;
   private chaosText = '';
+  private darkener: Hazard | null = null;
+  private blackout: HTMLElement;
+  private darkWas = -1;
 
   banner(text: string, small = false, extra = '') {
     const d = document.createElement('div');
@@ -147,6 +155,13 @@ export class Hud {
 
   update(dt: number) {
     const s = this.s;
+    if (this.darkener) {
+      const k = Math.round((this.darkener.dark?.() ?? 0) * 100) / 100;
+      if (k !== this.darkWas) {
+        this.darkWas = k;
+        this.blackout.style.opacity = String(k);
+      }
+    }
     if (this.chaos) {
       const t = this.chaos.hudLine?.() ?? '';
       if (t !== this.chaosText) this.chaosLine.textContent = this.chaosText = t;
