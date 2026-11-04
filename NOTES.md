@@ -149,7 +149,7 @@ Each new load has one trick, written in its own cargo class, and a job built aro
 - **Snowman** (`Snowman.ts`): melts like the ice swan, but out in the sun all the time (`SUN` is added to the warmth everywhere). Shade is a heater with negative power (under the parasols and trees, in the freezer and the tent); barbecues are a new heater style (`grill`). The bot loses ~10% on the way.
 - **Rocket** (`Rocket.ts`): carried lying down like the clock, resting on two of its X-shaped fins so it doesn't roll. Welders (a new heater style, `welder`, with sparks) raise its `heat`; at 100% the engine burns for 1.4 s, pushing it nose-first (an impulse each physics step: a force added in Rapier stays on until it's reset, which once fired it off at 74 m/s) and scorching it 10%. Cold air (the fans) cools it.
 
-The `newjobs` scenario checks each trick on its own. Hand-made jobs also roll a **variant** each play (`levels/variants.ts`: time of day, rain or snow from the job's `variety`), sent to the online guest with the level; and **bonus goals** (`goals`: no falls, under a time, keep it above a condition) pay $60 each the first time.
+The `newjobs` scenario checks each trick on its own. Hand-made jobs also roll a **variant** each play (`levels/variants.ts`: time of day, rain or snow from the job's `variety`), sent to the online guest with the level; and **bonus goals** (`goals`: no falls, under a time, keep it above a condition) pay 15% of the load's value each (at least $50), the first time.
 
 ## Random jobs
 

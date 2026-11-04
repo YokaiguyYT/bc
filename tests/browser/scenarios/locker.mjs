@@ -140,6 +140,8 @@ export default async function ({ page, base, shot }) {
   const cash0 = (await wallet()).cash;
   await page.evaluate(() => {
     const s = window.__FF.game.session;
+    // (this job's bonus goals were met before, so only the payout goes in)
+    localStorage.setItem('ff.goals', JSON.stringify((s.def.goals ?? []).map((_, i) => `${s.def.id}#${i}`)));
     const g = s.def.goal.pos;
     const V = s.cargo.lastHitPos.constructor;
     for (const p of s.players) for (const h of p.hands) if (h.grip) p.release(h);
