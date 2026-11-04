@@ -409,6 +409,17 @@ export function track(
   return { cash: r.success ? r.payout : 0, rankUp, quests: claimQuests(streak) };
 }
 
+/** Pay a bonus straight into the wallet (and the company's earnings). */
+export function addCash(n: number) {
+  if (!(n > 0)) return;
+  const w = loadWardrobe();
+  w.cash += n;
+  saveWardrobe(w);
+  const s = loadStats();
+  s.earned += n;
+  saveJSON(STATS, s);
+}
+
 /** Hand over the prizes of quests finished since last time (each just once). */
 export function claimQuests(streak: number): Payday['quests'] {
   const s = loadStats();

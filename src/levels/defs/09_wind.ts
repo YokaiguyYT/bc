@@ -239,6 +239,7 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 200,
+  variety: { times: ['day', 'sunset'] },
   objects,
   hints: ['Lift it off its stand together: one of you at each side'],
   tips: [

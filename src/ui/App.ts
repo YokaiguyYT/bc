@@ -15,12 +15,13 @@ import { Attract } from '../game/Attract';
 import { CARGO_INFO } from '../entities/cargo/info';
 import { CODE_LEN, LevelMsg, mergeMoves, OnlineGuest, OnlineHost } from '../net/Online';
 import { GuestSync } from '../net/sync';
-import type { GenParams, LevelDef } from '../levels/types';
+import type { GenParams, LevelDef, Variant } from '../levels/types';
+import { goalId, goalMet, goalText, rollVariant, withVariant } from '../levels/variants';
 import { dailySeed, generateJob, hashSeed, randomSeed, TWISTS } from '../levels/gen/generate';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
-import { activeOutfits, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
+import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
@@ -776,6 +777,7 @@ export class App {
     const next = PLAYABLE_LEVELS.find((l) => !prog[l.id]?.completed);
     // newcomers start on the Practice Yard; everyone else on the next job they haven't delivered
     const pick = fresh ? list[0] : (next ?? list[1] ?? list[0]);
+    const goalsDone = loadJSON<string[]>('ff.goals') ?? [];
     const cards = list
       .map((l) => {
         const b = prog[l.id];
@@ -788,6 +790,7 @@ export class App {
           <div class="name">${esc(l.name)}</div>
           <div class="cargo">${info.icon} ${esc(info.name)} · ${formatMoney(info.value)}</div>
           <div class="tag">${esc(l.tagline)}</div>
+          ${l.goals?.length ? `<div class="goals-done" title="${esc(l.goals.map(goalText).join(' · '))}">🎯 ${l.goals.filter((_, i) => goalsDone.includes(goalId(l.id, i))).length}/${l.goals.length} bonus goals</div>` : ''}
           <div class="best"><span class="stars">${stars}</span><span>${b?.completed ? `${formatMoney(b.bestPayout)} · ${formatTime(b.bestTime ?? 0)}` : b?.attempts ? 'not delivered yet' : 'new job'}</span></div>
         </button>`;
       })
@@ -993,6 +996,12 @@ export class App {
     // dev: ?cargo=tv swaps the cargo of any level
     const forced = new URLSearchParams(location.search).get('cargo');
     if (forced) def = { ...def, cargo: forced as typeof def.cargo };
+    // a bit different each time: the time of day, maybe rain or snow (tests can ask for the plain one)
+    // (tests run the plain job unless they ask for ?variety)
+    const q = new URLSearchParams(location.search);
+    const v = q.has('plain') || (this.game.manual && !q.has('variety')) ? null : rollVariant(def);
+    if (v) def = withVariant(def, v);
+    if (def.goals?.length) def = { ...def, hints: [`🎯 Bonus goals: ${def.goals.map(goalText).join(' · ')}`, ...(def.hints ?? [])] };
     this.job = { kind: 'level', id };
     this.playDef(def);
   }
@@ -1198,6 +1207,26 @@ export class App {
           <button class="btn small" data-nav id="r-share">📋 Copy today's chaos</button>
         </div>`;
     }
+    // a hand-made job's bonus goals (each pays once, the first time)
+    let goalsBlock = '';
+    if (job.kind === 'level' && def.goals?.length) {
+      const done = loadJSON<string[]>('ff.goals') ?? [];
+      const reward = Math.max(50, Math.round((r.value * 0.15) / 10) * 10);
+      let bonus = 0;
+      const rows = def.goals.map((g, i) => {
+        const met = goalMet(g, r);
+        const id = goalId(def.id, i);
+        const first = met && !done.includes(id);
+        if (first) {
+          done.push(id);
+          bonus += reward;
+        }
+        return `<li class="${met ? 'met' : ''}">${met ? '✅' : '⬜'} ${goalText(g)}${first ? ` <b>+${formatMoney(reward)}</b>` : met ? ' <small>(done before)</small>' : ''}</li>`;
+      });
+      saveJSON('ff.goals', done);
+      addCash(bonus);
+      goalsBlock = `<div class="goals"><b>🎯 Bonus goals</b><ul>${rows.join('')}</ul></div>`;
+    }
     // the best chaos delivery
     let chaosBestLine = false;
     if ((job.kind === 'chaos' || job.kind === 'chaosDaily') && r.success && def.gen?.chaos) {
@@ -1286,6 +1315,7 @@ export class App {
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
+        ${goalsBlock}
         ${s.ghostSaved && this.game.settings.ghost !== false ? '<p style="font-size:14px">👻 Your fastest run yet: next time, its ghost runs alongside you.</p>' : ''}
         ${shareBlock}
         ${this.paydayBlock(payday)}
@@ -1882,6 +1912,8 @@ export class App {
     if (!g || g.mode !== 'light') return;
     let def = m.gen ? generateJob(m.gen) : levelById(m.id);
     if (def && m.gen && m.name) def = { ...def, name: m.name };
+    // the host's time of day and weather
+    if (def && !m.gen && m.variant) def = withVariant(def, m.variant as Variant);
     if (!def) {
       this.toast('Your friend started a job this copy of the game doesn’t have. You both need the same file.');
       return;

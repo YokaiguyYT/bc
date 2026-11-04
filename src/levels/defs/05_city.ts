@@ -187,6 +187,8 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 170,
+  variety: { times: ['day', 'sunset', 'night'], weather: ['rain'] },
+  goals: [{ kind: 'under', s: 130 }],
   tips: [
     { pos: [X1, WALK, 13.6], radius: 1.8, text: 'Wait until the cars have a RED light, then cross' },
     { pos: [X1 - 1.6, WALK, -1.8], radius: 1.8, text: 'Pigeons scatter. Dogs do not.' },

@@ -160,6 +160,8 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 210,
+  variety: { times: ['day', 'sunset', 'night'] },
+  goals: [{ kind: 'mint', c: 0.95 }, { kind: 'nofalls' }],
   hints: ['Pick it up: an end each'],
   tips: [
     { pos: [-5.5, F, -8.8], radius: 2.0, text: 'Mind the suits of armour: they fall over. Onto clocks.' },

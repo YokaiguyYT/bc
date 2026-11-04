@@ -198,15 +198,31 @@ export interface GenParams {
 }
 
 /** What the sky's doing (random jobs' rain twist). */
-export type Weather = 'rain';
+export type Weather = 'rain' | 'snow';
+export type TimeOfDay = 'day' | 'sunset' | 'night';
+
+/** A hand-made job's look this time round (picked each play). */
+export interface Variant {
+  time: TimeOfDay;
+  weather: Weather | null;
+}
+
+/** A hand-made job's optional extra goals (each pays a bonus the first time it's met). */
+export type GoalDef = { kind: 'nofalls' } | { kind: 'under'; s: number } | { kind: 'mint'; c: number };
 
 export interface LevelDef {
   /** Made by the job generator. */
   generated?: boolean;
   /** The payout is multiplied by this (chaos jobs pay more). */
   payScale?: number;
-  /** Rain (wet floors, a bit slippery). */
+  /** Rain (wet floors, a bit slippery) or snow. */
   weather?: Weather;
+  /** Hand-made jobs: the times of day and weather it can come in (one is picked each play). */
+  variety?: { times?: TimeOfDay[]; weather?: Weather[] };
+  /** The variant being played (online, the guest builds the same one). */
+  variant?: Variant;
+  /** Bonus goals. */
+  goals?: GoalDef[];
   /** The cargo takes this much more damage. */
   damageScale?: number;
   gen?: GenParams;

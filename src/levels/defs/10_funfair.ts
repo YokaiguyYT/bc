@@ -316,6 +316,7 @@ const level: LevelDef = {
   // let go and it's gone: it rises past here (the movers carry it at about 1.1 m)
   ceilingY: 8,
   parTime: 150,
+  variety: { times: ['day', 'sunset', 'night'] },
   objects,
   hints: ['Hold on: let go and it floats away!'],
   tips: [

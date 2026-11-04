@@ -149,6 +149,8 @@ const level: LevelDef = {
   ],
   killY: -7,
   parTime: 180,
+  variety: { times: ['day', 'sunset', 'night'], weather: ['rain'] },
+  goals: [{ kind: 'mint', c: 0.97 }],
   hints: ['Lift the glass off the rack together', 'Weave through the cones: sidestep, don’t turn'],
   tips: [
     { pos: [0, 0, -2.4], radius: 1.8, text: 'One plank each! Walk side by side' },

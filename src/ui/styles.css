@@ -1824,3 +1824,25 @@ button.btn .cash {
 .quest-won.promo {
   background: linear-gradient(90deg, #fff4cc, #e6f7ea);
 }
+.level-card .goals-done {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f6d9d;
+}
+.results .goals {
+  margin: 6px auto;
+  max-width: 420px;
+  text-align: left;
+  font-size: 15px;
+}
+.results .goals ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.results .goals li {
+  color: var(--ink-soft);
+}
+.results .goals li.met {
+  color: var(--ink);
+}

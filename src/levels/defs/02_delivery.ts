@@ -210,6 +210,7 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 200,
+  variety: { times: ['day', 'sunset', 'night'], weather: ['rain'] },
   hints: ['Hold on during the ride — start and stop gently'],
   tips: [
     { pos: [6.2, DOCK, -35], radius: 1.8, text: 'Push the revolving door round together, nice and slow' },

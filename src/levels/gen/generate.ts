@@ -1,4 +1,5 @@
 import { chaosLevel } from '../../game/chaos';
+import { NIGHT, RAIN, SUNSET } from '../variants';
 import type { CargoKind, GenParams, LevelDef, LevelObject, Vec3 } from '../types';
 import { Rng, hashSeed } from './rng';
 import { Frame } from './frame';
@@ -48,12 +49,9 @@ export const TWISTS: Record<string, { icon: string; name: string; text: string }
   hills: { icon: '⛰️', name: 'Up and down', text: 'A hilly route: slopes, stairs, escalators.' },
 };
 
-const RAIN: Partial<Theme> = { skyTop: 0x5d6976, skyHorizon: 0xa6b0ba, fog: 0x9ea8b2, sunIntensity: 1.3, hemiIntensity: 0.95, cloudColor: 0x8a929a };
 const FOG: Partial<Theme> = { fog: 0xd8dde2, fogNear: 3, fogFar: 24, skyHorizon: 0xd8dde2 };
 
 /** Some jobs happen at sunset or at night (the look only; the course is the same kind). */
-const SUNSET: Partial<Theme> = { sunDir: [-0.75, 0.42, 0.3], skyTop: 0x5a78c8, skyHorizon: 0xffbe8a, fog: 0xffd2a8, sun: 0xffc890, sunIntensity: 2.5, hemiSky: 0xffdcb8, hemiGround: 0x8a6a58, cloudColor: 0xffd8c4 };
-const NIGHT: Partial<Theme> = { skyTop: 0x16203a, skyHorizon: 0x3a4670, fog: 0x2a3358, sun: 0xc8d6ff, sunIntensity: 1.6, sunDir: [0.3, 0.85, 0.45], hemiSky: 0xa8b4e0, hemiGround: 0x5a5068, hemiIntensity: 1.1, cloudColor: 0x5a6488, exposure: 1.08 };
 
 /** Extra seconds a hazard costs (waiting for gaps and swings), for par time. */
 const WAIT: Record<string, number> = { ball: 6, traffic: 8, lasers: 8, stairs: 4, slalom: 4, door: 2, people: 8, lift: 6, ferry: 8, swing: 2, seesaw: 3, turntable: 2, bumpers: 4, trampolines: 4, cannons: 6, collapse: 1, train: 8, crane: 6, sprinklers: 2, ledge: 1, stones: 2, mud: 3, spinners: 3 };

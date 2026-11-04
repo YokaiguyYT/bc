@@ -131,6 +131,8 @@ const level: LevelDef = {
   ],
   killY: -6,
   parTime: 150,
+  variety: { times: ['day', 'sunset', 'night'], weather: ['rain'] },
+  goals: [{ kind: 'nofalls' }, { kind: 'under', s: 105 }],
   objects,
   hints: ['Grab the TV from both sides and lift together'],
   tips: [

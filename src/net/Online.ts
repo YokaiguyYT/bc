@@ -436,7 +436,7 @@ export class OnlineHost {
       if (s) {
         this.sync = new HostSync(s);
         // a generated job travels as its recipe: the guest makes the very same one
-        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name, outfits: s.outfits });
+        conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name, outfits: s.outfits, variant: s.def.variant });
       } else conn.sendCtl({ k: 'end' });
       this.snapT = 1;
     }
@@ -484,6 +484,8 @@ export interface LevelMsg {
   name?: string;
   /** What the two movers wear. */
   outfits?: unknown[];
+  /** A hand-made job's time of day and weather this time. */
+  variant?: unknown;
 }
 
 /** How a job went, for the guest's own wallet and quests. */
@@ -587,6 +589,7 @@ export class OnlineGuest {
           gen: m.gen as GenParams | undefined,
           name: m.name as string | undefined,
           outfits: Array.isArray(m.outfits) ? (m.outfits as unknown[]) : undefined,
+          variant: m.variant && typeof m.variant === 'object' ? m.variant : undefined,
         };
         this.early = [];
         this.onLevel?.(this.lastLevel);
