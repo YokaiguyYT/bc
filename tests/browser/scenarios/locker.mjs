@@ -32,6 +32,8 @@ export default async function ({ page, base, shot }) {
 
   await page.evaluate(() => localStorage.removeItem('ff.news'));
   await page.evaluate(() => localStorage.removeItem('ff.newsShown'));
+  // (WebKit runs share their storage: today's daily may be done already)
+  await page.evaluate(() => localStorage.removeItem('ff.daily'));
   await page.evaluate(() => window.__FF.app.showMenu());
   const nudge = await page.evaluate(() => document.querySelector('#m-nudge')?.textContent ?? '');
   check("a returning player is told what's new", /New:.*Chaos/.test(nudge), nudge);
