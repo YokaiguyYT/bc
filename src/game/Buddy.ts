@@ -36,6 +36,8 @@ export class Buddy {
   /** Seconds spent trying to get a hand on; after a while it steps back and tries again. */
   private reaching = 0;
   private retry = 0;
+  /** What turning last added to the lead's move, and what the move was then (to take it off again if nothing has reset it since). */
+  private added = { x: 0, z: 0, mx: NaN, mz: NaN };
 
   constructor(private s: LevelSession) {}
 
@@ -116,12 +118,24 @@ export class Buddy {
       // turning: both walk round the load, opposite ways (the lead's share goes on its keys)
       let tx = 0;
       let tz = 0;
+      // (keys set the lead's move afresh each frame; if nothing has since, last frame's turn is still on it)
+      const ad = this.added;
+      if (lead.intent.moveX === ad.mx && lead.intent.moveZ === ad.mz) {
+        lead.intent.moveX -= ad.x;
+        lead.intent.moveZ -= ad.z;
+      }
+      ad.x = ad.z = 0;
+      ad.mx = ad.mz = NaN;
       if (this.turn) {
-        const k = this.turn * 0.55;
+        const k = this.turn * 1.0;
         const lx = (-(L.z - C.z) / Math.max(0.3, dL)) * k;
         const lz = ((L.x - C.x) / Math.max(0.3, dL)) * k;
         lead.intent.moveX += lx;
         lead.intent.moveZ += lz;
+        ad.x = lx;
+        ad.z = lz;
+        ad.mx = lead.intent.moveX;
+        ad.mz = lead.intent.moveZ;
         tx = (-(B.z - C.z) / Math.max(0.3, dB)) * k - lx;
         tz = ((B.x - C.x) / Math.max(0.3, dB)) * k - lz;
       }

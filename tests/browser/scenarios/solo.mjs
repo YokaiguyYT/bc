@@ -111,9 +111,10 @@ export default async function ({ page, base, shot }) {
   s = await st();
   check('P1 lets go: the robot sets it down too', s.grips.every((g) => !g.includes('c')) && s.cargo[1] < c0[1] + 0.1 && s.health > 0.9, s);
 
-  // two players again: no robot
+  // two players again (with the switch, so it's saved: WebKit runs share their storage): no robot
   await page.evaluate(() => {
-    window.__FF.game.settings.solo = false;
+    window.__FF.app.showPlay();
+    document.getElementById('p-duo').click();
     window.__FF.app.playLevel('playground');
   });
   await adv(0.5);
