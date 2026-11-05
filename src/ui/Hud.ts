@@ -240,6 +240,12 @@ export class Hud {
       const k = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="p2">${keyLabel(c)}</kbd>`).join('');
       return `move ${k(b.p1.up)}${k(b.p1.left)}${k(b.p1.down)}${k(b.p1.right)} or arrows<br>jump ${k(b.p1.jump)} grab ${k(b.p1.grab)}`;
     }
+    // solo: P2 is the robot buddy, and P1 can also turn the load
+    if (i === 1 && this.s.buddy) return '🤖 robot buddy<br>carries the other end';
+    if (i === 0 && this.s.buddy) {
+      const k1 = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="p1">${keyLabel(c)}</kbd>`).join('');
+      return `move ${k1(b.p1.up)}${k1(b.p1.left)}${k1(b.p1.down)}${k1(b.p1.right)} jump ${k1(b.p1.jump)}<br>grab ${k1(b.p1.grab)} turn it <kbd class="p1">Z</kbd><kbd class="p1">C</kbd>`;
+    }
     const pb = i === 0 ? b.p1 : b.p2;
     const cls = i === 0 ? 'p1' : 'p2';
     const k = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="${cls}">${keyLabel(c)}</kbd>`).join('');

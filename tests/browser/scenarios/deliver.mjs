@@ -1,6 +1,7 @@
 // Scripted co-op carry through a level, segment by segment.
 // env LEVEL (default delivery), SEG (comma list of segment names to run),
-// DIGITAL=1 (move like a keyboard: full speed or stopped, no easing).
+// DIGITAL=1 (move like a keyboard: full speed or stopped, no easing), SOLO=1 (the
+// bot drives P1 only and the robot buddy is P2).
 //
 // Each segment teleports the cargo + both movers to a start pose (movers on
 // either side of the cargo, across the direction of travel), grabs, then
@@ -463,8 +464,10 @@ export default async function ({ page, base, shot }) {
     if (process.env.DIFF) q.set('diff', process.env.DIFF);
     if (process.env.PIECES) q.set('pieces', process.env.PIECES);
     if (process.env.CHAOS) q.set('chaos', process.env.CHAOS);
+    // SOLO=1: the bot only drives P1; the game's robot buddy is P2
+    if (process.env.SOLO) q.set('solo', '1');
     await page.goto(base + '?' + q);
-  } else await page.goto(base + `?level=${id}&manual=1`);
+  } else await page.goto(base + `?level=${id}&manual=1${process.env.SOLO ? '&solo' : ''}`);
   await page.waitForFunction(() => window.__FF && window.__FF.game.session, null, { timeout: 60000 });
   if (gen) {
     const info = await page.evaluate(() => {
@@ -476,7 +479,7 @@ export default async function ({ page, base, shot }) {
     console.log(`job ${gen}: ${info.name} · ${info.cargo} · ${info.pieces.join(' ')}`);
   }
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
-  await page.evaluate(([digital, gripsDebug]) => {
+  await page.evaluate(([digital, gripsDebug, solo]) => {
     window.__FF.game.session.scriptedInput = true;
     window.__digital = digital;
     // TIPS=1: log every message the hint line shows
@@ -492,7 +495,8 @@ export default async function ({ page, base, shot }) {
         window.__tips.push(`${s.physics.time.toFixed(1)}s @[${c.x.toFixed(1)}, ${c.y.toFixed(1)}, ${c.z.toFixed(1)}] ${hint.textContent}`);
       }).observe(hint, { childList: true, characterData: true, subtree: true });
     window.__gripsDebug = gripsDebug;
-  }, [!!process.env.DIGITAL, !!process.env.GRIPS]);
+    window.__solo = solo;
+  }, [!!process.env.DIGITAL, !!process.env.GRIPS, !!process.env.SOLO]);
   const st = () =>
     page.evaluate(() => {
       const s = window.__FF.game.session;
@@ -638,6 +642,48 @@ export default async function ({ page, base, shot }) {
           z = l > 0 ? (z / l) * m : 0;
           Object.assign(p.intent, { moveX: x, moveZ: z });
         };
+        if (window.__solo) {
+          // SOLO: steer like one person would: push the load toward the waypoint and let
+          // the robot buddy (P2) keep up; ease off if it lags behind
+          let t = 0;
+          for (; t < maxT; t += 0.1) {
+            const c = s.cargo.body.translation();
+            const dx = tx - c.x;
+            const dz = tz - c.z;
+            const d = Math.hypot(dx, dz);
+            if (d < 0.3) break;
+            const strain = Math.max(...P.map((p) => p.maxGripStretch()));
+            let sp = Math.min(speed, 0.2 + d * 0.5) * (strain > 0.45 ? 0.4 : 1);
+            // where P1 wants to be round the load: behind it (end to end) or beside it (side by side)
+            const ux = dx / d;
+            const uz = dz / d;
+            const a = P[0].body.translation();
+            const rx = a.x - c.x;
+            const rz = a.z - c.z;
+            const reach = Math.max(0.7, Math.min(1.8, Math.hypot(rx, rz)));
+            let wx = a.x;
+            let wz = a.z;
+            if (form === 'inline' || form === 'snake') {
+              wx = c.x - ux * reach;
+              wz = c.z - uz * reach;
+            } else if (form === 'broad') {
+              const sg = Math.sign(rx * -uz + rz * ux) || 1;
+              wx = c.x - uz * sg * reach;
+              wz = c.z + ux * sg * reach;
+            }
+            const off = Math.hypot(wx - a.x, wz - a.z);
+            // well out of place: turn the load round first (the solo turn keys), then go
+            const both = P.every((p) => p.hands.some((h) => h.grip?.kind === 'cargo'));
+            if (s.buddy) s.buddy.turn = off > 0.5 && both ? ((wx - a.x) * -rz + (wz - a.z) * rx > 0 ? 1 : -1) : 0;
+            if (off > 0.5) sp *= 0.2;
+            setI(P[0], ux * sp, uz * sp);
+            g.advance(0.1, 60, false);
+          }
+          setI(P[0], 0, 0);
+          if (s.buddy) s.buddy.turn = 0;
+          g.advance(0.4, 60, false);
+          return t;
+        }
         if (form === 'inline' || form === 'snake') {
           // leader/follower bookkeeping persists across waypoints of one carry
           let sn = window.__snake;

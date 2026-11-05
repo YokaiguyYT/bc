@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Game } from '../game/Game';
 import { LevelSession, SessionResult, PLAYER_COLORS } from '../game/LevelSession';
+import { Buddy } from '../game/Buddy';
+import { boardKey, boardName, cleanName, formatRunTime, localBoard, playerId, postRun, recordRun, setBoardName, worldBoard, type BoardEntry, type CrewMode } from '../game/board';
 import { LEVELS, PLAYABLE_LEVELS, levelById } from '../levels';
 import { Hud } from './Hud';
 import { keyLabel, PlayerBindings, P2_LAYOUTS } from '../config/bindings';
@@ -32,6 +34,8 @@ type Screen =
   | 'controls'
   | 'settings'
   | 'credits'
+  | 'boards'
+  | 'boardname'
   | 'playing'
   | 'paused'
   | 'results'
@@ -194,6 +198,14 @@ export class App {
     s.events.emit('emote', { player, kind, text: emoteLines(s.outfits[player]?.emotes)[kind] });
   }
 
+  private focusById(id: string) {
+    const i = this.focusables.findIndex((el) => el.id === id);
+    if (i >= 0) {
+      this.focusIndex = i;
+      this.updateFocus();
+    }
+  }
+
   private updateFocus() {
     this.focusables.forEach((el, i) => el.classList.toggle('focus', i === this.focusIndex));
   }
@@ -213,6 +225,7 @@ export class App {
     }
     if (this.screen === 'join' && this.typeCode(code, e)) return;
     if (this.screen === 'jobnum' && this.typeJobNumber(code, e)) return;
+    if (this.screen === 'boardname' && this.typeName(e)) return;
     if (this.screen === 'guest') {
       if (b.pause.includes(code)) this.showGuestMenu();
       else if (b.p1.jump.includes(code) || b.p2.jump.includes(code)) this.guest?.tapJump();
@@ -444,6 +457,10 @@ export class App {
     this.setScreen(
       'play',
       `<div class="logo" style="font-size:44px">PLAY</div>
+       <div class="crew-pick">
+         <button class="seg-btn ${this.solo() ? '' : 'on'}" data-nav id="p-duo">👥 Two players</button>
+         <button class="seg-btn ${this.solo() ? 'on' : ''}" data-nav id="p-solo">🤖 Solo + robot buddy</button>
+       </div>
        <div class="hub">
          <button class="hub-tile ${fresh ? 'start' : ''}" data-nav ${dailyFirst ? '' : 'data-default'} id="p-jobs">
            ${fresh ? '<div class="ribbon">START HERE</div>' : ''}
@@ -488,6 +505,12 @@ export class App {
            <div class="sub">Job after job, each one harder, until something breaks</div>
            <div class="best">${shiftBest ? `best: ${formatMoney(shiftBest.total)} in ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</div>
          </button>
+         <button class="hub-tile" data-nav id="p-boards">
+           <div class="icon">🏆</div>
+           <div class="name">Leaderboards</div>
+           <div class="sub">The fastest deliveries of every job: on this laptop and in the world</div>
+           <div class="best">${boardName() ? `you're on the board as <b>${esc(boardName()!)}</b>` : 'pick a board name to join'}</div>
+         </button>
        </div>
        <div class="row"><button class="btn small" data-nav id="p-back">← Back</button></div>`,
       { back: () => this.showMenu() },
@@ -502,6 +525,15 @@ export class App {
       this.playGenerated('chaosDaily', { seed: c.seed, chaos: c.level, chaosMask: ALL_CHAOS });
     });
     this.bind('p-back', () => this.showMenu());
+    this.bind('p-boards', () => this.showBoards());
+    const crew = (solo: boolean) => {
+      this.game.settings.solo = solo;
+      this.game.saveSettings();
+      this.showPlay();
+      this.focusById(solo ? 'p-solo' : 'p-duo');
+    };
+    this.bind('p-duo', () => crew(false));
+    this.bind('p-solo', () => crew(true));
   }
 
   /** Quick job: a random course now, or a friend's job number. */
@@ -1050,9 +1082,16 @@ export class App {
     this.audio.music(def.cargo === 'crate' ? 'menu' : 'level');
   }
 
+  /** Playing on your own (the robot buddy carries the other end); ?solo in the address for tests. */
+  solo() {
+    return !!this.game.settings.solo || new URLSearchParams(location.search).has('solo');
+  }
+
   private wireSession(s: LevelSession) {
     this.audio.attach(s);
     s.ghostOn = this.game.settings.ghost !== false && !s.mirror;
+    // solo: a robot buddy is the second mover (not online: there it's your friend)
+    s.buddy = this.solo() && !s.mirror && !this.host?.connected ? new Buddy(s) : null;
     s.events.on('cargoDamage', () => {
       if (!this.game.settings.shake) s.cameraRig.addShake(-1);
     });
@@ -1227,6 +1266,29 @@ export class App {
       addCash(bonus);
       goalsBlock = `<div class="goals"><b>🎯 Bonus goals</b><ul>${rows.join('')}</ul></div>`;
     }
+    // speedrun boards: hand-made jobs and today's Daily, two-player and solo apart
+    let boardBlock = '';
+    let boardPost: (() => void) | null = null;
+    if (r.success && !s.mirror && (job.kind === 'level' || job.kind === 'daily') && !def.hidden) {
+      const mode: CrewMode = s.buddy ? 'solo' : 'duo';
+      const key = boardKey(job.kind === 'daily' ? `daily-${dailyNumber()}` : def.id, mode);
+      const hex = `#${(ITEMS.color[s.outfits[0]?.color ?? 'orange']?.hex ?? 0xff7a3d).toString(16).padStart(6, '0')}`;
+      const run = recordRun(key, { time: r.time, health: r.condition, color: hex });
+      const label = mode === 'solo' ? '🤖 Solo' : '👥 Two players';
+      boardBlock = `<div class="board-line">🏆 ${label} · ${run.personalBest ? '<b>your best time!</b>' : `${formatRunTime(r.time)}`}${run.place ? ` · #${run.place} on this laptop` : ''} · <span id="r-world">${boardName() ? '🌍 checking the world board…' : 'pick a board name (Play → 🏆 Leaderboards) to join the world board'}</span></div>`;
+      if (boardName())
+        boardPost = () => {
+          const me = playerId();
+          (run.personalBest ? postRun(key, run.entry) : Promise.resolve(true))
+            .then(() => worldBoard(key))
+            .then(({ ok, entries }) => {
+              const el = this.layer.querySelector('#r-world');
+              if (!el || this.screen !== 'results') return;
+              const at = entries.findIndex((e) => e.id === me);
+              el.textContent = !ok ? '🌍 couldn’t reach the world board' : at >= 0 ? `🌍 #${at + 1} of ${entries.length} in the world` : '🌍 on its way to the world board';
+            });
+        };
+    }
     // the best chaos delivery
     let chaosBestLine = false;
     if ((job.kind === 'chaos' || job.kind === 'chaosDaily') && r.success && def.gen?.chaos) {
@@ -1315,6 +1377,7 @@ export class App {
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
+        ${boardBlock}
         ${goalsBlock}
         ${s.ghostSaved && this.game.settings.ghost !== false ? '<p style="font-size:14px">👻 Your fastest run yet: next time, its ghost runs alongside you.</p>' : ''}
         ${shareBlock}
@@ -1325,6 +1388,7 @@ export class App {
       { dim: true, back: () => this.backToList() },
     );
     this.audio.sfx(r.success ? 'payout' : 'fail');
+    boardPost?.();
     this.bind('r-next', () => nextLevel && this.playLevel(nextLevel.id));
     this.bind('r-retry', () => this.replay(def));
     this.bind('r-share', () => {
@@ -1456,6 +1520,166 @@ export class App {
     el?.addEventListener('input', () => typed(el.value));
     // Return / Go on the on-screen keyboard: put the keyboard away (the key itself goes on to join or play)
     el?.addEventListener('keydown', (e) => e.key === 'Enter' && el.blur());
+  }
+
+  // ------------------------------------------------------------ leaderboards
+
+  /** Which board the Leaderboards screen shows: a job (index into the list), duo or solo. */
+  private boardView = { job: 0, mode: 'duo' as CrewMode };
+
+  /** The boards: every hand-made job, then today's Daily. */
+  private boardJobs() {
+    return [...PLAYABLE_LEVELS.filter((l) => !l.hidden).map((l) => ({ key: l.id, name: `Job ${l.order}: ${l.name}`, icon: CARGO_INFO[l.cargo].icon })), { key: `daily-${dailyNumber()}`, name: `Daily #${dailyNumber()}`, icon: '📅' }];
+  }
+
+  showBoards(focus = 'b-next') {
+    this.startAttract();
+    const jobs = this.boardJobs();
+    const v = this.boardView;
+    v.job = ((v.job % jobs.length) + jobs.length) % jobs.length;
+    const job = jobs[v.job];
+    const key = boardKey(job.key, v.mode);
+    const me = playerId();
+    const name = boardName();
+    const rows = (list: BoardEntry[], world: boolean) =>
+      list.length
+        ? `<table class="board">${list
+            .map(
+              (e, i) =>
+                `<tr class="${e.id === me && (world || e.name === (name ?? 'You')) ? 'mine' : ''}"><td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>${e.color ? `<i class="dot" style="background:${esc(e.color)}"></i>` : ''}${esc(e.name)}</td><td>${formatRunTime(e.time)}</td><td>${Math.round(e.health * 100)}%</td></tr>`,
+            )
+            .join('')}</table>`
+        : `<p class="empty">${world ? 'No times yet. Be the first!' : 'No deliveries on this laptop yet.'}</p>`;
+    this.setScreen(
+      'boards',
+      `<div class="logo" style="font-size:44px">🏆 LEADERBOARDS</div>
+       <div class="panel boards-panel">
+         <div class="board-pick">
+           <button class="btn small" data-nav id="b-prev">◀</button>
+           <div class="board-title">${job.icon} ${esc(job.name)}</div>
+           <button class="btn small" data-nav id="b-next">▶</button>
+         </div>
+         <div class="crew-pick">
+           <button class="seg-btn ${v.mode === 'duo' ? 'on' : ''}" data-nav id="b-duo">👥 Two players</button>
+           <button class="seg-btn ${v.mode === 'solo' ? 'on' : ''}" data-nav id="b-solo">🤖 Solo</button>
+         </div>
+         <div class="board-cols">
+           <div><b>🌍 The world</b><div id="b-world"><p class="empty">Fetching the world board…</p></div></div>
+           <div><b>💻 This laptop</b>${rows(localBoard(key), false)}</div>
+         </div>
+         <p style="font-size:14px">${name ? `You're on the world board as <b>${esc(name)}</b>. Your best time goes up when you deliver.` : 'Pick a <b>board name</b> to put your best times on the world board (a nickname, not your real name).'}</p>
+       </div>
+       <div class="row">
+         <button class="btn" data-nav id="b-name">${name ? '✏️ Change board name' : '✏️ Pick a board name'}</button>
+         <button class="btn small" data-nav id="b-back">← Back</button>
+       </div>`,
+      { back: () => this.showPlay() },
+    );
+    const go = (d: number) => {
+      v.job += d;
+      this.showBoards(d < 0 ? 'b-prev' : 'b-next');
+    };
+    this.bind('b-prev', () => go(-1));
+    this.bind('b-next', () => go(1));
+    this.bind('b-duo', () => {
+      v.mode = 'duo';
+      this.showBoards('b-duo');
+    });
+    this.bind('b-solo', () => {
+      v.mode = 'solo';
+      this.showBoards('b-solo');
+    });
+    this.bind('b-name', () => this.showBoardName());
+    this.bind('b-back', () => this.showPlay());
+    this.focusById(focus);
+    // the world board arrives a moment later
+    const token = (this.boardToken = (this.boardToken ?? 0) + 1);
+    worldBoard(key).then(({ ok, entries }) => {
+      if (this.screen !== 'boards' || token !== this.boardToken) return;
+      const el = this.layer.querySelector('#b-world');
+      if (!el) return;
+      const mine = entries.findIndex((e) => e.id === me);
+      const top = entries.slice(0, 10);
+      el.innerHTML = ok
+        ? rows(top, true) + (mine >= 10 ? `<p class="you">You: #${mine + 1} of ${entries.length} (${formatRunTime(entries[mine].time)})</p>` : entries.length > 10 ? `<p class="you">${entries.length} on the board</p>` : '')
+        : '<p class="empty">Couldn’t reach the world board (no internet, or a network that blocks it). This laptop’s times are still kept.</p>';
+    });
+  }
+  private boardToken = 0;
+
+  /** Typing a board name. */
+  private nameDraft = '';
+
+  private showBoardName() {
+    this.startAttract();
+    this.nameDraft = boardName() ?? '';
+    this.setScreen(
+      'boardname',
+      `<div class="logo" style="font-size:44px">BOARD NAME</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Type a nickname for the world leaderboard</p>
+         <div class="type-over"><div class="net-code entry name-entry" id="bn-show">${esc(this.nameDraft) || '&nbsp;'}</div>${typeBox('bn-type', false, this.nameDraft)}</div>
+         <p id="bn-why" style="font-size:14px">2–14 letters, numbers, spaces, - _ or . · <b>Not your real name!</b> Everyone can see it.</p>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="bn-ok">Save</button>
+         <button class="btn" data-nav id="bn-clear">Leave the world board</button>
+         <button class="btn small" data-nav id="bn-back">← Back</button>
+       </div>`,
+      { back: () => this.showBoards() },
+    );
+    this.typeBox('bn-type', (t) => {
+      this.nameDraft = t.slice(0, 14);
+      this.updateName();
+    });
+    this.bind('bn-ok', () => this.saveName());
+    this.bind('bn-clear', () => {
+      setBoardName(null);
+      this.showBoards();
+    });
+    this.bind('bn-back', () => this.showBoards());
+    this.updateName();
+  }
+
+  private updateName() {
+    const el = this.layer.querySelector('#bn-show');
+    if (el) el.textContent = this.nameDraft || ' ';
+    const ok = !!cleanName(this.nameDraft);
+    const why = this.layer.querySelector('#bn-why');
+    if (why && this.nameDraft.trim().length >= 2 && !ok) why.innerHTML = '⚠️ That one can’t go on the board. Letters, numbers, spaces, - _ or . only, and nothing rude.';
+    else if (why) why.innerHTML = '2–14 letters, numbers, spaces, - _ or . · <b>Not your real name!</b> Everyone can see it.';
+    this.layer.querySelector<HTMLButtonElement>('#bn-ok')?.toggleAttribute('disabled', !ok);
+    syncTypeBox(this.layer, 'bn-type', this.nameDraft);
+  }
+
+  private saveName() {
+    const n = cleanName(this.nameDraft);
+    if (!n) return;
+    setBoardName(n);
+    this.showBoards();
+  }
+
+  /** A key on the board name screen: letters and numbers type, Backspace deletes, Return saves. */
+  private typeName(e: KeyboardEvent) {
+    if (document.activeElement?.id === 'bn-type') return false;
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      this.nameDraft = this.nameDraft.slice(0, -1);
+      this.updateName();
+      return true;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.saveName();
+      return true;
+    }
+    if (e.key.length === 1 && /[A-Za-z0-9 _.-]/.test(e.key) && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      if (this.nameDraft.length < 14) this.nameDraft += e.key;
+      this.updateName();
+      return true;
+    }
+    return false;
   }
 
   private playJobNumber() {

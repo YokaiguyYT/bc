@@ -16,7 +16,8 @@ import { DEFAULT_THEME } from '../render/Renderer';
 import { activeOutfits, ITEMS, type Outfit } from './outfits';
 import { danceIntent, dressCargo, trailBurst } from './flair';
 import { GhostRecorder, GhostView } from './ghost';
-import type { Keyboard, MoveState } from '../input/Keyboard';
+import { mergeMoves, type Keyboard, type MoveState } from '../input/Keyboard';
+import { Buddy } from './Buddy';
 import type { Touch } from '../input/Touch';
 import { tuning } from '../config/tuning';
 import { createHazard, Hazard } from '../entities/hazards';
@@ -113,6 +114,8 @@ export class LevelSession {
   attractMode = false;
   /** Tests: intents are set directly, the keyboard is ignored, everything else is real. */
   scriptedInput = false;
+  /** Solo: the second mover is a robot that helps (the app sets this). */
+  buddy: Buddy | null = null;
   /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
   input: NetInput | null = null;
   /** Phones and tablets: the on-screen controls, for this device's player (P1, here or hosting online) and the camera. */
@@ -286,7 +289,10 @@ export class LevelSession {
     if (!this.mirror && !this.paused && !this.attractMode && !this.scriptedInput) {
       const binds = [b.p1, b.p2];
       this.players.forEach((p, i) => {
+        // solo: the robot drives the second mover, and either set of keys drives the first
+        if (i === 1 && this.buddy) return;
         let m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
+        if (i === 0 && this.buddy && !this.input) m = mergeMoves(m, kb.readPlayer(binds[1]));
         if (i === 0 && this.touch) m = this.touch.merge(m);
         const ctl = playing && this.state !== 'delivered';
         let mx = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
@@ -305,6 +311,11 @@ export class LevelSession {
       });
     }
 
+    if (this.buddy && !this.mirror && !this.paused && !this.attractMode) {
+      // solo: Z / C (or , and .) turn the load
+      if (!this.scriptedInput) this.buddy.turn = (kb.isDown(['KeyC', 'Period']) ? 1 : 0) - (kb.isDown(['KeyZ', 'Comma']) ? 1 : 0);
+      this.buddy.update(frameDt);
+    }
     // (chaos can slow the clock down or speed it up)
     // delivered: everybody does their victory dance (from the Locker)
     if (this.state === 'delivered' && !this.mirror && !this.attractMode && !this.scriptedInput && !this.paused)
