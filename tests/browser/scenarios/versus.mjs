@@ -95,6 +95,10 @@ export default async function ({ page, base, shot }) {
   await guest.keyboard.press('Enter');
   const bothIn = await Promise.all([host, guest].map((p) => p.waitForFunction(() => window.__FF.game.session?.rival && window.__FF.app.screen === 'playing', null, { timeout: 30000 }).then(() => true, () => false)));
   check('online: both laptops start the race', bothIn.every(Boolean), bothIn);
+  // (two windows in one browser: typing in the guest's took the focus from the host's, which
+  // paused it, as switching away does; on two laptops that doesn't happen)
+  const unpause = () => Promise.all([host, guest].map((p) => p.evaluate(() => window.__FF.app.screen === 'paused' && window.__FF.app.resume())));
+  await unpause();
   // the countdown, then both going
   const going = await Promise.all([host, guest].map((p) => p.waitForFunction(() => !window.__FF.game.session.paused, null, { timeout: 15000 }).then(() => true, () => false)));
   check('…together, after the countdown', going.every(Boolean), going);
@@ -104,12 +108,17 @@ export default async function ({ page, base, shot }) {
   await shot('versus_online');
   await host.screenshot({ path: (process.argv[3] ?? '.') + '/versus_online_host.png' }).catch(() => {});
   // the host delivers first, then the guest
+  await unpause();
   await deliver(host);
+  // (these test windows draw slowly: fast-forward the delivery)
+  await host.evaluate(() => window.__FF.game.advance(4));
   await host.waitForFunction(() => window.__FF.app.screen === 'results', null, { timeout: 15000 }).catch(() => {});
   await host.waitForTimeout(1500);
   const hostLine = await host.evaluate(() => document.getElementById('r-race')?.textContent ?? '');
   check('host finishes first: "delivered first"', /delivered first|You won/.test(hostLine), hostLine);
+  await unpause();
   await deliver(guest);
+  await guest.evaluate(() => window.__FF.game.advance(4));
   await guest.waitForFunction(() => window.__FF.app.screen === 'results', null, { timeout: 15000 }).catch(() => {});
   await guest.waitForTimeout(1500);
   const lines = await Promise.all([host, guest].map((p) => p.evaluate(() => document.getElementById('r-race')?.textContent ?? '')));

@@ -1570,7 +1570,8 @@ export class App {
   /** Online versus: the line to the other laptop. */
   private raceLink: RaceLink | null = null;
   /** The race being run: counting down / waiting for the other crew, and who's finished. */
-  private race: { wait: boolean; count: number; sendT: number; told: boolean; mine: number | null; level: string } | null = null;
+  /** count: seconds of countdown left (on the real clock, from `goAt`), so two laptops start together however fast each draws. */
+  private race: { wait: boolean; count: number; goAt: number; sendT: number; told: boolean; mine: number | null; level: string } | null = null;
   private raceCode = '';
   private raceStop: (() => void) | null = null;
   private raceOverlay: HTMLDivElement | null = null;
@@ -1641,7 +1642,7 @@ export class App {
     // (just the one ghost crew: your own best run stays out of it)
     s.ghostOn = false;
     s.setRival(vs === 'ai' ? RivalCrew.ai(id, this.versus.pace, s.cargoSize()) : RivalCrew.online(theirName, s.cargoSize()));
-    this.race = { wait: vs === 'online', count: vs === 'ai' ? 3 : 0, sendT: 0, told: false, mine: null, level: id };
+    this.race = { wait: vs === 'online', count: vs === 'ai' ? 3 : 0, goAt: performance.now() + 3000, sendT: 0, told: false, mine: null, level: id };
     s.paused = true;
     if (vs === 'online') this.raceLink?.send({ k: 'ready' });
   }
@@ -1658,8 +1659,12 @@ export class App {
     if (r.count > 0) {
       s.paused = true;
       // (the countdown waits while the pause menu's open)
-      if (this.screen !== 'playing') return this.raceShow('');
-      r.count -= dt;
+      if (this.screen !== 'playing') {
+        r.goAt = performance.now() + r.count * 1000;
+        return this.raceShow('');
+      }
+      // (tests step the game by hand: they count in game time)
+      r.count = this.game.manual ? r.count - dt : Math.max(0, (r.goAt - performance.now()) / 1000);
       if (r.count <= 0) {
         s.paused = false;
         this.hud?.banner('GO!');
@@ -1713,9 +1718,11 @@ export class App {
       this.raceLink.send({ k: 'go' });
       this.race.wait = false;
       this.race.count = 3;
+      this.race.goAt = performance.now() + 3000;
     } else if (m.k === 'go' && this.race) {
       this.race.wait = false;
       this.race.count = 3;
+      this.race.goAt = performance.now() + 3000;
     } else if (m.k === 'bye') {
       if (rv) rv.out = true;
       this.hud?.banner('THE OTHER CREW LEFT', true);
@@ -1922,9 +1929,9 @@ export class App {
     const theirs = rv?.finish ?? null;
     const them = this.job.vs === 'ai' ? 'the rival crew' : (this.raceLink?.theirName ?? 'the other crew');
     if (mine !== null && (theirs === null || mine < theirs))
-      return theirs !== null ? `🏆 <b>You won!</b> ${(theirs - mine).toFixed(1)} s ahead of ${esc(them)}` : rv?.out ? `🏆 <b>You won!</b> (${esc(them)} didn't make it)` : `🏆 <b>You delivered first!</b> (${esc(them)} are still going…)`;
+      return theirs !== null ? `🏆 <b>You won!</b> ${(theirs - mine).toFixed(1)} s ahead of ${esc(them)}` : rv?.out ? `🏆 <b>You won!</b> (${esc(them)} didn't make it)` : `🏆 <b>You delivered first!</b> (they're still going…)`;
     if (theirs !== null) return mine !== null ? `😬 <b>${esc(them)} won</b>, ${(mine - theirs).toFixed(1)} s ahead` : `😬 <b>${esc(them)} won</b>`;
-    return rv?.out ? '🤝 Nobody delivered' : `${esc(them)} are still going…`;
+    return rv?.out ? '🤝 Nobody delivered' : `${esc(them.charAt(0).toUpperCase() + them.slice(1))}: still going…`;
   }
 
   private updateRaceLine() {
