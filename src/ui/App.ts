@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Game } from '../game/Game';
 import { LevelSession, SessionResult, PLAYER_COLORS } from '../game/LevelSession';
 import { Buddy } from '../game/Buddy';
+import { hasRival, RivalCrew, RIVAL_PACES, type RivalPace } from '../game/rival';
+import { quickMatch, RaceLink, type RaceMsg } from '../net/race';
 import { boardKey, boardName, cleanName, formatRunTime, localBoard, playerId, postRun, recordRun, setBoardName, worldBoard, type BoardEntry, type CrewMode } from '../game/board';
 import { LEVELS, PLAYABLE_LEVELS, levelById } from '../levels';
 import { Hud } from './Hud';
@@ -36,6 +38,9 @@ type Screen =
   | 'credits'
   | 'boards'
   | 'boardname'
+  | 'versus'
+  | 'racewait'
+  | 'racejoin'
   | 'playing'
   | 'paused'
   | 'results'
@@ -226,6 +231,7 @@ export class App {
     if (this.screen === 'join' && this.typeCode(code, e)) return;
     if (this.screen === 'jobnum' && this.typeJobNumber(code, e)) return;
     if (this.screen === 'boardname' && this.typeName(e)) return;
+    if (this.screen === 'racejoin' && this.typeRaceCode(e)) return;
     if (this.screen === 'guest') {
       if (b.pause.includes(code)) this.showGuestMenu();
       else if (b.p1.jump.includes(code) || b.p2.jump.includes(code)) this.guest?.tapJump();
@@ -315,6 +321,7 @@ export class App {
       this.host.update(dt);
     }
     this.watchFrameRate();
+    this.raceFrame(dt);
     if (this.screen === 'results') this.resultsFor += dt;
     this.attract?.update(dt);
     const s = this.game.session;
@@ -505,6 +512,12 @@ export class App {
            <div class="sub">Job after job, each one harder, until something breaks</div>
            <div class="best">${shiftBest ? `best: ${formatMoney(shiftBest.total)} in ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</div>
          </button>
+         <button class="hub-tile chaos" data-nav id="p-versus">
+           <div class="icon">⚔️</div>
+           <div class="name">Versus</div>
+           <div class="sub">Two crews race the same job: a friend's crew online, a stranger's, or the rival crew</div>
+           <div class="best">first to deliver wins</div>
+         </button>
          <button class="hub-tile" data-nav id="p-boards">
            <div class="icon">🏆</div>
            <div class="name">Leaderboards</div>
@@ -526,6 +539,7 @@ export class App {
     });
     this.bind('p-back', () => this.showMenu());
     this.bind('p-boards', () => this.showBoards());
+    this.bind('p-versus', () => this.showVersus());
     const crew = (solo: boolean) => {
       this.game.settings.solo = solo;
       this.game.saveSettings();
@@ -1092,6 +1106,8 @@ export class App {
     s.ghostOn = this.game.settings.ghost !== false && !s.mirror;
     // solo: a robot buddy is the second mover (not online: there it's your friend)
     s.buddy = this.solo() && !s.mirror && !this.host?.connected ? new Buddy(s) : null;
+    // (solo, the load is a bit tougher: one person's steering for two)
+    if (s.buddy) s.sim.damageScale = (s.sim.damageScale ?? 1) * 0.75;
     s.events.on('cargoDamage', () => {
       if (!this.game.settings.shake) s.cameraRig.addShake(-1);
     });
@@ -1184,6 +1200,8 @@ export class App {
 
   /** The same job again from the top. */
   private replay(def: LevelDef) {
+    // a race against the rival crew starts over as a race
+    if (this.job?.kind === 'race' && this.job.vs === 'ai') return this.startRace(this.job.id, def.variant ?? null, 'ai');
     if (def.gen) this.playDef(def.gen.label?.startsWith('Shift') ? { ...generateJob(def.gen), name: def.name } : generateJob(def.gen));
     else this.playLevel(def.id);
   }
@@ -1210,7 +1228,13 @@ export class App {
     const def = s.def;
     const job = this.job ?? { kind: 'level', id: def.id };
     // generated jobs: a random job is a one-off (nothing to keep), today's job keeps today's best, a shift keeps a running total
-    const kept = job.kind === 'level' ? r : job.kind === 'daily' ? { ...r, levelId: dailyId() } : job.kind === 'chaosDaily' ? { ...r, levelId: 'chaos' + dailyId() } : null;
+    // a race: tell the other laptop how it went
+    if (job.kind === 'race' && this.race) {
+      this.race.mine = r.success ? r.time : null;
+      this.raceLink?.send({ k: 'done', t: +r.time.toFixed(2), ok: r.success });
+      this.raceShow('');
+    }
+    const kept = job.kind === 'level' || job.kind === 'race' ? r : job.kind === 'daily' ? { ...r, levelId: dailyId() } : job.kind === 'chaosDaily' ? { ...r, levelId: 'chaos' + dailyId() } : null;
     const beat = kept ? recordResult(kept) : { payout: false, time: false };
     const stars = starsFor(r);
     const nextLevel = job.kind === 'level' ? PLAYABLE_LEVELS.find((l) => l.order > def.order) : undefined;
@@ -1269,7 +1293,7 @@ export class App {
     // speedrun boards: hand-made jobs and today's Daily, two-player and solo apart
     let boardBlock = '';
     let boardPost: (() => void) | null = null;
-    if (r.success && !s.mirror && (job.kind === 'level' || job.kind === 'daily') && !def.hidden) {
+    if (r.success && !s.mirror && (job.kind === 'level' || job.kind === 'race' || job.kind === 'daily') && !def.hidden) {
       const mode: CrewMode = s.buddy ? 'solo' : 'duo';
       const key = boardKey(job.kind === 'daily' ? `daily-${dailyNumber()}` : def.id, mode);
       const hex = `#${(ITEMS.color[s.outfits[0]?.color ?? 'orange']?.hex ?? 0xff7a3d).toString(16).padStart(6, '0')}`;
@@ -1350,6 +1374,15 @@ export class App {
       buttons = `<button class="btn primary" data-nav data-default id="r-chaos">New chaos job →</button>
            <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
            <button class="btn" data-nav id="r-levels">Change the chaos</button>`;
+    else if (job.kind === 'race')
+      buttons =
+        job.vs === 'ai'
+          ? `<button class="btn primary" data-nav data-default id="r-rematch">Rematch</button>
+           <button class="btn" data-nav id="r-versus">Versus menu</button>`
+          : this.raceLink?.role === 'host'
+            ? `<button class="btn primary" data-nav data-default id="r-rematch">Race again</button>
+           <button class="btn" data-nav id="r-versus">Leave the race</button>`
+            : `<button class="btn" data-nav data-default id="r-versus">Leave the race</button>`;
     else if (job.kind === 'random')
       buttons = `<button class="btn primary" data-nav data-default id="r-random">New random job →</button>
            <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
@@ -1377,6 +1410,7 @@ export class App {
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
+        ${job.kind === 'race' ? `<div class="race-line" id="r-race">${this.raceLine()}</div>${job.vs === 'online' && this.raceLink?.role === 'guest' ? '<p style="font-size:14px">Your friend can start another race from their results.</p>' : ''}` : ''}
         ${boardBlock}
         ${goalsBlock}
         ${s.ghostSaved && this.game.settings.ghost !== false ? '<p style="font-size:14px">👻 Your fastest run yet: next time, its ghost runs alongside you.</p>' : ''}
@@ -1389,6 +1423,12 @@ export class App {
     );
     this.audio.sfx(r.success ? 'payout' : 'fail');
     boardPost?.();
+    this.bind('r-rematch', () => {
+      if (job.kind !== 'race') return;
+      if (job.vs === 'ai') this.startRace(job.id, null, 'ai');
+      else this.hostRace();
+    });
+    this.bind('r-versus', () => this.showVersus());
     this.bind('r-next', () => nextLevel && this.playLevel(nextLevel.id));
     this.bind('r-retry', () => this.replay(def));
     this.bind('r-share', () => {
@@ -1442,6 +1482,7 @@ export class App {
   private backToList() {
     if (this.job?.kind === 'level') this.showLevels();
     else if (this.job?.kind === 'chaos') this.showChaos();
+    else if (this.job?.kind === 'race') this.showVersus();
     else this.showPlay();
   }
 
@@ -1520,6 +1561,373 @@ export class App {
     el?.addEventListener('input', () => typed(el.value));
     // Return / Go on the on-screen keyboard: put the keyboard away (the key itself goes on to join or play)
     el?.addEventListener('keydown', (e) => e.key === 'Enter' && el.blur());
+  }
+
+  // ------------------------------------------------------------ versus
+
+  /** The Versus screen's picks: which job, and how quick the rival crew is. */
+  private versus = { job: 0, pace: 'normal' as RivalPace };
+  /** Online versus: the line to the other laptop. */
+  private raceLink: RaceLink | null = null;
+  /** The race being run: counting down / waiting for the other crew, and who's finished. */
+  private race: { wait: boolean; count: number; sendT: number; told: boolean; mine: number | null; level: string } | null = null;
+  private raceCode = '';
+  private raceStop: (() => void) | null = null;
+  private raceOverlay: HTMLDivElement | null = null;
+
+  private versusJobs() {
+    return PLAYABLE_LEVELS.filter((l) => !l.hidden);
+  }
+
+  showVersus(focus = 'v-ai') {
+    this.closeRace();
+    this.startAttract();
+    const jobs = this.versusJobs();
+    const v = this.versus;
+    v.job = ((v.job % jobs.length) + jobs.length) % jobs.length;
+    const job = jobs[v.job];
+    const rival = hasRival(job.id);
+    this.setScreen(
+      'versus',
+      `<div class="logo" style="font-size:44px">⚔️ VERSUS</div>
+       <div class="panel boards-panel">
+         <p>Two crews, the same job, a load each: <b>first to deliver wins</b>. The other crew shows as see-through ghosts (they can't bump you).</p>
+         <div class="board-pick">
+           <button class="btn small" data-nav id="v-prev">◀</button>
+           <div class="board-title">${CARGO_INFO[job.cargo].icon} Job ${job.order}: ${esc(job.name)}</div>
+           <button class="btn small" data-nav id="v-next">▶</button>
+         </div>
+         <div class="crew-pick">${(Object.keys(RIVAL_PACES) as RivalPace[])
+           .map((k) => `<button class="seg-btn ${v.pace === k ? 'on' : ''}" data-nav id="v-pace-${k}">${RIVAL_PACES[k].icon} ${RIVAL_PACES[k].name}</button>`)
+           .join('')}</div>
+         <div class="versus-btns">
+           <button class="btn primary" data-nav data-default id="v-ai" ${rival ? '' : 'disabled'}>🤖 Race the rival crew</button>
+           <button class="btn" data-nav id="v-quick">🔎 Quick match online</button>
+           <button class="btn" data-nav id="v-host">🌐 Host a race for a friend</button>
+           <button class="btn" data-nav id="v-join">🔑 Join a friend's race</button>
+         </div>
+         <p style="font-size:14px">${rival ? '' : 'No rival crew for this job yet: race a person, or pick another job. '}Quick match finds someone else who's looking; if nobody is, you race the rival crew. Your crew: <b>${this.solo() ? '🤖 you and the robot buddy' : '👥 two players on this keyboard'}</b> (switch on the Play screen).</p>
+       </div>
+       <div class="row"><button class="btn small" data-nav id="v-back">← Back</button></div>`,
+      { back: () => this.showPlay() },
+    );
+    const go = (d: number) => {
+      v.job += d;
+      this.showVersus(d < 0 ? 'v-prev' : 'v-next');
+    };
+    this.bind('v-prev', () => go(-1));
+    this.bind('v-next', () => go(1));
+    for (const k of Object.keys(RIVAL_PACES) as RivalPace[])
+      this.bind(`v-pace-${k}`, () => {
+        v.pace = k;
+        this.showVersus(`v-pace-${k}`);
+      });
+    this.bind('v-ai', () => rival && this.startRace(job.id, null, 'ai'));
+    this.bind('v-quick', () => this.showQuickMatch());
+    this.bind('v-host', () => this.showRaceHost());
+    this.bind('v-join', () => this.showRaceJoin());
+    this.bind('v-back', () => this.showPlay());
+    this.focusById(focus);
+  }
+
+  /** Start racing on a job (with this time of day and weather, so both laptops match online). */
+  private startRace(id: string, variant: Variant | null, vs: 'ai' | 'online', theirName = 'Friend') {
+    let def = levelById(id);
+    if (!def) return this.showVersus();
+    if (variant) def = withVariant(def, variant);
+    this.job = { kind: 'race', id, vs, pace: this.versus.pace };
+    this.playDef(def);
+    const s = this.game.session!;
+    // (just the one ghost crew: your own best run stays out of it)
+    s.ghostOn = false;
+    s.setRival(vs === 'ai' ? RivalCrew.ai(id, this.versus.pace, s.cargoSize()) : RivalCrew.online(theirName, s.cargoSize()));
+    this.race = { wait: vs === 'online', count: vs === 'ai' ? 3 : 0, sendT: 0, told: false, mine: null, level: id };
+    s.paused = true;
+    if (vs === 'online') this.raceLink?.send({ k: 'ready' });
+  }
+
+  /** Each frame while racing: the countdown, our crew's whereabouts for the other laptop, who's finished. */
+  private raceFrame(dt: number) {
+    const r = this.race;
+    const s = this.game.session;
+    if (!r || !s || this.job?.kind !== 'race') return this.raceShow('');
+    if (r.wait) {
+      s.paused = true;
+      return this.raceShow('<div class="race-wait">Waiting for the other crew…</div>');
+    }
+    if (r.count > 0) {
+      s.paused = true;
+      r.count -= dt;
+      if (r.count <= 0) {
+        s.paused = false;
+        this.hud?.banner('GO!');
+        this.raceShow('');
+      } else this.raceShow(`<div class="race-count">${Math.ceil(r.count)}</div>`);
+      return;
+    }
+    const link = this.raceLink;
+    if (link && this.screen === 'playing') {
+      r.sendT -= dt;
+      if (r.sendT <= 0) {
+        r.sendT = 0.1;
+        const pts = [s.players[0].bodyPos, s.players[1].bodyPos, s.cargo.position(new THREE.Vector3())];
+        link.sendFast({ k: 'p', t: +s.time.toFixed(2), f: pts.flatMap((p) => [Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100)]) });
+      }
+    }
+    const rv = s.rival;
+    if (rv && !r.told && rv.finish !== null && s.time >= rv.finish && s.state === 'playing') {
+      r.told = true;
+      this.hud?.banner('🏁 THE OTHER CREW DELIVERED!', true);
+    }
+  }
+
+  private raceShow(html: string) {
+    if (!html) {
+      this.raceOverlay?.remove();
+      this.raceOverlay = null;
+      return;
+    }
+    if (!this.raceOverlay) {
+      this.raceOverlay = document.createElement('div');
+      this.raceOverlay.className = 'race-overlay';
+      this.hudLayer.append(this.raceOverlay);
+    }
+    if (this.raceOverlay.innerHTML !== html) this.raceOverlay.innerHTML = html;
+  }
+
+  /** Online: what the other laptop says. */
+  private onRaceMsg(m: RaceMsg) {
+    const s = this.game.session;
+    const rv = this.job?.kind === 'race' ? s?.rival : null;
+    if (m.k === 'p' && rv && Array.isArray(m.f)) rv.push(Number(m.t), (m.f as unknown[]).map(Number));
+    else if (m.k === 'done' && rv) {
+      if (m.ok) rv.finish = Number(m.t);
+      else rv.out = true;
+      this.updateRaceLine();
+    } else if (m.k === 'race' && this.raceLink?.role === 'guest') {
+      // the host picked a job: go
+      this.startRace(String(m.id), (m.variant as Variant) ?? null, 'online', typeof m.name === 'string' ? m.name : 'Friend');
+    } else if (m.k === 'ready' && this.raceLink?.role === 'host' && this.race) {
+      this.raceLink.send({ k: 'go' });
+      this.race.wait = false;
+      this.race.count = 3;
+    } else if (m.k === 'go' && this.race) {
+      this.race.wait = false;
+      this.race.count = 3;
+    } else if (m.k === 'bye') {
+      if (rv) rv.out = true;
+      this.hud?.banner('THE OTHER CREW LEFT', true);
+      this.raceLink?.close();
+      this.raceLink = null;
+      if (this.race?.wait) this.race.wait = false;
+      if (this.screen === 'racewait') this.showVersus();
+    }
+  }
+
+  /** Host: pick the job on the Versus screen, and send it (again, for a rematch). */
+  private hostRace() {
+    const link = this.raceLink;
+    if (!link) return;
+    const job = this.versusJobs()[this.versus.job] ?? this.versusJobs()[0];
+    let v = null as Variant | null;
+    const def = levelById(job.id);
+    if (def && !this.game.manual) v = rollVariant(def);
+    link.send({ k: 'race', id: job.id, variant: v, name: boardName() ?? 'Friend' });
+    this.startRace(job.id, v, 'online', link.theirName);
+  }
+
+  private wireRace(link: RaceLink) {
+    this.raceLink = link;
+    link.onMsg = (m) => this.onRaceMsg(m);
+    link.onLost = () => {
+      if (this.raceLink !== link) return;
+      this.raceLink = null;
+      const rv = this.game.session?.rival;
+      if (rv) rv.out = true;
+      if (this.race) this.race.wait = false;
+      this.hud?.banner('LOST THE OTHER CREW', true);
+      if (this.screen === 'racewait') this.showVersus();
+    };
+  }
+
+  private closeRace() {
+    this.raceStop?.();
+    this.raceStop = null;
+    this.raceLink?.close();
+    this.raceLink = null;
+    this.race = null;
+    this.raceShow('');
+  }
+
+  private showRaceWait(title: string, text: string) {
+    this.startAttract();
+    this.setScreen(
+      'racewait',
+      `<div class="logo" style="font-size:44px">${title}</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)"><div id="rw-text">${text}</div></div>
+       <div class="row"><button class="btn small" data-nav data-default id="rw-back">← Back</button></div>`,
+      { back: () => this.showVersus() },
+    );
+    this.bind('rw-back', () => this.showVersus());
+  }
+
+  private showRaceHost() {
+    this.closeRace();
+    this.showRaceWait('🌐 HOST A RACE', '<p>Getting a code…</p>');
+    RaceLink.host((code, stop) => {
+      this.raceStop = stop;
+      const el = this.layer.querySelector('#rw-text');
+      if (el)
+        el.innerHTML = `<p>Your friend picks <b>Versus → 🔑 Join a friend's race</b> and types:</p><div class="net-code">${code
+          .split('')
+          .map((c) => `<span>${c}</span>`)
+          .join('')}</div><p style="font-size:14px">You'll race <b>${esc(this.versusJobs()[this.versus.job]?.name ?? '')}</b>. Waiting for them…</p>`;
+    }).then(
+      (link) => {
+        this.raceStop = null;
+        this.wireRace(link);
+        this.hostRace();
+      },
+      (e) => {
+        if ((e as Error).message === 'stopped' || this.screen !== 'racewait') return;
+        const el = this.layer.querySelector('#rw-text');
+        if (el) el.innerHTML = `<p>Couldn’t start a race: ${esc((e as Error).message)}</p>`;
+      },
+    );
+  }
+
+  private showRaceJoin() {
+    this.closeRace();
+    this.raceCode = '';
+    this.startAttract();
+    this.setScreen(
+      'racejoin',
+      `<div class="logo" style="font-size:44px">🔑 JOIN A RACE</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Type the code on your friend's screen</p>
+         <div class="type-over"><div class="net-code entry" id="rj-show">${this.raceBoxes()}</div>${typeBox('rj-type', false)}</div>
+         <p id="rj-msg" style="font-size:14px">&nbsp;</p>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="rj-go" disabled>Join</button>
+         <button class="btn small" data-nav id="rj-back">← Back</button>
+       </div>`,
+      { back: () => this.showVersus() },
+    );
+    this.typeBox('rj-type', (t) => {
+      this.raceCode = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN);
+      this.updateRaceCode();
+    });
+    this.bind('rj-go', () => this.joinRace());
+    this.bind('rj-back', () => this.showVersus());
+  }
+
+  private raceBoxes() {
+    return Array.from({ length: CODE_LEN }, (_, i) => `<span class="${i === this.raceCode.length ? 'cursor' : ''}">${this.raceCode[i] ?? ''}</span>`).join('');
+  }
+
+  private updateRaceCode() {
+    const el = this.layer.querySelector('#rj-show');
+    if (el) el.innerHTML = this.raceBoxes();
+    this.layer.querySelector<HTMLButtonElement>('#rj-go')?.toggleAttribute('disabled', this.raceCode.length !== CODE_LEN);
+    syncTypeBox(this.layer, 'rj-type', this.raceCode);
+  }
+
+  private typeRaceCode(e: KeyboardEvent) {
+    if (document.activeElement?.id === 'rj-type') return false;
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      this.raceCode = this.raceCode.slice(0, -1);
+      this.updateRaceCode();
+      return true;
+    }
+    if (e.key === 'Enter' && this.raceCode.length === CODE_LEN) {
+      e.preventDefault();
+      this.joinRace();
+      return true;
+    }
+    if (e.key.length === 1 && /[A-Za-z0-9]/.test(e.key) && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      if (this.raceCode.length < CODE_LEN) this.raceCode += e.key.toUpperCase();
+      this.updateRaceCode();
+      return true;
+    }
+    return false;
+  }
+
+  private joinRace() {
+    if (this.raceCode.length !== CODE_LEN) return;
+    const msg = this.layer.querySelector('#rj-msg');
+    if (msg) msg.textContent = 'Looking for the race…';
+    RaceLink.join(this.raceCode, boardName()).then(
+      (link) => {
+        this.wireRace(link);
+        this.showRaceWait('⚔️ VERSUS', '<p>Connected! Waiting for your friend to start the race…</p>');
+      },
+      (e) => {
+        const m = this.layer.querySelector('#rj-msg');
+        if (m) m.textContent = (e as Error).message;
+      },
+    );
+  }
+
+  private showQuickMatch() {
+    this.closeRace();
+    let secs = 20;
+    this.showRaceWait('🔎 QUICK MATCH', `<p>Looking for another crew… <b id="qm-t">${secs}</b></p><p style="font-size:14px">If nobody's around, you'll race the rival crew instead.</p>`);
+    const tick = window.setInterval(() => {
+      secs--;
+      const el = this.layer.querySelector('#qm-t');
+      if (el) el.textContent = String(Math.max(0, secs));
+      if (this.screen !== 'racewait') clearInterval(tick);
+    }, 1000);
+    quickMatch(boardName(), 20, (t) => {
+      const el = this.layer.querySelector('#rw-text');
+      if (el) el.innerHTML = `<p>${esc(t)}</p>`;
+    }).then((link) => {
+      clearInterval(tick);
+      if (this.screen !== 'racewait') {
+        link?.close();
+        return;
+      }
+      if (link) {
+        this.wireRace(link);
+        if (link.role === 'host') this.hostRace();
+        else {
+          const el = this.layer.querySelector('#rw-text');
+          if (el) el.innerHTML = '<p>Found another crew! Waiting for the race to start…</p>';
+        }
+        return;
+      }
+      // nobody: the rival crew, on this job if it has one (or any that does)
+      const jobs = this.versusJobs();
+      let j = this.versus.job;
+      if (!hasRival(jobs[j]?.id ?? '')) j = Math.max(0, jobs.findIndex((l) => hasRival(l.id)));
+      this.versus.job = j;
+      const el = this.layer.querySelector('#rw-text');
+      if (el) el.innerHTML = '<p>Nobody else is looking right now. Here comes the rival crew!</p>';
+      window.setTimeout(() => this.screen === 'racewait' && hasRival(jobs[j].id) && this.startRace(jobs[j].id, null, 'ai'), 1500);
+    });
+  }
+
+  /** The race's line on the results card (and again when the other crew finishes later). */
+  private raceLine() {
+    const s = this.game.session;
+    const r = this.race;
+    if (!s || !r || this.job?.kind !== 'race') return '';
+    const rv = s.rival;
+    const mine = r.mine;
+    const theirs = rv?.finish ?? null;
+    const them = this.job.vs === 'ai' ? 'the rival crew' : (this.raceLink?.theirName ?? 'the other crew');
+    if (mine !== null && (theirs === null || mine < theirs))
+      return theirs !== null ? `🏆 <b>You won!</b> ${(theirs - mine).toFixed(1)} s ahead of ${esc(them)}` : rv?.out ? `🏆 <b>You won!</b> (${esc(them)} didn't make it)` : `🏆 <b>You delivered first!</b> (${esc(them)} are still going…)`;
+    if (theirs !== null) return mine !== null ? `😬 <b>${esc(them)} won</b>, ${(mine - theirs).toFixed(1)} s ahead` : `😬 <b>${esc(them)} won</b>`;
+    return rv?.out ? '🤝 Nobody delivered' : `${esc(them)} are still going…`;
+  }
+
+  private updateRaceLine() {
+    const el = this.layer.querySelector('#r-race');
+    if (el && this.screen === 'results') el.innerHTML = this.raceLine();
   }
 
   // ------------------------------------------------------------ leaderboards
@@ -2281,6 +2689,7 @@ export class App {
 /** What's being played. */
 type Job =
   | { kind: 'level'; id: string }
+  | { kind: 'race'; id: string; vs: 'ai' | 'online'; pace: RivalPace }
   | { kind: 'random' | 'daily' | 'chaos' | 'chaosDaily'; gen: GenParams }
   | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number };
 

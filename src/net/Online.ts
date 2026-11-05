@@ -29,14 +29,14 @@ const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LEN = 5;
 const hostId = (code: string) => `fragile-freight-${code.toLowerCase()}`;
 
-function makeCode() {
+export function makeCode() {
   let s = '';
   for (let i = 0; i < CODE_LEN; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   return s;
 }
 
 /** Tests: ?p2p=0 skips the direct link, ?relay=0 skips the relay. */
-function allowed(name: 'p2p' | 'relay') {
+export function allowed(name: 'p2p' | 'relay') {
   return new URLSearchParams(location.search).get(name) !== '0';
 }
 
@@ -50,7 +50,7 @@ export type Via = 'direct' | 'relay';
  * Host and guest's connection: a relay and/or a direct link, using the best one
  * that's open. Losing one is fine while the other works.
  */
-class Conn {
+export class Conn {
   relay: RelayLink | null = null;
   direct: PeerLink | null = null;
   onCtl: ((m: CtlMsg) => void) | null = null;

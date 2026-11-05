@@ -16,6 +16,7 @@ import { DEFAULT_THEME } from '../render/Renderer';
 import { activeOutfits, ITEMS, type Outfit } from './outfits';
 import { danceIntent, dressCargo, trailBurst } from './flair';
 import { GhostRecorder, GhostView } from './ghost';
+import type { RivalCrew } from './rival';
 import { mergeMoves, type Keyboard, type MoveState } from '../input/Keyboard';
 import { Buddy } from './Buddy';
 import type { Touch } from '../input/Touch';
@@ -114,6 +115,8 @@ export class LevelSession {
   attractMode = false;
   /** Tests: intents are set directly, the keyboard is ignored, everything else is real. */
   scriptedInput = false;
+  /** Versus: the other crew (AI, or another laptop's), shown as see-through movers. */
+  rival: RivalCrew | null = null;
   /** Solo: the second mover is a robot that helps (the app sets this). */
   buddy: Buddy | null = null;
   /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
@@ -328,6 +331,7 @@ export class LevelSession {
       this.checkZones(dt);
     }
     this.ghosts();
+    this.rival?.update(this.time);
     this.inVisuals = true;
     this.physics.syncVisuals();
     for (const r of this.rigs) r.update(frameDt);
@@ -506,6 +510,18 @@ export class LevelSession {
       if (this.ghostView) this.root.add(this.ghostView.root);
     }
     this.ghostView?.update(this.time);
+  }
+
+  /** Versus: race this crew (null: no race). */
+  setRival(r: RivalCrew | null) {
+    this.rival?.root.removeFromParent();
+    this.rival = r;
+    if (r) this.root.add(r.root);
+  }
+
+  /** The load's size, roughly (for ghosts). */
+  cargoSize() {
+    return new THREE.Box3().setFromObject(this.cargo.visual).getSize(new THREE.Vector3());
   }
 
   private finish(success: boolean) {

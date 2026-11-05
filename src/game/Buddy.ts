@@ -157,9 +157,16 @@ export class Buddy {
       const want = Math.min(2.0, Math.max(0.75, dL));
       if (!farSide) {
         // go round the side we're already nearer
+        // (a wide berth, and gently: bumping into the load on the way round costs condition)
         const a = angL + (rel >= 0 ? 1 : -1) * Math.min(Math.PI, Math.abs(rel) + 1.2);
-        _t.set(C.x + Math.sin(a) * (want + 0.35), 0, C.z + Math.cos(a) * (want + 0.35));
-        this.walk(me, _t.x - B.x, _t.z - B.z, 0.8);
+        _t.set(C.x + Math.sin(a) * (want + 0.7), 0, C.z + Math.cos(a) * (want + 0.7));
+        let wx = _t.x - B.x;
+        let wz = _t.z - B.z;
+        if (this.toSurface(me) < 0.55) {
+          wx += (B.x - C.x) * 1.5;
+          wz += (B.z - C.z) * 1.5;
+        }
+        this.walk(me, wx, wz, 0.6);
         it.grab = false;
         this.state = 'ready';
         this.reaching = 0;
@@ -178,8 +185,8 @@ export class Buddy {
         const near = this.toSurface(me);
         const empty = me.hands.some((h) => !h.grip);
         it.grab = near < 0.9;
-        if (dB > want + 0.6) this.walk(me, C.x - B.x, C.z - B.z, 0.6);
-        else if (empty && near > 0.45) this.walk(me, C.x - B.x, C.z - B.z, 0.25);
+        if (dB > want + 0.6) this.walk(me, C.x - B.x, C.z - B.z, near < 1.2 ? 0.35 : 0.6);
+        else if (empty && near > 0.45) this.walk(me, C.x - B.x, C.z - B.z, 0.22);
         else this.walk(me, 0, 0);
         // a hand on something else, or no luck for a while: let go, step back, try again
         const wrong = me.hands.some((h) => h.grip && h.grip.kind !== 'cargo');

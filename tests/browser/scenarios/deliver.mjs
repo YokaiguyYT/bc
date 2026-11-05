@@ -1110,6 +1110,11 @@ export default async function ({ page, base, shot }) {
     }
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));
+    // GHOST_OUT=<file>: keep the run (the game's ghost of it) for the rival crews
+    if (process.env.GHOST_OUT && end.state === 'delivered') {
+      const g = await page.evaluate((lv) => localStorage.getItem('ff.ghost.' + lv), id);
+      if (g) (await import('node:fs')).writeFileSync(process.env.GHOST_OUT, g);
+    }
     // DUMP=<expression with s = the session>: print it at the end (debugging)
     if (process.env.DUMP) console.log('dump', await page.evaluate((e) => { const s = window.__FF.game.session; void s; return JSON.stringify(eval(e)); }, process.env.DUMP));
     const ch = await page.evaluate(() => window.__chaos ?? []);

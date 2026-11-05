@@ -33,6 +33,99 @@ function beanGeometry() {
   });
 }
 
+/** How far out the bean's surface is at height y (before its front-to-back squash). */
+function beanRadius(y: number) {
+  const R = RIG.body.r + 0.008;
+  const top = RIG.body.hh + R;
+  const t = y / top;
+  const s = 1 + 0.07 * -t - 0.03 * t * t;
+  const over = Math.max(0, Math.abs(y) - RIG.body.hh);
+  return Math.sqrt(Math.max(0, R * R - over * over)) * s;
+}
+
+/** A point on the bean's surface, `out` metres proud of it, at (x, y) on the front (+1) or back (-1). */
+function onBean(x: number, y: number, side: number, out = 0.012) {
+  const r = beanRadius(y) + out;
+  const z = Math.sqrt(Math.max(0, r * r - x * x)) * 0.93;
+  return new THREE.Vector3(x, y, z * side);
+}
+
+/** The work trousers: the bottom of the bean, a touch bigger, up to the belt. */
+function trouserGeometry() {
+  return cached('trousers', () => {
+    const pts: THREE.Vector2[] = [];
+    const bottom = -(RIG.body.hh + RIG.body.r + 0.008);
+    for (let i = 0; i <= 14; i++) {
+      const y = bottom + ((-0.105 - bottom) * i) / 14;
+      pts.push(new THREE.Vector2(beanRadius(y) + 0.01, y));
+    }
+    const g = new THREE.LatheGeometry(pts, 32);
+    g.scale(1, 1, 0.93);
+    g.computeVertexNormals();
+    return g;
+  });
+}
+
+/** The overalls' bib: a curved panel on the chest. */
+function bibGeometry() {
+  return cached('bib', () => {
+    const y0 = -0.13;
+    const y1 = 0.15;
+    const g = new THREE.CylinderGeometry(beanRadius(y1) + 0.01, beanRadius(y0) + 0.01, y1 - y0, 16, 4, true, -0.62, 1.24);
+    g.translate(0, (y0 + y1) / 2, 0);
+    g.scale(1, 1, 0.93);
+    g.computeVertexNormals();
+    return g;
+  });
+}
+
+/** A shoulder strap: up from the bib, over the shoulder, down the back. */
+function strapGeometry(sx: number) {
+  return cached(`strap${sx}`, () => {
+    const curve = new THREE.CatmullRomCurve3([
+      onBean(sx * 0.1, 0.14, 1, 0.014),
+      onBean(sx * 0.15, 0.27, 1, 0.016),
+      new THREE.Vector3(sx * 0.19, 0.39, 0),
+      onBean(sx * 0.15, 0.27, -1, 0.016),
+      onBean(sx * 0.11, -0.08, -1, 0.014),
+    ]);
+    const g = new THREE.TubeGeometry(curve, 24, 0.016, 6, false);
+    g.scale(1, 0.999, 1);
+    return g;
+  });
+}
+
+/** The company patch on the back of the overalls. */
+let patchTex: THREE.CanvasTexture | null = null;
+function patchTexture() {
+  if (patchTex) return patchTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#fbf8f2';
+  ctx.beginPath();
+  ctx.arc(64, 64, 60, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#2b2b33';
+  ctx.stroke();
+  ctx.fillStyle = '#2b2b33';
+  ctx.font = '800 56px "Fredoka", ui-rounded, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('FF', 64, 68);
+  patchTex = new THREE.CanvasTexture(c);
+  patchTex.colorSpace = THREE.SRGBColorSpace;
+  return patchTex;
+}
+
+/** The overalls: the mover's colour, deepened toward work-wear navy. */
+function overallColor(color: number) {
+  // (mixed as the screen shows colours, not in linear light, where it'd hardly darken)
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * 0.48);
+  return new THREE.Color((mix((color >> 16) & 255, 0x1f) << 16) | (mix((color >> 8) & 255, 0x24) << 8) | mix(color & 255, 0x33));
+}
+
 function shade(color: number, f: number) {
   const c = new THREE.Color(color);
   const hsl = { h: 0, s: 0, l: 0 };
@@ -73,10 +166,11 @@ export class PlayerRig {
   ) {
     const color = player.color;
     const skin = (this.skin = jelly(color));
-    const pants = (this.pants = jelly(shade(color, 0.72).getHex(), 0.4));
-    const capMat = (this.capMat = jelly(shade(color, 0.6).getHex(), 0.35));
+    const pants = (this.pants = jelly(overallColor(color).getHex(), 0.15).clone());
+    const capMat = (this.capMat = jelly(shade(color, 0.68).getHex(), 0.35));
     const glove = jelly(0xfbf8f2, 0.35);
     const shoe = matte(0x3b302b, { roughness: 0.6 });
+    const soleMat = matte(0xe8e0d0, { roughness: 0.8 });
     const belt = matte(0x4a3527, { roughness: 0.7 });
     const buckle = new THREE.MeshStandardMaterial({ color: 0xffd36b, roughness: 0.35, metalness: 0.6 });
 
@@ -109,8 +203,22 @@ export class PlayerRig {
     beltMesh.rotation.x = Math.PI / 2;
     beltMesh.scale.set(1.04, 0.95, 1);
     add(this.bodyMesh, cached('buckle', () => new THREE.BoxGeometry(0.09, 0.07, 0.03)), buckle, [0, -0.13, 0.285]);
-    // little pocket on the chest
-    add(this.bodyMesh, cached('pocket', () => new THREE.BoxGeometry(0.1, 0.09, 0.02)), pants, [0.12, 0.12, 0.262]).rotation.y = 0.35;
+    // work overalls: trousers up to the belt, a bib with a pocket and two buttons, straps over the shoulders
+    add(this.bodyMesh, trouserGeometry(), pants);
+    add(this.bodyMesh, bibGeometry(), pants);
+    for (const sx of [-1, 1]) {
+      add(this.bodyMesh, strapGeometry(sx), pants);
+      const b = onBean(sx * 0.1, 0.13, 1, 0.02);
+      add(this.bodyMesh, cached('button', () => new THREE.SphereGeometry(0.022, 10, 8)), buckle, [b.x, b.y, b.z]).scale.set(1, 1, 0.5);
+    }
+    const pk = onBean(0, 0.03, 1, 0.016);
+    const pocket = add(this.bodyMesh, cached('pocket', () => new THREE.BoxGeometry(0.12, 0.09, 0.014)), capMat, [pk.x, pk.y, pk.z]);
+    pocket.rotation.x = -0.08;
+    // the company patch on the back
+    const pt = onBean(0, 0.05, -1, 0.016);
+    const patch = add(this.bodyMesh, cached('patch', () => new THREE.CircleGeometry(0.075, 24)), new THREE.MeshStandardMaterial({ map: patchTexture(), roughness: 0.7 }), [pt.x, pt.y, pt.z]);
+    patch.rotation.y = Math.PI;
+    patch.castShadow = false;
 
     // head + face + cap
     const head = mk('head');
@@ -172,6 +280,8 @@ export class PlayerRig {
       const sx = s === 'L' ? 1 : -1;
       const ua = mk(`uArm${s}`);
       add(ua, cached('uarm', () => new THREE.CapsuleGeometry(RIG.upperArm.r, RIG.upperArm.L, 6, 14)), skin);
+      // a rolled-up sleeve
+      add(ua, cached('sleeve', () => new THREE.TorusGeometry(RIG.upperArm.r + 0.006, 0.022, 8, 18)), skin, [0, -RIG.upperArm.L / 2 + 0.03, 0]).rotation.x = Math.PI / 2;
       const la = mk(`lArm${s}`);
       add(la, cached('larm', () => new THREE.CapsuleGeometry(RIG.foreArm.r, RIG.foreArm.L, 6, 14)), skin);
       const hand = add(la, cached('hand', () => new THREE.SphereGeometry(RIG.hand.r, 20, 14)), glove, [HAND_LOCAL.x, HAND_LOCAL.y, HAND_LOCAL.z]);
@@ -195,6 +305,10 @@ export class PlayerRig {
       );
       shoeMesh.rotation.x = Math.PI / 2;
       shoeMesh.scale.set(1.15, 1, 0.82);
+      // a chunky rubber sole
+      const sole = add(sh, cached('sole', () => new THREE.CapsuleGeometry(RIG.foot.r + 0.018, RIG.foot.len, 4, 12)), soleMat, [0, footY - 0.035, RIG.foot.fwd + 0.01]);
+      sole.rotation.x = Math.PI / 2;
+      sole.scale.set(1.2, 1.04, 0.32);
     }
     void PART_NAMES;
   }
@@ -203,8 +317,8 @@ export class PlayerRig {
   applyOutfit(o: Outfit) {
     const hex = ITEMS.color[o.color]?.hex ?? this.player.color;
     this.skin.color.setHex(hex);
-    this.pants.color.copy(shade(hex, 0.72));
-    this.capMat.color.copy(shade(hex, 0.6));
+    this.pants.color.copy(overallColor(hex));
+    this.capMat.color.copy(shade(hex, 0.68));
     for (const x of this.extras) x.removeFromParent();
     this.extras = [];
     this.cap.visible = o.hat === 'cap';
