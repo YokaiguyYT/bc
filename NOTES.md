@@ -9,6 +9,9 @@ Design decisions, what still needs tuning, and known limitations.
 | Fifteen hand-made jobs and the Practice Yard | Playable start to finish; a bot route delivers each one |
 | Hand-made job variety (time of day, rain or snow) and bonus goals | Done |
 | Ghost of your best run (hand-made jobs) | Done (not shown online) |
+| Solo play with a robot buddy | Done; works best on open routes (see Solo below) |
+| Speedrun leaderboards (this laptop + a world board) | Done; the world board tested against a local broker only |
+| Versus (rival crews, friend races by code, quick match) | Done; tested in Chromium with two windows, not between two real laptops |
 | Touch controls (phones and tablets, mainly as the online guest) | Done; tested in Chromium's touch emulation, not on a real phone |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
@@ -151,6 +154,20 @@ Each new load has one trick, written in its own cargo class, and a job built aro
 
 The `newjobs` scenario checks each trick on its own. Hand-made jobs also roll a **variant** each play (`levels/variants.ts`: time of day, rain or snow from the job's `variety`), sent to the online guest with the level; and **bonus goals** (`goals`: no falls, under a time, keep it above a condition) pay 15% of the load's value each (at least $50), the first time.
 
+## Solo
+
+`game/Buddy.ts`: with **Solo** on (Play screen, or `?solo`), the app gives the session a `Buddy` that drives Player 2 each frame, after the keys (and either key set drives Player 1). Away from the load it follows you. By the load it goes to the other side from you, round it with a wide berth (bumping the load costs condition), and when you grab (your grab key held and a hand on it), it steps in and grabs too. Carrying, it copies your movement and keeps the angle round the load and the reach it grabbed at, so side-by-side carrying just works. Pushing or pulling along the load (end to end), it lines the load up with the way you're going instead (the one in front leads, like two people with a ladder); copying alone let a long load crab sideways. `Z` / `C` turn the load: both walk round it, opposite ways (otherwise there's no way to turn a load, since the robot copies you). When you let go it sets it down too. Solo loads take 25% less damage.
+
+How well it works depends on the route. With the bot driving Player 1 (`SOLO=1`, steering the way a person would: push the load at the next waypoint, turn it round for doorways), it delivers the chandelier, beehive, jelly, snowman, rocket, cake and clock-to-the-van jobs; it stalls in the tightest places (the move-out flat's hallway, the piano's shop) and on routes where the 2-player route relies on exact formations. People are better at that than the bot, but those are the places to playtest.
+
+## Leaderboards
+
+`game/board.ts`. A board per hand-made job and per Daily, two-player and solo apart (`<job>~duo`, `<job>~solo`). **This laptop** keeps the five best runs per board in local storage. **The world** board is MQTT retained messages, one per player per board (`fragile-freight/board1/<board>/<random player id>`, holding name, time, condition, date, colour), on two free public brokers (EMQX and HiveMQ) at once; reading a board subscribes to `…/<board>/+` and gets every retained run, merged across brokers by player id. No accounts, nothing to pay, and nothing personal: the name is a nickname the player types (2–14 letters, digits, spaces, `-_.`, a short rude-word filter, no long digit strings), off until they pick one. It's an honour system: anyone could post any time to their own id; times under 12 s, bad names and malformed runs are ignored when reading. Public brokers can wipe retained messages; your own best goes up again the next time you beat it. `?board=ws://…` points it at another broker (tests use a local one), `?board=0` turns the world board off, `?boardns=…` gives a test run boards of its own.
+
+## Versus
+
+`game/rival.ts` (the other crew, drawn as see-through movers and load with a name tag) and `net/race.ts` (online). Each crew plays its own copy of the job; nothing physical is shared, so there's no lag in your own play. **Rival crews**: recorded deliveries by the test bot (`GHOST_OUT=…` on the deliver scenario, then `scripts/make-rivals.mjs` writes `levels/rivals.ts`, 8 frames a second as deltas), replayed at 0.7× (Easy), 0.9× (Normal) or 1.1× (Hard). Jobs whose bot route teleports between sections (the aquarium, and the clock and glass whose full routes stall) have no rival crew. **Online**: like co-op, a five-letter code on the free matchmaking server, relayed through it, under codes of its own (`fragile-freight-race-…`); the host picks the job and the time of day and weather, the guest says ready, the host says go and both count down 3 s. Each laptop sends its crew's positions 10 times a second and `done` (time, delivered or not) at the end; positions are shown 0.25 s behind, blended. **Quick match**: everyone looking hosts a race under a fresh code and announces it on a lobby topic on the public brokers every 2 s; whoever sees an older announcement joins that code (ties broken by id); after 20 s with nobody, it's the rival crew.
+
 ## Random jobs
 
 `src/levels/gen/`: a seeded generator strings course pieces together (ramps, stairs, doors, slaloms, wrecking balls, traffic with a traffic island, laser gates, ice, pedestrians, conveyor belts, lifts, swing doors, a bridge with no railings, a cable car, a see-saw, corners), in nine settings (docks, suburb, park, snow, office, sky islands, beach, building site, downtown), at day, sunset or night, each with a client line (“Mrs. Patel needs…”) drawn last so it never changes the course, with a start kit for the cargo (the same stands and heights as the hand-made jobs), a checkpoint every three obstacles and a drop-off at the end. Pieces are written in their own frame (enter at the origin heading -Z), so a course can turn west or east (never back toward the camera). Each piece also writes the test bot's route through it, so any job can be checked: `GEN=<number> CARGO=<kind> … run.mjs deliver`.
@@ -197,6 +214,8 @@ Every number below lives in `src/config/tuning.ts` and has a slider in the dev p
 - **Laser gates:** `on`/`off`/`phase` in the museum level (2.2 s on, 3.2 s off, staggered).
 - **The egg's kicks:** strength and interval in `DinoEgg.preStep`.
 - **The piano:** castor friction and damping in `UprightPiano.ts`; the cable car's `speed`/`spacing` in the hills level.
+- **Solo:** the robot's gains in `Buddy.ts` (how hard it keeps its place, the turn speed), and whether 25% tougher loads is the right help.
+- **Rival crews:** the Easy / Normal / Hard speeds in `rival.ts` (Normal is a little slower than the bot).
 - **Jobs 11–15:** the chandelier's `GAIN`/`CLINK`, the bees' anger rates, the jelly's `GAIN`/`TEAR`, the snowman's `MELT`/`SUN` and the shade's `power`, the rocket's heat rate and the welders' `radius`/`power`.
 
 For reference, this is the cargo condition the bot delivered with (same in Chromium and WebKit):
@@ -227,6 +246,7 @@ The keyboard-style bot (`DIGITAL=1`) is much cruder than people: it can't stop p
 - **Online play hasn't been tried between two real Macs yet.** Everything except Safari's own WebRTC was tested (see Online play above). If the friend sees a black picture for more than a few seconds, the automatic fallback should kick in; if they never connect, being on the same Wi-Fi is the usual fix.
 - **Online has a little lag for the guest:** their keys travel to the host and the picture comes back, typically 0.1–0.2 s on home Wi-Fi.
 - **Randomness.** Pedestrians, the dog and the drunk wander, so the aquarium job plays out differently each run.
+- **Solo, Versus and the world leaderboard are new** and so far only played by the test bot and the scenarios. The world board and quick match use free public MQTT brokers that this game doesn't control: if one is down or blocked at school, the other is tried, and without either you still get this laptop's times and the rival crews.
 - **Chaos jobs, the Locker and jobs 11–15 are new** and so far only played by the test bot and the scenarios. Chaos is tuned so the bot (which doesn't dodge anything) delivers about 5 in 6 Mild jobs; how wild Mayhem and ULTRA feel to people, and whether the prices in the Locker feel right, need a playtest.
 - **The single file is about 11 MB** because the 3D models are embedded in it, so it takes a moment to open. The GitHub Pages version loads the models as separate files.
 - **Saved bests** live in Safari's local storage. In Private Browsing, or wherever storage is blocked for local files, the game still runs but forgets bests when it closes.

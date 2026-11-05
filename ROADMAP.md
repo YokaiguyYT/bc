@@ -69,6 +69,13 @@ over many numbers and greps each log for `"state":"delivered"`.
   **ghost** of your best run; the dev panel hidden behind `?dev`. New
   scenarios: `newjobs`, `variety`, `flair`, `chaoslooks`, `tour`.
 
+- Build 12: **Solo** with a robot buddy (Z / C turn the load), **speedrun
+  leaderboards** (this laptop + a world board on free public MQTT brokers,
+  nickname only), **Versus** (rival crews at three speeds, races with a
+  friend by code, quick match with a stranger, falling back to the rival
+  crew), and movers in **work overalls**. New scenarios: `solo`, `board`,
+  `versus`.
+
 ## Work items (independent; pick any)
 
 ### A. More random-job pieces (one agent per 1–2 pieces)
@@ -119,6 +126,9 @@ iPhone and Android phone; maybe a lower default quality on phones.
    birds that steal your hat (and you chase them).
 2. **Mini-games** (the owner said "maybe later"): short party games between
    jobs.
+3. Versus: rival crews for the aquarium, clock and glass jobs (needs a
+   continuous bot route for each), a race on random jobs and the Daily, and
+   a shared ghost of the world record on each board.
 3. More Locker items (shoes, held props like a mop or a coffee), outfits that
    change the mover's walk, and a quest for each hand-made job.
 

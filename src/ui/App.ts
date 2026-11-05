@@ -1657,6 +1657,8 @@ export class App {
     }
     if (r.count > 0) {
       s.paused = true;
+      // (the countdown waits while the pause menu's open)
+      if (this.screen !== 'playing') return this.raceShow('');
       r.count -= dt;
       if (r.count <= 0) {
         s.paused = false;

@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy **2-player** physics game: share **one keyboard**, or play **online** with each of you on your own laptop. You and a friend are two wobbly movers. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece, a bunch of helium balloons) through chaotic obstacle courses without breaking them.
+A goofy **2-player** physics game: share **one keyboard**, play **online** with each of you on your own laptop, or play **solo** with a robot buddy. You and a friend are two wobbly movers in work overalls. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece, a bunch of helium balloons, a crystal chandelier, a beehive, a giant jelly, a snowman, a space rocket) through chaotic obstacle courses without breaking them. Race other crews in **Versus**, and chase the fastest times on the **leaderboards**.
 
 It runs in **Safari or Chrome**, on a Mac or a **Chromebook**. There's nothing to install.
 
@@ -67,6 +67,10 @@ Player 2 keeps their right hand on the arrows and their left hand on `K` and `L`
 
 You can change every key under **Controls**. That screen also has a **key tester**. Mac keyboards can't always register lots of keys at once ("ghosting"), so both players should hold their keys together there and check they all light up.
 
+### Playing on your own (🤖 Solo)
+
+No one to play with? On the **Play** screen, switch **👥 Two players** to **🤖 Solo + robot buddy**. You're Player 1 (`W` `A` `S` `D` or the arrows, `Space` or `K` to jump, `Left Shift` or `L` to grab) and Player 2 is a **robot** that helps: it waits on the other side of the load, grabs it when you do, walks with you, and sets it down when you let go. Away from the load it tags along behind you. To **turn the load round** (for doors and corners), hold `Z` or `C` (or `,` / `.`): you both walk round it, opposite ways. Solo works in every mode (jobs, the Daily, random jobs, chaos, the endless shift, Versus), loads are a bit tougher when you're on your own, and solo times have their own leaderboards.
+
 ### On a phone or tablet
 
 Mostly for joining a friend's game online (they host on a laptop): open the same link, **Play Online → Join a friend**, and type the code. On a touch screen, controls appear while you play: drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**, the small round arrows turn the camera, and the **‖** button in the top corner opens the menu. Pressing any key hides them again, so laptops are unaffected. It also works for hosting on a tablet (you're P1, your friend on their laptop is P2). A phone renders the whole game, so pick **Graphics: Fast** if it's choppy.
@@ -109,7 +113,7 @@ There's also a **Practice Yard** to learn the controls.
 
 ### The Play screen
 
-**Play** opens four (well, five) big choices, so nothing is buried:
+**Play** opens the big choices, so nothing is buried (and the switch at the top picks **two players** or **solo with the robot buddy**):
 
 - **🚚 Jobs:** the hand-made jobs above, with the **Practice Yard** first (marked START HERE the first time).
 - **📅 Daily #N:** one course for everyone each day, Wordle-style, with a **twist** (night, rush hour, double tips, an extra-long route, busy streets). Deliver it every day for a 🔥 **streak**; the last seven days show as ticks. The results card gives you a spoiler-free line of squares (🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating · 💥 broke here, one per stretch of course) and a **Copy** button to paste it in the group chat.
@@ -117,6 +121,8 @@ There's also a **Practice Yard** to learn the controls.
 - **🌀 Chaos Daily #N:** one chaos course for everyone each day (wilder at weekends), with its own share line.
 - **💥 Chaos:** courses where crazy things keep happening (below).
 - **♾️ Endless shift:** job after job, each one longer and harder, until something breaks. Your best shift is kept.
+- **⚔️ Versus:** two crews race the same job, a load each: **first to deliver wins**. The other crew shows as see-through ghosts with a name tag (they can't bump into you). Race the **rival crew** (🐢 Easy, 🚚 Normal or 🏎️ Hard), **host a race** for a friend on another laptop (they pick **Join a friend's race** and type the code), or **quick match** someone else who's looking right now; if nobody is, the rival crew turns up instead. Each laptop can be two players on one keyboard or one player with the robot buddy, so it's 2 v 2, 1 v 1 or anything in between.
+- **🏆 Leaderboards:** the fastest deliveries of every hand-made job and of each day's Daily, with two-player crews and solo players on separate boards. **This laptop** keeps its five best runs on each; **the world** board shows everyone's best. To be on the world board, pick a **board name** (a nickname, never your real name: everyone can see it). Your best time goes up when you deliver, and the results card tells you where you came. It works offline too (then you just see this laptop's times).
 
 **💵 Tips:** banknotes float along every random course, some on the easy line and some right where it's risky. Walk through one to pocket it; they're paid with the delivery.
 
@@ -192,7 +198,7 @@ FF_URL=http://localhost:5199/ GEN=123456 CARGO=tv node tests/browser/run.mjs del
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs genflow   # random / daily / shift menus and results
 ```
 
-Screenshots go to a scratch folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.
+Screenshots go to a `test-shots` folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped), `SOLO=1` to drive Player 1 only with the robot buddy as Player 2, and `GHOST_OUT=<file>` to save the run (the rival crews' runs are made that way: `node scripts/make-rivals.mjs <folder>`). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.
 
 The same scenarios also run in WebKit (Safari's engine) on Linux, through WebKitGTK. Install `gir1.2-webkit2-4.1 python3-gi-cairo xvfb` with apt, then:
 
