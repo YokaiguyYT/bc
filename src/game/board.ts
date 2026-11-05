@@ -34,7 +34,12 @@ export interface BoardEntry {
   color?: string;
 }
 
-const ROOT = 'fragile-freight/board1';
+const ROOT_BASE = 'fragile-freight/board1';
+/** (tests: ?boardns=… gives a run boards of its own on the test broker) */
+function root() {
+  const ns = new URLSearchParams(location.search).get('boardns');
+  return ns && /^[a-z0-9]{1,16}$/.test(ns) ? `${ROOT_BASE}-${ns}` : ROOT_BASE;
+}
 const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
 const LOCAL = 'ff.times.v1';
 const NAME = 'ff.boardName';
@@ -173,7 +178,7 @@ async function client(url: string) {
 export async function worldBoard(board: string, wait = 1200): Promise<{ ok: boolean; entries: BoardEntry[] }> {
   const urls = boardUrls();
   const best = new Map<string, BoardEntry>();
-  const prefix = `${ROOT}/${board}/`;
+  const prefix = `${root()}/${board}/`;
   let ok = false;
   await Promise.all(
     urls.map(async (url) => {
@@ -211,7 +216,7 @@ export async function postRun(board: string, e: BoardEntry) {
     boardUrls().map(async (url) => {
       const c = await client(url);
       if (!c) return;
-      c.publish(`${ROOT}/${board}/${playerId()}`, text, true);
+      c.publish(`${root()}/${board}/${playerId()}`, text, true);
       sent = true;
     }),
   );
