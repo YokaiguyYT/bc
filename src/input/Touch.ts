@@ -3,7 +3,7 @@ import { mergeMoves, MoveState } from './Keyboard';
 /** What the on-screen controls show: nothing, just the menu button, or all of them. */
 export type TouchShow = 'off' | 'menu' | 'play';
 
-type Act = 'stick' | 'grab' | 'jump' | 'camLeft' | 'camRight' | 'menu';
+type Act = 'stick' | 'grab' | 'jump' | 'camLeft' | 'camRight' | 'turnLeft' | 'turnRight' | 'menu';
 
 /** The stick: no move until the thumb is this far out (share of its reach), full speed from here on. */
 const DEAD = 0.18;
@@ -46,6 +46,8 @@ export class Touch {
       <div class="tc-btn tc-jump" data-act="jump">JUMP</div>
       <div class="tc-small tc-cam" data-act="camLeft">⟲</div>
       <div class="tc-small tc-cam" data-act="camRight">⟳</div>
+      <div class="tc-small tc-turn" data-act="turnLeft">↺<b>📦</b></div>
+      <div class="tc-small tc-turn" data-act="turnRight">↻<b>📦</b></div>
       <div class="tc-small tc-menu" data-act="menu"><i></i><i></i></div>`;
     document.body.appendChild(this.el);
     this.base = this.el.querySelector('.tc-stick')!;
@@ -100,6 +102,16 @@ export class Touch {
     const jumpPressed = this.jumps > this.usedJumps;
     this.usedJumps = this.jumps;
     return { x, y, jump: this.held('jump'), jumpPressed, grab: this.held('grab') };
+  }
+
+  /** Solo: show the buttons that turn the load (the robot buddy's Z / C). */
+  setSolo(on: boolean) {
+    if (this.el.dataset.solo !== String(on)) this.el.dataset.solo = String(on);
+  }
+
+  /** The turn-the-load buttons: -1 anticlockwise, 0, or 1 clockwise, like Z and C. */
+  turn() {
+    return (this.held('turnRight') ? 1 : 0) - (this.held('turnLeft') ? 1 : 0);
   }
 
   /** The camera buttons: -1, 0 or 1, like Q and E. */

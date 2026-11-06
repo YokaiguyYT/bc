@@ -1264,6 +1264,22 @@ html.touch body {
 .tc-cam[data-act='camLeft'] {
   right: calc(var(--tc-right) + var(--tc-small) + 12px);
 }
+/* solo: turn the load (in the camera buttons' row, to their left) */
+.tc-turn {
+  bottom: calc(var(--tc-bottom) + var(--tc-btn) + 18px);
+  right: calc(var(--tc-right) + 2 * var(--tc-small) + 30px);
+  font-size: calc(var(--tc-small) * 0.42) !important;
+}
+.tc-turn b {
+  font-size: 0.7em;
+  margin-left: 1px;
+}
+.tc-turn[data-act='turnLeft'] {
+  right: calc(var(--tc-right) + 3 * var(--tc-small) + 42px);
+}
+.touch-controls:not([data-solo='true']) .tc-turn {
+  display: none;
+}
 .tc-menu {
   top: calc(14px + env(safe-area-inset-top));
   right: calc(14px + env(safe-area-inset-right));
@@ -1391,6 +1407,10 @@ input.type-box {
   overflow-x: hidden;
   overflow-y: auto;
 }
+/* (each part keeps its height and the screen scrolls, rather than a panel being squashed and cut off) */
+.screen > * {
+  flex-shrink: 0;
+}
 .screen > :first-child {
   margin-top: auto;
 }
@@ -1413,6 +1433,19 @@ input.type-box {
   }
   .panel {
     padding: 14px 18px;
+  }
+  /* a phone on its side: the whole screen scrolls, not a little box inside it */
+  .hub,
+  .levels {
+    max-height: none;
+    overflow: visible;
+  }
+  .hub {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+  }
+  .logo {
+    font-size: 34px !important;
   }
 }
 

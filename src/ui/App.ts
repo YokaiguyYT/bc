@@ -296,6 +296,7 @@ export class App {
 
   private frame(dt: number) {
     this.game.touch.show(this.touchShow());
+    this.game.touch.setSolo(!!this.game.session?.buddy && this.screen === 'playing');
     // keep the online line's round-trip time fresh (and say so soon if the other laptop goes quiet)
     this.badgeT -= dt;
     if (this.badgeT <= 0) {
@@ -1098,7 +1099,8 @@ export class App {
 
   /** Playing on your own (the robot buddy carries the other end); ?solo in the address for tests. */
   solo() {
-    return !!this.game.settings.solo || new URLSearchParams(location.search).has('solo');
+    // (a phone or tablet on its own can only be one player: solo, unless you've picked two players)
+    return !!(this.game.settings.solo ?? this.game.touch.active) || new URLSearchParams(location.search).has('solo');
   }
 
   private wireSession(s: LevelSession) {
@@ -2115,7 +2117,7 @@ export class App {
       'online',
       `<div class="logo" style="font-size:44px">PLAY ONLINE</div>
        <div class="panel" style="max-width:min(640px,92vw)">
-         <p>Each of you plays on your <b>own laptop</b> (a Chromebook is fine). One of you <b>hosts</b>: the game runs on that laptop. The other <b>joins</b> with a code.</p>
+         <p>Each of you plays on your <b>own laptop or phone</b> (a Chromebook, iPhone or Android is fine). One of you <b>hosts</b>: the game runs there. The other <b>joins</b> with a code.</p>
          <p style="font-size:14px">Free, no accounts. Works on home and school Wi-Fi: if the network won't let the laptops connect directly, the game passes its messages through the matchmaking server instead. The faster laptop should host.</p>
        </div>
        <div class="menu">

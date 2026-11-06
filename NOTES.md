@@ -12,7 +12,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Solo play with a robot buddy | Done; works best on open routes (see Solo below) |
 | Speedrun leaderboards (this laptop + a world board) | Done; the world board tested against a local broker only |
 | Versus (rival crews, friend races by code, quick match) | Done; tested in Chromium with two windows, not between two real laptops |
-| Touch controls (phones and tablets, mainly as the online guest) | Done; tested in Chromium's touch emulation, not on a real phone |
+| Phones and tablets (touch controls, solo with turn buttons, hosting and joining online phone to phone, Add to Home Screen) | Done; tested in Chromium's phone emulation (`touch`, `phones`), not on a real phone yet |
 | Keyboard controls, rebinding, key tester | Done |
 | Online play (one laptop each, school networks too) | Done; tested in Chromium (direct and relay), not yet between two real laptops |
 | Random jobs (more obstacles, 17 settings, twists, hilly routes), endless shift | Done |

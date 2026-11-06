@@ -133,7 +133,8 @@ export default async function ({ page, base, out }) {
     const speed = Math.hypot(b.pos[0] - a.pos[0], b.pos[2] - a.pos[2]) / (b.t - a.t);
     check('stick walks P1 (m per simulated s)', speed > 0.8, +speed.toFixed(2));
     check('…to the right on screen', b.scr[0] - a.scr[0] > 30 && Math.abs(b.scr[1] - a.scr[1]) < b.scr[0] - a.scr[0], [Math.round(b.scr[0] - a.scr[0]), Math.round(b.scr[1] - a.scr[1])]);
-    check('…and not P2', p2intent === 0, p2intent);
+    // (a phone on its own plays solo: P2 is the robot buddy, tagging along)
+    check('…and P2 is the robot buddy (a phone alone plays solo)', await ph.evaluate(() => !!window.__FF.game.session.buddy), p2intent);
     await adv(ph, 0.6);
     const still = await p1();
     await adv(ph, 0.5);

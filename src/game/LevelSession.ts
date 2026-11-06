@@ -316,7 +316,7 @@ export class LevelSession {
 
     if (this.buddy && !this.mirror && !this.paused && !this.attractMode) {
       // solo: Z / C (or , and .) turn the load
-      if (!this.scriptedInput) this.buddy.turn = (kb.isDown(['KeyC', 'Period']) ? 1 : 0) - (kb.isDown(['KeyZ', 'Comma']) ? 1 : 0);
+      if (!this.scriptedInput) this.buddy.turn = Math.max(-1, Math.min(1, (kb.isDown(['KeyC', 'Period']) ? 1 : 0) - (kb.isDown(['KeyZ', 'Comma']) ? 1 : 0) + (this.touch?.turn() ?? 0)));
       this.buddy.update(frameDt);
     }
     // (chaos can slow the clock down or speed it up)

@@ -57,6 +57,11 @@ function namePlayableFile(): Plugin {
       const docs = resolve(import.meta.dirname, 'docs');
       mkdirSync(docs, { recursive: true });
       copyFileSync(to, resolve(docs, 'index.html'));
+      // the home-screen icon and app description, beside the page the link serves
+      for (const f of ['manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png']) {
+        const src = resolve(import.meta.dirname, 'public', f);
+        if (existsSync(src)) copyFileSync(src, resolve(docs, f));
+      }
     },
   };
 }

@@ -71,9 +71,19 @@ You can change every key under **Controls**. That screen also has a **key tester
 
 No one to play with? On the **Play** screen, switch **👥 Two players** to **🤖 Solo + robot buddy**. You're Player 1 (`W` `A` `S` `D` or the arrows, `Space` or `K` to jump, `Left Shift` or `L` to grab) and Player 2 is a **robot** that helps: it waits on the other side of the load, grabs it when you do, walks with you, and sets it down when you let go. Away from the load it tags along behind you. To **turn the load round** (for doors and corners), hold `Z` or `C` (or `,` / `.`): you both walk round it, opposite ways. Solo works in every mode (jobs, the Daily, random jobs, chaos, the endless shift, Versus), loads are a bit tougher when you're on your own, and solo times have their own leaderboards.
 
-### On a phone or tablet
+### On a phone (iPhone or Android)
 
-Mostly for joining a friend's game online (they host on a laptop): open the same link, **Play Online → Join a friend**, and type the code. On a touch screen, controls appear while you play: drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**, the small round arrows turn the camera, and the **‖** button in the top corner opens the menu. Pressing any key hides them again, so laptops are unaffected. It also works for hosting on a tablet (you're P1, your friend on their laptop is P2). A phone renders the whole game, so pick **Graphics: Fast** if it's choppy.
+No app store needed: it runs in the browser.
+
+1. Open the game's link in **Safari** (iPhone) or **Chrome** (Android): **https://yokaiguyyt.github.io/bc/** (once GitHub Pages is switched on, see "Play from a link" above).
+2. Make it an app: on iPhone tap **Share → Add to Home Screen**; on Android, **⋮ → Add to Home screen** (or Install app). Open it from the new icon: it runs **full screen**, like an app.
+3. Turn the phone **sideways** (it works upright too).
+
+**Controls:** drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**; the small round arrows turn the camera and **‖** in the corner is the menu. Pressing any key on a keyboard hides them again.
+
+**On your own:** a phone plays **🤖 Solo** with the robot buddy automatically (you can still pick Two players on the Play screen). The two **📦 turn buttons** spin the load round for doors and corners.
+
+**With a friend, each on your own phone:** both open the same link. One taps **Play Online → Host a game** and gets a five-letter code; the other taps **Play Online → Join a friend**, taps the code boxes, types the code and taps **Join**. The host picks the job; the host is P1 (orange) and the friend P2 (blue). Phones, laptops and Chromebooks all mix. Versus works the same way (**Play → ⚔️ Versus → Host a race / Join a friend's race**). If it's choppy, pick **Settings → Graphics: Fast**.
 
 ## How to play
 
