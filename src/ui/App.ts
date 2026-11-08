@@ -27,7 +27,7 @@ import { THEMES } from '../levels/gen/kits';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
-import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
+import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, trackParty, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { bestBeaten, CPU_NAMES, CPU_PRIZE, LENGTH_NAMES, PARTY_GAMES, partyInfo, partyRecord, recordParty, type PartyLength } from '../game/party';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
@@ -68,7 +68,7 @@ type Screen =
 const DEV = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dev');
 
 /** Bump to show the main menu's "New:" line again after an update. */
-const NEWS = 'build10';
+const NEWS = 'build13';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -399,6 +399,7 @@ export class App {
       `<div class="logo" style="font-size:clamp(40px,6vw,74px)"><span class="w fragile">FRAGILE</span> <span class="w freight" style="animation-delay:-1.3s">FREIGHT</span></div>
        <div class="menu">
          <button class="btn primary" data-nav data-default id="m-play">Play</button>
+         <button class="btn party-btn" data-nav id="m-party">🎉 Party games</button>
          <button class="btn" data-nav id="m-locker">👕 Locker${loadWardrobe().cash > 0 ? ` <span class="cash">${formatMoney(loadWardrobe().cash)}</span>` : ''}</button>
          <button class="btn" data-nav id="m-online">${this.host ? `Online: ${this.host.connected ? 'friend connected' : 'hosting'}` : 'Play Online'}</button>
        </div>
@@ -416,6 +417,7 @@ export class App {
        })()}Navigate with arrows / WASD · Return or Space to pick</div>`,
     );
     this.bind('m-play', () => this.showPlay());
+    this.bind('m-party', () => this.showParty());
     this.bind('m-locker', () => this.showLocker());
     this.bind('m-nudge', () => {
       saveJSON('ff.news', NEWS);
@@ -436,7 +438,7 @@ export class App {
     // (brand-new players get the START HERE ribbon instead)
     if (played && seen !== NEWS && shown < 4) {
       saveJSON('ff.newsShown', shown + 1);
-      return `<button class="nudge" data-nav id="m-nudge">✨ <b>New:</b> 💥 Chaos jobs · 👕 the Locker · 📅 Daily streaks · 💵 tips</button>`;
+      return `<button class="nudge" data-nav id="m-nudge">✨ <b>New:</b> 🎉 7 party games (1v1, or vs the computer) · 🗼 Stack 'Em High · 🛠️ Build a job</button>`;
     }
     if (played && !todaysResult()?.delivered) {
       const st = streak();
@@ -477,15 +479,15 @@ export class App {
          <button class="seg-btn ${this.solo() ? '' : 'on'}" data-nav id="p-duo">👥 Two players</button>
          <button class="seg-btn ${this.solo() ? 'on' : ''}" data-nav id="p-solo">🤖 Solo + robot buddy</button>
        </div>
-       <div class="hub">
-         <button class="hub-tile ${fresh ? 'start' : ''}" data-nav ${dailyFirst ? '' : 'data-default'} id="p-jobs">
+       <div class="hub tiers">
+         <button class="hub-tile big ${fresh ? 'start' : ''}" data-nav ${dailyFirst ? '' : 'data-default'} id="p-jobs">
            ${fresh ? '<div class="ribbon">START HERE</div>' : ''}
            <div class="icon">🚚</div>
            <div class="name">Jobs</div>
            <div class="sub">${jobs.length} hand-made deliveries, from a crate to a piano</div>
            <div class="best">${fresh ? 'Start with the <b>Practice Yard</b>' : `${done} of ${jobs.length} delivered · ${stars} ★${next ? ` · next: ${esc(next.name)}` : ''}`}</div>
          </button>
-         <button class="hub-tile daily" data-nav ${dailyFirst ? 'data-default' : ''} id="p-daily">
+         <button class="hub-tile big daily" data-nav ${dailyFirst ? 'data-default' : ''} id="p-daily">
            <div class="icon">📅</div>
            <div class="name">Daily #${dailyNumber()}</div>
            <div class="sub">${dInfo.icon} ${esc(dInfo.name)} · ${twist.icon} ${twist.name}<br>The same course for everyone today</div>
@@ -494,19 +496,25 @@ export class App {
              .join('')}${st.current ? `<b>🔥 ${st.current}</b>` : ''}</div>
            <div class="best">${dBest?.completed || today?.delivered ? `✅ done today${triesToday() > 1 ? ` in ${triesToday()} tries` : triesToday() === 1 ? ', first try!' : ''} · next in ${untilNext()}` : triesToday() ? `${triesToday()} ${triesToday() === 1 ? 'try' : 'tries'} so far today` : 'not done yet today'}</div>
          </button>
-         <button class="hub-tile" data-nav id="p-quick">
+         <button class="hub-tile big party" data-nav id="p-party">
+           <div class="icon">🎉</div>
+           <div class="name">Party games</div>
+           <div class="sub">${PARTY_GAMES.length} quick 1v1 games: sumo, tug of war, football, hot potato…</div>
+           <div class="best">you vs a friend, or vs the computer</div>
+         </button>
+         <button class="hub-tile mini" data-nav id="p-quick">
            <div class="icon">🎲</div>
            <div class="name">Quick job</div>
-           <div class="sub">A brand-new random course, or a friend's job number</div>
+           <div class="sub">A brand-new random course, a friend's job number, or 🛠️ build your own</div>
            <div class="best">never the same twice</div>
          </button>
-         <button class="hub-tile chaos" data-nav id="p-chaos">
+         <button class="hub-tile mini chaos" data-nav id="p-chaos">
            <div class="icon">💥</div>
            <div class="name">Chaos</div>
            <div class="sub">Courses where crazy things keep happening. Pick how much: Mild to ULTRA</div>
            <div class="best">${chaosBest ? `best: ${formatMoney(chaosBest.payout)} on ${chaosLevel(chaosBest.level).name}` : 'what happens? a surprise…'}</div>
          </button>
-         <button class="hub-tile chaos" data-nav id="p-chaosdaily">
+         <button class="hub-tile mini chaos" data-nav id="p-chaosdaily">
            <div class="icon">🌀</div>
            <div class="name">Chaos Daily #${dailyNumber()}</div>
            <div class="sub">Today's chaos, the same for everyone: ${chaosLevel(cd.level).icon} ${chaosLevel(cd.level).name}${cd.level === 5 ? ' (it’s the weekend!)' : ''}</div>
@@ -515,25 +523,19 @@ export class App {
              .join('')}${cst.current ? `<b>🔥 ${cst.current}</b>` : ''}</div>
            <div class="best">${todaysResult(new Date(), 'chaos')?.delivered ? `✅ survived today · next in ${untilNext()}` : triesToday(new Date(), 'chaos') ? `${triesToday(new Date(), 'chaos')} tries so far today` : 'not survived yet today'}</div>
          </button>
-         <button class="hub-tile" data-nav id="p-shift">
+         <button class="hub-tile mini" data-nav id="p-shift">
            <div class="icon">♾️</div>
            <div class="name">Endless shift</div>
            <div class="sub">Job after job, each one harder, until something breaks</div>
            <div class="best">${shiftBest ? `best: ${formatMoney(shiftBest.total)} in ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</div>
          </button>
-         <button class="hub-tile party" data-nav id="p-party">
-           <div class="icon">🎉</div>
-           <div class="name">Party games</div>
-           <div class="sub">${PARTY_GAMES.length} quick 1v1 games: sumo, tug of war, football, hot potato…</div>
-           <div class="best">you vs a friend, or vs the computer</div>
-         </button>
-         <button class="hub-tile chaos" data-nav id="p-versus">
+         <button class="hub-tile mini chaos" data-nav id="p-versus">
            <div class="icon">⚔️</div>
            <div class="name">Versus</div>
            <div class="sub">Two crews race the same job: a friend's crew online, a stranger's, or the rival crew</div>
            <div class="best">first to deliver wins</div>
          </button>
-         <button class="hub-tile" data-nav id="p-boards">
+         <button class="hub-tile mini" data-nav id="p-boards">
            <div class="icon">🏆</div>
            <div class="name">Leaderboards</div>
            <div class="sub">The fastest deliveries of every job: on this laptop and in the world</div>
@@ -1073,6 +1075,12 @@ export class App {
         <p>Number keys pop a bubble over your mover: <b>1</b> 👋 Hi! · <b>2</b> 👍 Nice! · <b>3</b> 😬 Careful! · <b>4</b> ✋ Wait! (Player 2 on the same keyboard: <b>7 8 9 0</b>; online, each of you uses 1–4.)</p>
         <h3>☁️ Falling off</h3>
         <p>Fall off the world and you respawn at the last checkpoint (flags), minus a small payout penalty. Get the cargo to a checkpoint to save progress.</p>
+        <h3>🎉 Party games</h3>
+        <p>Seven quick 1v1 games (Play → 🎉 Party games): against a friend on the same keyboard, against the computer, or against the friend you're hosting online. <b>Run into the other mover to belly-bump them</b>; grab them to drag them about. In tug of war, <b>JUMP while holding the sofa heaves it your way</b>: mash it.</p>
+        <h3>🗼 Stack 'Em High</h3>
+        <p>Stop the pallet on a crane pad and hold still: a box gets stacked on. Again, and again. Every box still standing at the drop-off pays.</p>
+        <h3>🛠️ Build a job</h3>
+        <p>Quick job → Build a job: pick the load and the place, line up the obstacles, and play it. Its code (B…) gives a friend the very same course.</p>
         <h3>🎥 Camera</h3>
         <p>${keys(b.camLeft, '')} ${keys(b.camRight, '')} spin the camera. Movement is relative to the camera. ${keys(b.pause, '')} pauses.</p>
         <p class="touch-only">📱 <b>On a phone or tablet:</b> put your left thumb down anywhere on the left half and slide it to walk. Hold <b>GRAB</b>, tap <b>JUMP</b>; ⟲ ⟳ spin the camera and the button in the corner pauses.</p>
@@ -1378,6 +1386,7 @@ export class App {
 
   private showPauseMenu() {
     const s = this.game.session!;
+    if (s.party) return this.showPartyPause();
     this.setScreen(
       'paused',
       `<div class="logo" style="font-size:56px">PAUSED</div>
@@ -1399,6 +1408,34 @@ export class App {
     this.bind('p-restart', () => this.replay(s.def));
     this.bind('p-controls', () => this.showControls(() => this.showPauseMenu()));
     this.bind('p-settings', () => this.showSettings(() => this.showPauseMenu()));
+    this.bind('p-quit', () => this.quitToMenu());
+  }
+
+  /** Paused in a party game: start it again, pick another, or leave. */
+  private showPartyPause() {
+    const g = this.game.session!.party!;
+    this.setScreen(
+      'paused',
+      `<div class="logo" style="font-size:56px">PAUSED</div>
+       <p class="pause-score">${esc(g.title)} · <b>${g.name(0)} ${g.score[0]} – ${g.score[1]} ${g.name(1)}</b></p>
+       <div class="menu">
+         <button class="btn primary" data-nav data-default id="p-resume">Resume</button>
+         <button class="btn" data-nav id="p-restart">Restart this game</button>
+         <button class="btn" data-nav id="p-party">Pick another game</button>
+         <button class="btn" data-nav id="p-controls">Controls</button>
+         <button class="btn" data-nav id="p-settings">Settings</button>
+         <button class="btn" data-nav id="p-quit">Quit to menu</button>
+       </div>`,
+      { dim: true, back: () => this.resume() },
+    );
+    this.bind('p-resume', () => this.resume());
+    this.bind('p-restart', () => this.replay(this.game.session!.def));
+    this.bind('p-party', () => {
+      this.quitToMenu();
+      this.showParty();
+    });
+    this.bind('p-controls', () => this.showControls(() => this.showPartyPause()));
+    this.bind('p-settings', () => this.showSettings(() => this.showPartyPause()));
     this.bind('p-quit', () => this.quitToMenu());
   }
 
@@ -1531,8 +1568,8 @@ export class App {
     }
     // the wallet and the quests (after today's job is counted, for the streak)
     const payday = track(
-      { success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars },
-      { kind: job.kind, levelId: def.id, online: !!this.host?.connected, chaos: def.gen?.chaos, surprises, shiftRound: job.kind === 'shift' ? job.round : 0, daily: job.kind === 'daily' },
+      { success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars, tower: r.tower },
+      { kind: job.kind, levelId: def.id, online: !!this.host?.connected, chaos: def.gen?.chaos, surprises, shiftRound: job.kind === 'shift' ? job.round : 0, daily: job.kind === 'daily', pieces: def.gen?.plan ? def.pieces?.length : 0 },
       streak().current,
     );
     if (this.host?.connected) this.host.sendPaid({ success: r.success, payout: r.payout, condition: r.condition, tipCount: r.tipCount, stars });
@@ -1832,22 +1869,21 @@ export class App {
       .join('');
     const vs = online
       ? '<div class="party-online">🌐 Your friend online plays <b>P2</b></div>'
-      : `<button class="seg-btn ${o.vs === 'friend' ? 'on' : ''}" data-nav id="pa-friend">👥 A friend, this keyboard</button>
-         <button class="seg-btn ${o.vs === 'cpu' ? 'on' : ''}" data-nav id="pa-cpu">🤖 The computer</button>`;
+      : `<div class="opt-row"><span class="opt-label">Against</span><button class="seg-btn ${o.vs === 'friend' ? 'on' : ''}" data-nav id="pa-friend">👥 A friend here</button><button class="seg-btn ${o.vs === 'cpu' ? 'on' : ''}" data-nav id="pa-cpu">🤖 The computer</button></div>`;
     const cpu =
       !online && o.vs === 'cpu'
-        ? `<div class="crew-pick small">${[1, 2, 3].map((k) => `<button class="seg-btn ${o.cpu === k ? 'on' : ''}" data-nav id="pa-lvl${k}">${['', '🙂', '😐', '😈'][k]} ${CPU_NAMES[k]}</button>`).join('')}</div>`
+        ? `<div class="opt-row"><span class="opt-label">Computer</span>${[1, 2, 3].map((k) => `<button class="seg-btn ${o.cpu === k ? 'on' : ''}" data-nav id="pa-lvl${k}">${['', '🙂', '😐', '😈'][k]} ${CPU_NAMES[k]}</button>`).join('')}</div>`
         : '';
     const phoneNote = this.game.touch.active && !online && o.vs === 'friend' ? '<p class="party-note">On one phone only one person can play: play the computer, or each use your own phone (Online → Host, then pick a party game).</p>' : '';
     this.setScreen(
       'party',
       `<div class="logo" style="font-size:44px">🎉 PARTY</div>
        <div class="party-opts">
-         <div class="crew-pick">${vs}</div>
+         ${vs}
          ${cpu}
-         <div class="crew-pick small">${LENGTH_NAMES.map((n, i) => `<button class="seg-btn ${o.len === i ? 'on' : ''}" data-nav id="pa-len${i}">${['⚡', '🎯', '🏟️'][i]} ${n}</button>`).join('')}</div>
-         ${phoneNote}
+         <div class="opt-row"><span class="opt-label">Length</span>${LENGTH_NAMES.map((n, i) => `<button class="seg-btn ${o.len === i ? 'on' : ''}" data-nav id="pa-len${i}">${['⚡', '🎯', '🏟️'][i]} ${n}</button>`).join('')}</div>
        </div>
+       ${phoneNote}
        <div class="hub party-hub">
          ${tiles}
          <button class="hub-tile party mix" data-nav id="pa-mix">
@@ -1979,7 +2015,7 @@ export class App {
         <div class="party-final"><span class="pf-name" style="background:${hex(0)}">${p.names[0]}</span><b style="color:${hex(0)}">${p.score[0]}</b><i>–</i><b style="color:${hex(1)}">${p.score[1]}</b><span class="pf-name" style="background:${hex(1)}">${p.names[1]}</span></div>
         ${p.line ? `<p style="font-size:16px">${esc(p.line)}</p>` : ''}
         <p style="font-size:15px">${info?.icon ?? ''} ${esc(info?.name ?? p.title)}</p>
-        ${prize ? `<p class="party-prize">💵 +${formatMoney(prize)} into the company wallet</p>` : ''}
+        ${this.paydayBlock(trackParty(p.winner, p.cpu, streak().current, prize))}
         ${vsLine}
         ${mixBlock}
         <div class="row">${buttons}</div>

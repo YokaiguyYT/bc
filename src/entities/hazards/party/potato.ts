@@ -158,6 +158,14 @@ export class Potato extends PartyGame {
       const d = Math.hypot(ax, az) || 1;
       ax /= d;
       az /= d;
+      // far off: keep on the move, circling round the middle (a sitting duck is easy to catch)
+      if (d > 5.5) {
+        const r = Math.max(2.5, Math.min(5, Math.hypot(m.x, m.z)));
+        const ang = Math.atan2(m.z, m.x) + 0.7;
+        this.plan.x = Math.cos(ang) * r;
+        this.plan.z = Math.sin(ang) * r;
+        return this.steer(me, this.plan.x, this.plan.z, 0.7);
+      }
       // close: dodge sideways round them rather than straight back
       if (d < 3.2) {
         const s = ax * -m.z + az * m.x >= 0 ? 1 : -1;

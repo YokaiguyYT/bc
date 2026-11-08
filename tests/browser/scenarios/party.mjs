@@ -117,7 +117,8 @@ export default async function ({ page, base, shot }) {
     s = await st();
     await shot(`party_${game}`);
     const cpuMoved = Math.hypot(s.p[1][0] - c0[0], s.p[1][2] - c0[2]);
-    check(`${game}: the computer plays`, cpuMoved > 0.8, +cpuMoved.toFixed(2));
+    // (on the lava, standing still on a safe tile is often right)
+    check(`${game}: the computer plays`, cpuMoved > (game === 'lava' ? 0.3 : 0.8), +cpuMoved.toFixed(2));
     // a round won the game's own way
     const w = WIN[game];
     if (w) {

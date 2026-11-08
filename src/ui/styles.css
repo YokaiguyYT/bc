@@ -990,9 +990,53 @@ kbd.p2 {
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 16px;
   width: min(1040px, 94vw);
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
+  /* (no height limit of its own: a box that scrolls squashes its rows and cuts the tiles off; the screen scrolls instead) */
   padding: 8px 10px 14px;
+}
+/* the Play hub: three big tiles, then smaller ones */
+.hub.tiers {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px 14px;
+}
+.hub.tiers .hub-tile {
+  grid-column: span 2;
+}
+.hub.tiers .hub-tile.mini {
+  min-height: 0;
+  padding: 9px 12px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  border-width: 4px;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+.hub.tiers .hub-tile.mini .icon {
+  font-size: 30px;
+  grid-row: span 3;
+  align-self: center;
+}
+.hub.tiers .hub-tile.mini .name {
+  font-size: 20px;
+}
+.hub.tiers .hub-tile.mini .sub {
+  font-size: 13px;
+}
+.hub.tiers .hub-tile.mini .best,
+.hub.tiers .hub-tile.mini .week {
+  font-size: 13px;
+  padding-top: 3px;
+  grid-column: 2;
+}
+@media (max-width: 600px) {
+  .hub.tiers {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hub.tiers .hub-tile {
+    grid-column: span 1;
+  }
 }
 .hub-tile {
   position: relative;
@@ -2104,6 +2148,20 @@ table.board .dot {
 .hud .banner.pc2 {
   color: var(--p2);
 }
+.btn.party-btn {
+  background: linear-gradient(160deg, #ffe7a6, #ffd0e8);
+}
+.btn.party-btn.focus,
+.btn.party-btn:hover {
+  background: linear-gradient(160deg, #ffd96b, #ffb8dc);
+}
+.pause-score {
+  font-size: 18px;
+  background: rgba(255, 248, 236, 0.94);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 4px 14px;
+}
 .hub-tile.party {
   background: linear-gradient(160deg, #fff0c8, #ffe0f0);
 }
@@ -2113,9 +2171,45 @@ table.board .dot {
 }
 .party-opts {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 8px 22px;
+  max-width: min(1040px, 94vw);
+}
+.party-opts .opt-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.party-opts .opt-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
+}
+.party-opts .seg-btn {
+  font-size: 15px;
+  padding: 4px 11px;
+}
+@media (max-height: 500px) {
+  .party-hub .hub-tile {
+    min-height: 0;
+    padding: 10px 14px 12px;
+    gap: 3px;
+  }
+  .party-hub .hub-tile .icon {
+    font-size: 30px;
+  }
+  .party-hub .hub-tile .name {
+    font-size: 20px;
+  }
+  .party-hub .hub-tile .sub,
+  .party-hub .hub-tile .best {
+    font-size: 13px;
+  }
 }
 .crew-pick.small .seg-btn {
   font-size: 15px;
@@ -2331,4 +2425,21 @@ table.board .dot {
   border-radius: 14px;
   box-shadow: 0 4px 0 var(--ink);
   outline: none;
+}
+@media (max-height: 500px) {
+  .hub.tiers .hub-tile.big {
+    min-height: 0;
+    padding: 10px 14px 12px;
+    gap: 3px;
+  }
+  .hub.tiers .hub-tile.big .icon {
+    font-size: 30px;
+  }
+  .hub.tiers .hub-tile.big .name {
+    font-size: 22px;
+  }
+  .hub.tiers .hub-tile.big .sub,
+  .hub.tiers .hub-tile.big .best {
+    font-size: 13px;
+  }
 }

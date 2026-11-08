@@ -6,7 +6,10 @@ Design decisions, what still needs tuning, and known limitations.
 
 | Area | State |
 | --- | --- |
-| Fifteen hand-made jobs and the Practice Yard | Playable start to finish; a bot route delivers each one |
+| Sixteen hand-made jobs and the Practice Yard | Playable start to finish; a bot route delivers jobs 1–15 (job 16, the tower, is checked by the `tower` scenario) |
+| Party games (7 games 1v1: on one keyboard, vs the computer at 3 levels, online; party mix) | Done; the computer tested against an idle player (`party-cpu`), online in two Chromium windows (`party-online`) |
+| Stack 'Em High (job 16: crane pads stack boxes on a pallet) | Done |
+| Build a job (pick the pieces, share a code) | Done |
 | Hand-made job variety (time of day, rain or snow) and bonus goals | Done |
 | Ghost of your best run (hand-made jobs) | Done (not shown online) |
 | Solo play with a robot buddy | Done; works best on open routes (see Solo below) |
@@ -20,7 +23,7 @@ Design decisions, what still needs tuning, and known limitations.
 | Daily (Wordle-style: number, twist, streak, shareable squares) | Done |
 | Cash tips on random courses | Done |
 | Chaos jobs (slider Mild → ULTRA, 28 kinds of chaos, a siren before each, combos, chaos-only obstacles) | Done; online too |
-| The Locker (outfits, trails, dances, emote packs, cargo skins, wallet, 14 quests) and the company rank (Trainee → CEO) | Done; online too |
+| The Locker (outfits, trails, dances, emote packs, cargo skins, wallet, 18 quests) and the company rank (Trainee → CEO) | Done; online too |
 | Menus, HUD, results, saved bests | Done |
 | Way-finding arrow, location tips, auto-pause | Done |
 | Single-file build (double-click), GitHub Pages from `/docs` | Done |
@@ -153,6 +156,20 @@ Each new load has one trick, written in its own cargo class, and a job built aro
 - **Rocket** (`Rocket.ts`): carried lying down like the clock, resting on two of its X-shaped fins so it doesn't roll. Welders (a new heater style, `welder`, with sparks) raise its `heat`; at 100% the engine burns for 1.4 s, pushing it nose-first (an impulse each physics step: a force added in Rapier stays on until it's reset, which once fired it off at 74 m/s) and scorching it 10%. Cold air (the fans) cools it.
 
 The `newjobs` scenario checks each trick on its own. Hand-made jobs also roll a **variant** each play (`levels/variants.ts`: time of day, rain or snow from the job's `variety`), sent to the online guest with the level; and **bonus goals** (`goals`: no falls, under a time, keep it above a condition) pay 15% of the load's value each (at least $50), the first time.
+
+## Party games
+
+Each party game is an arena: a hidden level (`levels/defs/p*_*.ts`, made with `party()` in `levels/party.ts`, id `party-<game>`) whose rules are its one `party` hazard (`entities/hazards/party/`). `PartyGame` (`base.ts`) does what they all share: rounds, the score (first to N), a round clock or a game clock (football, then a golden goal), the 3-2-1 countdown that holds everybody still, the banners (game events, so the online guest gets them), **belly bumps** (whoever runs into the other faster shoves them, and over if it's fast enough) and the computer player (P2), at three skill levels that change how quick it is to react and to move. Each game adds `setup` (place everyone, reset its bits), `step` (each physics step: the round's winner, if any), `cpuMove`, its looks and the numbers the guest needs (`netState`). The session puts the arena's load away (made all the same, so both laptops have the same bodies in the same order) and skips the delivery rules; the HUD shows a scoreboard instead of the cargo card; the results card has the score, a rematch, and the running score of a party mix. Bodies a game moves (the sumo ring, the lava tiles, the ball, the sofa, the loot) are made up front and parked far below until they're needed (`kit.ts`), so online they're just more moving parts.
+
+Things learned testing the computer against an idle player (`party-cpu`): a sumo charge needs a run-up (a bump only shoves if you're going at about 3 m/s); a football gets pinned against a wall (the computer backs off and comes again, and the referee drops a ball that sits still against a wall for 5 s back in the middle); loot set down in a truck mustn't be walked away from while it's still being lowered (that drags it back out); a mover alone can drag a 27 kg sofa slowly but not a 30 kg one; and two people pulling a sofa against each other just stand there, so in tug of war JUMP heaves while you hold it.
+
+## Stack 'Em High
+
+The load is a `Pallet` (`cargo/Pallet.ts`): it can't break, and its value is $40 plus $90 for each box on it. The `tower` hazard (`hazards/tower.ts`) has the crane pads: the pallet on a pad, still, for 0.7 s (then 1.25 s for each box after) and a box drops onto the top of the stack. It counts the boxes above the pallet's deck and inside its edges each step (that's the tower), and says when one's knocked off. The tower is about height, not speed, so it isn't on the speedrun boards or in Versus.
+
+## Build a job
+
+`levels/gen/plan.ts`: a built job is a code, B then base-32 characters (Crockford's, so no I, L, O or U to misread): a version, the cargo, the place, the options (time, rain, difficulty), one character per piece, and a check character. The lists the code indexes into (pieces, cargo) are append-only. `generateJob` with `plan` set makes the course from the code instead of picking pieces at random, with the same pieces as random jobs, so everything they've learned about fairness holds; a piece the load can't do becomes a straight, and a piece that only faces up the course (the road, the lasers, the level crossing) after a corner gets a corner back first. The seed comes from the code, so the same code makes the same course on every laptop and phone (and online the guest rebuilds it from the code). Built jobs pay ×0.6, less for under eight pieces.
 
 ## Solo
 

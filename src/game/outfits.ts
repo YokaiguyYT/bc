@@ -53,6 +53,10 @@ export const ITEMS: Record<Slot, Record<string, Item>> = {
     white: { name: 'Snowball', price: 900, hex: 0xf3f1ec, icon: '⬜' },
     black: { name: 'Midnight', price: 900, hex: 0x3a3a46, icon: '⬛' },
     gold: { name: 'Solid gold', price: 0, quest: 'alljobs', hex: 0xe5b53a, icon: '🥇' },
+    confetti: { name: 'Party pink', price: 0, quest: 'party5', hex: 0xff4f9a, icon: '🎉' },
+    chrome: { name: 'Robot chrome', price: 0, quest: 'partyhard', hex: 0xaab6c4, icon: '🤖' },
+    cardboard: { name: 'Cardboard', price: 0, quest: 'tower8', hex: 0xc8955b, icon: '📦' },
+    blueprint: { name: 'Blueprint blue', price: 0, quest: 'builder', hex: 0x2f5fd0, icon: '📐' },
   },
   hat: {
     cap: { name: 'Mover cap', price: 0, icon: '🧢' },
@@ -199,6 +203,13 @@ export interface Stats {
   /** Hand-made jobs delivered, and with three stars. */
   jobs: string[];
   threeStars: string[];
+  /** Party games won (vs the computer, or by either of you against each other), and beaten the hard computer. */
+  partyWins: number;
+  partyHard: number;
+  /** The tallest tower delivered (Stack 'Em High). */
+  bestTower: number;
+  /** Built jobs (six pieces or more) delivered. */
+  built: number;
 }
 
 export interface Quest {
@@ -230,6 +241,10 @@ export const QUESTS: Quest[] = [
   { id: 'surprises', name: 'Unflappable', text: 'Survive 50 chaos surprises (in jobs you deliver)', progress: (s) => [Math.min(50, s.surprises), 50] },
   { id: 'dailies7', name: 'Daily devotee', text: 'Deliver 7 daily jobs', progress: (s) => [Math.min(7, s.dailies), 7] },
   { id: 'rich', name: 'High roller', text: 'Get paid $3,000 for one job', progress: (s) => [Math.min(3000, s.bestPayout), 3000] },
+  { id: 'party5', name: 'Party animal', text: 'Win 5 party games', progress: (s) => [Math.min(5, s.partyWins), 5] },
+  { id: 'partyhard', name: 'Mover vs machine', text: 'Beat the Hard computer at any party game', progress: (s) => [Math.min(1, s.partyHard), 1] },
+  { id: 'tower8', name: 'Skyscraper', text: "Deliver a tower 8 boxes high (Stack 'Em High)", progress: (s) => [Math.min(8, s.bestTower), 8] },
+  { id: 'builder', name: 'Architect', text: 'Deliver a job you built, with 6 pieces or more', progress: (s) => [Math.min(1, s.built), 1] },
 ];
 
 // ---------------------------------------------------------------- storage
@@ -272,7 +287,7 @@ function saveWardrobe(w: Wardrobe) {
 }
 
 export function loadStats(): Stats {
-  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, chaosAny: 0, surprises: 0, bestPayout: 0, earned: 0, jobs: [], threeStars: [] };
+  const base: Stats = { deliveries: 0, flawless: 0, tips: 0, dailies: 0, bestShift: 0, online: 0, chaos: 0, chaosAny: 0, surprises: 0, bestPayout: 0, earned: 0, jobs: [], threeStars: [], partyWins: 0, partyHard: 0, bestTower: 0, built: 0 };
   const saved = loadJSON<Partial<Stats>>(STATS);
   if (saved) {
     // (saved before ranks: start the company's earnings from its best payouts)
@@ -369,8 +384,8 @@ export interface Payday {
 
 /** After a job: count it, pay the payout into the wallet, and hand over any quest rewards. */
 export function track(
-  r: { success: boolean; payout: number; condition: number; tipCount: number; stars: number },
-  job: { kind: string; levelId?: string; online?: boolean; chaos?: number; surprises?: number; shiftRound?: number; daily?: boolean },
+  r: { success: boolean; payout: number; condition: number; tipCount: number; stars: number; tower?: number },
+  job: { kind: string; levelId?: string; online?: boolean; chaos?: number; surprises?: number; shiftRound?: number; daily?: boolean; pieces?: number },
   streak: number,
 ): Payday {
   const s = loadStats();
@@ -388,6 +403,8 @@ export function track(
       s.surprises += job.surprises ?? 0;
     }
     s.bestPayout = Math.max(s.bestPayout, r.payout);
+    if (r.tower !== undefined) s.bestTower = Math.max(s.bestTower, r.tower);
+    if (job.kind === 'built' && (job.pieces ?? 0) >= 6) s.built++;
     s.earned += r.payout;
     if (job.kind === 'level' && job.levelId && job.levelId !== 'playground') {
       if (!s.jobs.includes(job.levelId)) s.jobs.push(job.levelId);
@@ -421,6 +438,15 @@ export function addCash(n: number) {
 }
 
 /** Hand over the prizes of quests finished since last time (each just once). */
+/** A party game's over: count a win (yours against the computer, or either of you against each other). */
+export function trackParty(winner: number, cpu: number, streak: number, prize: number): Payday {
+  const s = loadStats();
+  if (winner === 0 || (winner === 1 && !cpu)) s.partyWins++;
+  if (winner === 0 && cpu >= 3) s.partyHard++;
+  saveJSON(STATS, s);
+  return { cash: prize, rankUp: null, quests: claimQuests(streak) };
+}
+
 export function claimQuests(streak: number): Payday['quests'] {
   const s = loadStats();
   const w = loadWardrobe();
