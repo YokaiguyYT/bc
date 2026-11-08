@@ -35,8 +35,8 @@ School Chromebooks often won't open downloaded files, but a link always works. O
 No more four hands on one keyboard. Both of you need the game: the same link (best) or the same `FragileFreight.html` file. A MacBook and a Chromebook together is fine.
 
 1. **The faster laptop hosts.** Main menu → **Play Online** → **Host a game**. A five-letter code appears, like `K7QXM`.
-2. **Your friend joins.** On their laptop: **Play Online** → **Join a friend**, type the code, press **Return**.
-3. The host picks a job as usual. The friend plays **P2** (blue).
+2. **Your friend joins.** On their laptop: **Play Online** → **Join a friend**, type the code, press **Return**. Or, if you're playing from the link, press **📋 Copy an invite link** (on a phone: **📨 Send an invite**, straight into Messages) and send it: your friend opens the link and joins with no typing.
+3. The host picks a job (or **🎉 Party games**) as usual. The friend plays **P2** (blue).
 
 - **How it works:** the game runs on the host's laptop. The friend's laptop draws the same scene itself from a stream of positions (a couple of kilobytes, many times a second), so it stays sharp and needs very little Wi-Fi.
 - **School networks:** if the network won't let the laptops connect directly, the game passes its messages through the matchmaking server instead. It's a little slower, but it works. The friend's `Esc` menu shows which way you're connected.
@@ -83,7 +83,7 @@ No app store needed: it runs in the browser.
 
 **On your own:** a phone plays **🤖 Solo** with the robot buddy automatically (you can still pick Two players on the Play screen). The two **📦 turn buttons** spin the load round for doors and corners.
 
-**With a friend, each on your own phone:** both open the same link. One taps **Play Online → Host a game** and gets a five-letter code; the other taps **Play Online → Join a friend**, taps the code boxes, types the code and taps **Join**. The host picks the job; the host is P1 (orange) and the friend P2 (blue). Phones, laptops and Chromebooks all mix. Versus works the same way (**Play → ⚔️ Versus → Host a race / Join a friend's race**). If it's choppy, pick **Settings → Graphics: Fast**.
+**With a friend, each on your own phone:** both open the same link. One taps **Play Online → Host a game** and gets a five-letter code, then taps **📨 Send an invite** and sends it in Messages; the other just taps the link and they're in. (Or they tap **Play Online → Join a friend**, tap the code boxes, type the code and tap **Join**.) **🎉 Party games** work the same way: host first, then pick one, and you play each other phone to phone. The host picks the job; the host is P1 (orange) and the friend P2 (blue). Phones, laptops and Chromebooks all mix. Versus works the same way (**Play → ⚔️ Versus → Host a race / Join a friend's race**). If it's choppy, pick **Settings → Graphics: Fast**.
 
 ## How to play
 

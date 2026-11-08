@@ -34,6 +34,7 @@ async function boot() {
       const chaos = num('chaos');
       app.playGenerated(chaos ? 'chaos' : 'random', { seed: Number(gen) || 1, cargo: (params.get('cargo') ?? undefined) as never, difficulty: num('diff'), pieces: num('pieces'), chaos });
     } else if (lvl) app.playLevel(lvl);
+    else if (params.get('join')) app.joinLink(params.get('join')!);
     else app.showTitle();
     loading?.classList.add('done');
     setTimeout(() => loading?.remove(), 600);

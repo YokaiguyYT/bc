@@ -2664,11 +2664,29 @@ export class App {
        </div>
        <div class="row">
          ${error ? '<button class="btn primary" data-nav data-default id="h-retry">Try again</button><button class="btn" data-nav id="h-check">Check this network</button>' : '<button class="btn primary" data-nav data-default id="h-play">Pick a job →</button>'}
+         ${h && !h.connected ? `<button class="btn" data-nav id="h-invite">${inviteLink('') && 'share' in navigator ? '📨 Send an invite' : inviteLink('') ? '📋 Copy an invite link' : '📋 Copy the code'}</button>` : ''}
+         ${h?.connected ? '<button class="btn" data-nav id="h-party">🎉 Party games</button>' : ''}
          <button class="btn" data-nav id="h-stop">${h ? 'Stop hosting' : 'Cancel'}</button>
        </div>`,
       { back: () => this.showMenu() },
     );
     this.bind('h-play', () => this.showPlay());
+    this.bind('h-party', () => this.showParty());
+    this.bind('h-invite', () => {
+      if (!h) return;
+      // a link opens the game straight onto joining (when it's played from a web address; a file on a laptop has none to share)
+      const link = inviteLink(h.code);
+      const text = `Join my Fragile Freight game! ${link ? 'Tap the link, or type' : 'Open Fragile Freight → Play Online → Join a friend, and type'} the code ${h.code}`;
+      const done = (ok: boolean) => {
+        const b = this.layer.querySelector('#h-invite');
+        if (b) b.textContent = ok ? '✅ Sent!' : 'The code is up there ↑';
+      };
+      if (link && 'share' in navigator) navigator.share({ title: 'Fragile Freight', text, url: link }).then(() => done(true), () => {});
+      else void copyText(link ? `${text}: ${link}` : text).then((ok) => {
+        const b = this.layer.querySelector('#h-invite');
+        if (b) b.textContent = ok ? '✅ Copied: paste it to your friend' : 'The code is up there ↑';
+      });
+    });
     this.bind('h-retry', () => this.showHost());
     this.bind('h-check', () => this.showNetCheck());
     this.bind('h-stop', () => {
@@ -2881,6 +2899,22 @@ export class App {
         if (this.screen === 'join') this.updateJoin(e instanceof Error ? e.message : String(e), true);
       },
     );
+  }
+
+  /** Opened from an invite link (?join=CODE): straight onto joining that game. */
+  joinLink(code: string) {
+    const c = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN);
+    // (so a reload doesn't join again)
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete('join');
+      history.replaceState(null, '', u.toString());
+    } catch {
+      /* not allowed here: never mind */
+    }
+    this.joinCode = c;
+    this.showJoin(c.length === CODE_LEN ? 'Joining your friend’s game…' : '');
+    if (c.length === CODE_LEN) this.join();
   }
 
   /** Become the guest: show the host's game (drawn here, or streamed), copy its menus, send our keys. */
@@ -3217,6 +3251,12 @@ function syncTypeBox(layer: HTMLElement, id: string, code: string) {
 const THEME_ICONS: Record<string, string> = { docks: '⚓', suburb: '🏡', park: '🌳', snow: '❄️', office: '🏢', sky: '☁️', beach: '🏖️', site: '🚧', downtown: '🏙️', market: '🧺', airport: '✈️', factory: '🏭', rooftops: '🏠', haunted: '👻', desert: '🌵', jungle: '🌴', pirate: '🏴‍☠️' };
 const THEME_NAMES: Record<string, string> = { docks: 'The docks', suburb: 'The suburbs', park: 'The park', snow: 'Snowy town', office: 'The office', sky: 'Up in the sky', beach: 'The beach', site: 'Building site', downtown: 'Downtown', market: 'The market', airport: 'The airport', factory: 'The factory', rooftops: 'The rooftops', haunted: 'Haunted house', desert: 'The desert', jungle: 'The jungle', pirate: 'Pirate cove' };
 const themeName = (n: string) => THEME_NAMES[n] ?? n[0].toUpperCase() + n.slice(1);
+
+/** A link that opens the game onto joining this code (none when it's a file opened on this laptop). */
+function inviteLink(code: string) {
+  if (typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return '';
+  return `${location.origin}${location.pathname}?join=${code}`;
+}
 
 function keys(codes: string[], cls: string) {
   return codes.map((c) => `<kbd class="${cls}">${esc(keyLabel(c))}</kbd>`).join('');

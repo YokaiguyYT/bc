@@ -46,16 +46,20 @@ export default async function ({ page, base, shot }) {
   // a friend types it in (lower case, spaces: fine)
   await page.evaluate(() => window.__FF.app.showBuildCode());
   await adv(0.1);
-  await page.fill('#bc-code', code.toLowerCase().replace(/-/g, ' '));
-  await page.dispatchEvent('#bc-code', 'input');
+  // (typed into the box by hand, the way a page does it: the WebKit test runner has no fill())
+  const type = (text) =>
+    page.evaluate((text) => {
+      const el = document.getElementById('bc-code');
+      el.value = text;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, text);
+  await type(code.toLowerCase().replace(/-/g, ' '));
   const ok = await page.evaluate(() => !document.getElementById('bc-go').disabled);
   check("a friend's code typed in: Play it lights up", ok, code);
-  await page.fill('#bc-code', 'BZZZZZZZ');
-  await page.dispatchEvent('#bc-code', 'input');
+  await type('BZZZZZZZ');
   const bad = await page.evaluate(() => ({ off: document.getElementById('bc-go').disabled, note: document.querySelector('.bc-note')?.textContent }));
   check('a wrong code: no', bad.off && /code/i.test(bad.note ?? ''), bad);
-  await page.fill('#bc-code', code);
-  await page.dispatchEvent('#bc-code', 'input');
+  await type(code);
   await click('bc-go');
   await adv(1);
   const s = await page.evaluate(() => ({ screen: window.__FF.app.screen, job: window.__FF.app.job, def: window.__FF.game.session.def.gen, pay: window.__FF.game.session.def.payScale }));

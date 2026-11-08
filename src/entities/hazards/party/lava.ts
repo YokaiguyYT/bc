@@ -77,7 +77,8 @@ export class Lava extends PartyGame {
   /** Pick the next tile to go: mostly anywhere, sometimes one somebody's standing on. */
   private drop(now: number) {
     const up = this.tiles.map((t, i) => (t.state === 0 ? i : -1)).filter((i) => i >= 0);
-    if (up.length <= 1) return;
+    // (the last tile goes too in the end, or two careful people could share it for ever)
+    if (!up.length || (up.length === 1 && this.t < 75)) return;
     let pick = up[Math.floor(Math.random() * up.length)];
     if (Math.random() < 0.4) {
       const p = this.players[Math.floor(Math.random() * 2)];
