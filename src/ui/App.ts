@@ -829,7 +829,7 @@ export class App {
     this.startAttract();
     const prog = loadProgress();
     const fresh = !Object.values(prog).some((p) => p?.completed);
-    const list = [...LEVELS.filter((l) => l.hidden && !l.generated), ...PLAYABLE_LEVELS];
+    const list = [...LEVELS.filter((l) => l.hidden && !l.generated && !l.party), ...PLAYABLE_LEVELS];
     const next = PLAYABLE_LEVELS.find((l) => !prog[l.id]?.completed);
     // newcomers start on the Practice Yard; everyone else on the next job they haven't delivered
     const pick = fresh ? list[0] : (next ?? list[1] ?? list[0]);
@@ -1308,7 +1308,7 @@ export class App {
     // speedrun boards: hand-made jobs and today's Daily, two-player and solo apart
     let boardBlock = '';
     let boardPost: (() => void) | null = null;
-    if (r.success && !s.mirror && (job.kind === 'level' || job.kind === 'race' || job.kind === 'daily') && !def.hidden) {
+    if (r.success && !s.mirror && (job.kind === 'level' || job.kind === 'race' || job.kind === 'daily') && !def.hidden && def.cargo !== 'pallet') {
       const mode: CrewMode = s.buddy ? 'solo' : 'duo';
       const key = boardKey(job.kind === 'daily' ? `daily-${dailyNumber()}` : def.id, mode);
       const hex = `#${(ITEMS.color[s.outfits[0]?.color ?? 'orange']?.hex ?? 0xff7a3d).toString(16).padStart(6, '0')}`;
@@ -1355,7 +1355,16 @@ export class App {
         shiftLine = `<p><b>Shift over.</b> ${done} job${done === 1 ? '' : 's'} delivered, ${formatMoney(job.total)} earned${record && done > 0 ? ' <span class="new-best">NEW BEST</span>' : best ? ` (best ${formatMoney(best.total)})` : ''}.</p>`;
       }
     }
-    const verdicts = r.success
+    const tower = r.tower ?? -1;
+    const verdicts = tower >= 0 && r.success
+      ? tower === 0
+        ? ['An empty pallet.', 'Technically a delivery. The client asked for boxes.']
+        : tower < 4
+          ? ['A modest tower.', `${tower} box${tower === 1 ? '' : 'es'} made it. Brave enough to try for more?`]
+          : tower < 8
+            ? ['A proper tower!', `${tower} boxes, still standing. The client is impressed.`]
+            : ['A SKYSCRAPER!', `${tower} boxes high. Nobody breathe.`]
+      : r.success
       ? r.condition >= 0.97
         ? ['Flawless!', 'Not a scratch. Suspicious.']
         : r.condition >= 0.9
@@ -1414,8 +1423,9 @@ export class App {
         <p>${verdicts[1]}</p>
         ${seedLine}
         <table>
+          ${tower >= 0 ? row('🗼 Tower', `<b>${tower}</b> box${tower === 1 ? '' : 'es'} standing${tower ? ` × ${formatMoney(90)}` : ''}`) : ''}
           ${row('Cargo value', formatMoney(r.value))}
-          ${row('Condition', `${Math.round(r.condition * 100)}%`)}
+          ${tower >= 0 ? '' : row('Condition', `${Math.round(r.condition * 100)}%`)}
           ${r.success ? row('Time', `${formatTime(r.time)}${beat.time ? '<span class="new-best">NEW BEST</span>' : ''}`) : ''}
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
           ${r.tips ? row(`Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
@@ -1592,7 +1602,8 @@ export class App {
   private raceOverlay: HTMLDivElement | null = null;
 
   private versusJobs() {
-    return PLAYABLE_LEVELS.filter((l) => !l.hidden);
+    // (a tower is about how tall, not how fast: no racing it)
+    return PLAYABLE_LEVELS.filter((l) => !l.hidden && l.cargo !== 'pallet');
   }
 
   // ------------------------------------------------------------ party games (1v1)
@@ -2157,7 +2168,7 @@ export class App {
 
   /** The boards: every hand-made job, then today's Daily. */
   private boardJobs() {
-    return [...PLAYABLE_LEVELS.filter((l) => !l.hidden).map((l) => ({ key: l.id, name: `Job ${l.order}: ${l.name}`, icon: CARGO_INFO[l.cargo].icon })), { key: `daily-${dailyNumber()}`, name: `Daily #${dailyNumber()}`, icon: '📅' }];
+    return [...PLAYABLE_LEVELS.filter((l) => !l.hidden && l.cargo !== 'pallet').map((l) => ({ key: l.id, name: `Job ${l.order}: ${l.name}`, icon: CARGO_INFO[l.cargo].icon })), { key: `daily-${dailyNumber()}`, name: `Daily #${dailyNumber()}`, icon: '📅' }];
   }
 
   showBoards(focus = 'b-next') {

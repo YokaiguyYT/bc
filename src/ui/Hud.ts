@@ -204,9 +204,17 @@ export class Hud {
       if (t !== this.chaosText) this.chaosLine.textContent = this.chaosText = t;
     }
     const h = s.cargo.destroyed ? 0 : s.cargo.health;
-    this.fill.style.transform = `scaleX(${h})`;
-    this.fill.style.background = h > 0.75 ? 'var(--good)' : h > 0.4 ? 'var(--warn)' : 'var(--bad)';
-    this.pct.textContent = s.cargo.destroyed ? 'DESTROYED' : `${Math.round(h * 100)}%`;
+    const tower = (s.cargo as { boxes?: number }).boxes;
+    if (tower !== undefined) {
+      // a tower: the bar is how tall it is
+      this.fill.style.transform = `scaleX(${Math.min(1, tower / 10)})`;
+      this.fill.style.background = 'var(--good)';
+      setText(this.pct, `🗼 ${tower} box${tower === 1 ? '' : 'es'}`);
+    } else {
+      this.fill.style.transform = `scaleX(${h})`;
+      this.fill.style.background = h > 0.75 ? 'var(--good)' : h > 0.4 ? 'var(--warn)' : 'var(--bad)';
+      this.pct.textContent = s.cargo.destroyed ? 'DESTROYED' : `${Math.round(h * 100)}%`;
+    }
     if (h < this.lastHealth - 0.004) {
       this.cargoCard.classList.remove('hit');
       void this.cargoCard.offsetWidth;

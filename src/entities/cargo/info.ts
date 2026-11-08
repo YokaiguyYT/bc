@@ -18,4 +18,5 @@ export const CARGO_INFO: Record<CargoKind, { name: string; icon: string; value: 
   jelly: { name: 'Giant Jelly', icon: '🍮', value: 1000, blurb: 'Wibbles at every start and stop. Too much wobble tears it.' },
   snowman: { name: 'Snowman', icon: '⛄', value: 1200, blurb: 'Melts in the sun. Stick to the shade.' },
   rocket: { name: 'Space Rocket', icon: '🚀', value: 2600, blurb: 'Long and heavy. Overheat it and the engine lights!' },
+  pallet: { name: 'Box Tower', icon: '🗼', value: 90, blurb: 'A pallet you stack boxes on. Every box still standing at the drop-off pays.' },
 };

@@ -47,6 +47,8 @@ export interface SessionResult {
   /** Extra pay (a chaos job's multiplier). */
   bonus: number;
   cargoName: string;
+  /** Stacking Tower: boxes standing on the pallet at the drop-off. */
+  tower?: number;
   /** A party game: who won, and the score. */
   party?: { game: string; title: string; winner: number; score: [number, number]; names: [string, string]; cpu: number; line: string };
 }
@@ -581,6 +583,7 @@ export class LevelSession {
       tipCount: this.tipCount,
       bonus,
       cargoName: this.cargo.displayName,
+      tower: this.cargo.kind === 'pallet' ? (this.cargo as unknown as { boxes: number }).boxes : undefined,
     };
     if (!success) this.state = 'failed';
   }

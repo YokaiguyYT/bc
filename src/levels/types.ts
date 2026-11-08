@@ -24,7 +24,7 @@ export type Surface =
   | 'paint'
   | 'snow';
 
-export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake' | 'swan' | 'egg' | 'piano' | 'painting' | 'balloons' | 'chandelier' | 'beehive' | 'jelly' | 'snowman' | 'rocket';
+export type CargoKind = 'crate' | 'glass' | 'tv' | 'aquarium' | 'clock' | 'cake' | 'swan' | 'egg' | 'piano' | 'painting' | 'balloons' | 'chandelier' | 'beehive' | 'jelly' | 'snowman' | 'rocket' | 'pallet';
 
 interface Base {
   pos: Vec3;
@@ -146,7 +146,8 @@ export interface HazardObj {
     | 'collapse'
     | 'train'
     | 'craneBeam'
-    | 'party';
+    | 'party'
+    | 'tower';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */
