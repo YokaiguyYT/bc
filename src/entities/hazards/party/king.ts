@@ -215,6 +215,7 @@ export class King extends PartyGame {
   private goal: Loot | null = null;
   private plan = { at: -9 };
   private retry = 0;
+  private letGo = 0;
   protected cpuMove(me: Player, _foe: Player, dt: number) {
     const now = this.sim.time();
     const mine = this.bays[1];
@@ -228,17 +229,20 @@ export class King extends PartyGame {
     if (held) {
       // carrying: into the truck, then let go
       const p = held.body.translation();
-      if (mine.contains(p.x, p.z, p.y) && p.x > mine.minX + 0.9) {
+      if ((mine.contains(p.x, p.z, p.y) && p.x > mine.minX + 0.9) || this.letGo > 0) {
+        // in: let go, and stand still while it's set down (walking off would drag it back out)
+        this.letGo = this.letGo > 0 ? this.letGo : 1;
         me.intent.grab = false;
         this.goal = null;
-        return this.steer(me, mine.minX - 1.5, 0);
+        return this.steer(me, me.bodyPos.x, me.bodyPos.z, 0);
       }
       me.intent.grab = true;
       // round to the open back first (not into the side of the truck)
-      if (me.bodyPos.x < mine.minX + 0.4 && Math.abs(me.bodyPos.z) > 0.9) return this.steer(me, mine.minX - 1, 0);
+      if (me.bodyPos.x < mine.minX + 0.4 && Math.abs(me.bodyPos.z) > 1.4) return this.steer(me, mine.minX - 1, me.bodyPos.z * 0.5);
       return this.steer(me, mine.maxX - 0.6, Math.max(-0.9, Math.min(0.9, p.z * 0.5)));
     }
     me.intent.grab = false;
+    this.letGo = 0;
     // what's worth going for: value for the trip, theirs counts double (it's a swing of two)
     if (!this.goal || !this.goal.live || now - this.plan.at > 1.2 || mine.contains(this.goal.body.translation().x, this.goal.body.translation().z)) {
       this.plan.at = now;

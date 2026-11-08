@@ -259,6 +259,9 @@ export abstract class PartyGame implements Hazard {
     this.sim.fx?.burst('star', victim.bodyPos.clone().setY(victim.bodyPos.y + 0.5), { count: 7, speed: 2.4, up: 2, size: 0.09, life: 0.8, gravity: 6, colors: [0xffffff, 0xffe14a] });
   }
 
+  /** Each frame (host), after the keys and the computer: a game's own use of them (tug of war's heave). */
+  protected frameHook(_dt: number) {}
+
   /** Each frame (host): freeze everybody for the countdown, and drive the computer player. */
   drive(dt: number) {
     const ps = this.players;
@@ -281,6 +284,7 @@ export abstract class PartyGame implements Hazard {
         if (me.state === 'knocked' && Math.random() < dt * 4 * this.skill) me.intent.jumpPressed = true;
       }
     }
+    if (this.phase === 'play') this.frameHook(dt);
   }
 
   /** The game is done and the winner's had a moment. */

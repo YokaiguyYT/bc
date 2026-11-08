@@ -117,6 +117,7 @@ export class Football extends PartyGame {
     spawnProp(this.ball, _v.set(0, 3, (Math.random() - 0.5) * 0.6));
     this.kickAt = [-9, -9];
     this.scorer = -1;
+    this.stuck = 0;
     if (this.round > 1) this.readyTime = 2;
   }
 
@@ -128,11 +129,22 @@ export class Football extends PartyGame {
     return this.phase === 'point' && this.scorer >= 0 ? `${this.name(this.scorer)} scored!` : 'Run into the ball to kick it. Jump to lob.';
   }
 
-  protected step(_dt: number, now: number) {
+  /** Seconds the ball's sat still against a wall or in a corner (then the referee drops it in the middle). */
+  private stuck = 0;
+
+  protected step(dt: number, now: number) {
     this.kicks(now);
     const b = this.ball.body.translation();
     // fell out somehow: back to the middle
     if (b.y < -4) spawnProp(this.ball, _v.set(0, 3, 0));
+    const v = this.ball.body.linvel();
+    const edge = Math.abs(b.x) > HX - 2.2 || Math.abs(b.z) > HZ - 1.6;
+    this.stuck = edge && Math.hypot(v.x, v.z) < 0.6 ? this.stuck + dt : Math.max(0, this.stuck - dt * 2);
+    if (this.stuck > 5) {
+      this.stuck = 0;
+      this.say('DROP BALL!', true);
+      spawnProp(this.ball, _v.set(0, 3.5, (Math.random() - 0.5) * 2));
+    }
     if (Math.abs(b.z) < MOUTH && b.y < 2.3) {
       // P1 attacks the +x goal, P2 the -x one
       if (b.x > HX + BALL * 0.7) return (this.scorer = 0);
@@ -187,11 +199,26 @@ export class Football extends PartyGame {
     }
   }
 
-  private plan = { x: 0, z: 0, at: -9 };
-  protected cpuMove(me: Player, foe: Player) {
+  private plan = { x: 0, z: 0, at: -9, backUntil: 0 };
+  /** How long the computer's been shoving the ball and getting nowhere. */
+  private shoving = 0;
+  protected cpuMove(me: Player, foe: Player, dt: number) {
     const now = this.sim.time();
     const b = this.ball.body.translation();
     const m = me.bodyPos;
+    // pinned the ball against a wall: back off, and come at it from somewhere else
+    const bv = this.ball.body.linvel();
+    const close = Math.hypot(b.x - m.x, b.z - m.z) < 1.5;
+    this.shoving = close && Math.hypot(bv.x, bv.z) < 0.5 ? this.shoving + dt : Math.max(0, this.shoving - dt);
+    if (this.shoving > 0.9 && now > this.plan.backUntil) {
+      this.shoving = 0;
+      this.plan.backUntil = now + 0.8;
+      // out toward the middle of the pitch, off to one side
+      const a = Math.atan2(-b.z, -b.x) + (Math.random() < 0.5 ? -0.9 : 0.9);
+      this.plan.x = b.x + Math.cos(a) * 2.6;
+      this.plan.z = b.z + Math.sin(a) * 2.6;
+    }
+    if (now < this.plan.backUntil) return this.steer(me, this.plan.x, this.plan.z);
     if (now - this.plan.at > 0.32 - 0.22 * this.skill) {
       this.plan.at = now;
       // the computer is P2: it attacks the -x goal and defends +x

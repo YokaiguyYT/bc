@@ -115,42 +115,52 @@ export class Sumo extends PartyGame {
     this.edge.emissive.setHex(warn && Math.sin(time * 14) > 0 ? 0xff2200 : 0x000000);
   }
 
-  private plan = { x: 0, z: 0, at: -9, charge: false };
+  /** The computer: lining up a run at them (from the middle side), or charging (for a moment, whatever happens). */
+  private plan = { x: 0, z: 0, until: 0, charge: false };
   protected cpuMove(me: Player, foe: Player) {
     const now = this.sim.time();
     const R = this.radius();
     const m = me.bodyPos;
     const f = foe.bodyPos;
     const mr = Math.hypot(m.x, m.z);
-    // too near the edge: back to the middle
-    if (mr > R - 1.1) return this.steer(me, 0, 0);
-    // think again every so often (quicker when it's better)
-    if (now - this.plan.at > 0.45 - 0.3 * this.skill) {
-      this.plan.at = now;
-      const fr = Math.hypot(f.x, f.z);
-      const ux = fr > 0.3 ? f.x / fr : -m.x / Math.max(0.3, mr);
-      const uz = fr > 0.3 ? f.z / fr : -m.z / Math.max(0.3, mr);
-      // get on the middle side of them, then charge them outward
-      const bx = f.x - ux * 1.3;
-      const bz = f.z - uz * 1.3;
-      const behind = Math.hypot(m.x - bx, m.z - bz) < 0.8 || (mr < fr && Math.hypot(m.x - f.x, m.z - f.z) < 1.8);
-      this.plan.charge = behind;
-      if (behind) {
-        this.plan.x = f.x + ux * 2.5;
-        this.plan.z = f.z + uz * 2.5;
-      } else {
-        // round the side, not through them
-        const sx = -uz;
-        const sz = ux;
-        const side = (m.x - f.x) * sx + (m.z - f.z) * sz >= 0 ? 1 : -1;
-        this.plan.x = bx + sx * side * 0.9;
-        this.plan.z = bz + sz * side * 0.9;
-      }
+    const fr = Math.hypot(f.x, f.z);
+    // too near the edge (and not mid-charge at someone nearer it): back to the middle
+    if (mr > R - 1 && !(this.plan.charge && fr > mr && mr < R - 0.5)) {
+      this.plan.charge = false;
+      return this.steer(me, 0, 0);
     }
-    // (never plan past the edge, unless it's to run them off it)
-    const pr = Math.hypot(this.plan.x, this.plan.z);
-    const lim = this.plan.charge ? R + 1 : R - 0.6;
-    const k = pr > lim ? lim / pr : 1;
-    this.steer(me, this.plan.x * k, this.plan.z * k);
+    if (this.plan.charge && now < this.plan.until) return this.steer(me, this.plan.x, this.plan.z);
+    this.plan.charge = false;
+    // which way is "off" for them: out from the middle (or just away from us if they're in the middle)
+    let ux = fr > 0.6 ? f.x / fr : f.x - m.x;
+    let uz = fr > 0.6 ? f.z / fr : f.z - m.z;
+    const ul = Math.hypot(ux, uz) || 1;
+    ux /= ul;
+    uz /= ul;
+    // the run-up spot: on the middle side of them, a couple of metres back
+    const back = 1.6 + 0.8 * this.skill;
+    let bx = f.x - ux * back;
+    let bz = f.z - uz * back;
+    const br = Math.hypot(bx, bz);
+    if (br > R - 1.2) {
+      bx *= (R - 1.2) / br;
+      bz *= (R - 1.2) / br;
+    }
+    const there = Math.hypot(m.x - bx, m.z - bz) < 0.7 + 0.4 * (1 - this.skill);
+    const lined = ((f.x - m.x) * ux + (f.z - m.z) * uz) / (Math.hypot(f.x - m.x, f.z - m.z) || 1) > 0.8;
+    if (there || (lined && Math.hypot(f.x - m.x, f.z - m.z) < back + 0.6)) {
+      // charge: right through them and on, for a second
+      this.plan.charge = true;
+      this.plan.until = now + 0.9 + 0.3 * this.skill;
+      this.plan.x = f.x + ux * 3;
+      this.plan.z = f.z + uz * 3;
+      return this.steer(me, this.plan.x, this.plan.z);
+    }
+    // to the run-up spot, round them rather than through them
+    const sx = -uz;
+    const sz = ux;
+    const side = (m.x - f.x) * sx + (m.z - f.z) * sz >= 0 ? 1 : -1;
+    const wrongSide = (m.x - f.x) * ux + (m.z - f.z) * uz > -0.3;
+    this.steer(me, bx + (wrongSide ? sx * side * 1.4 : 0), bz + (wrongSide ? sz * side * 1.4 : 0));
   }
 }

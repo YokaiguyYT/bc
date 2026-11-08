@@ -71,7 +71,33 @@ export class Tug extends PartyGame {
     this.place(1, SOFA.hx + 1.1, 0, 0, -Math.PI / 2);
   }
 
+  /** Heaves asked for since the last physics step (by whom), and when each last heaved. */
+  private heaves: number[] = [];
+  private heaveAt = [-9, -9];
+
+  /** Holding the sofa, JUMP heaves it your way instead of jumping: a mashing match. */
+  protected frameHook() {
+    const now = this.sim.time();
+    const h = holder(this.players, this.sofa.body);
+    this.players.forEach((p, i) => {
+      const holds = h === i || h === 2;
+      if (!holds || !p.intent.jumpPressed) return;
+      p.intent.jumpPressed = false;
+      if (now - this.heaveAt[i] < 0.09) return;
+      this.heaveAt[i] = now;
+      this.heaves.push(i);
+    });
+  }
+
   protected step(dt: number) {
+    for (const i of this.heaves) {
+      // a yank toward your own truck
+      const p = this.players[i];
+      this.sofa.body.applyImpulse({ x: (i === 0 ? -1 : 1) * 24, y: 4, z: 0 }, true);
+      p.applyBlast(_v.set((i === 0 ? -1 : 1) * 1.2, 0, 0).multiplyScalar(p.totalMass));
+      this.sim.fx?.burst('dust', _v.set(p.bodyPos.x, p.bodyPos.y - 0.8, p.bodyPos.z), { count: 3, speed: 1.2, up: 0.4, size: 0.1, life: 0.5, gravity: -0.2, drag: 3 });
+    }
+    this.heaves.length = 0;
     const c = this.sofa.body.translation();
     if (c.y < -4) spawnProp(this.sofa, _v.set(0, 1.2, 0));
     for (let i = 0; i < 2; i++) {
@@ -93,8 +119,9 @@ export class Tug extends PartyGame {
     if (this.phase !== 'play') return 'Grab an end, pull it into your truck.';
     const i = this.inT[0] > 0 ? 0 : this.inT[1] > 0 ? 1 : -1;
     if (i >= 0) return `🛋️ in ${this.name(i)}'s truck… ${Math.round((this.inT[i] / IN_FOR) * 100)}%`;
+    if (holder(this.players, this.sofa.body) === 2) return '💪 Both on it: MASH JUMP to heave!';
     const x = this.sofa.body.translation().x;
-    return Math.abs(x) < 1.5 ? 'Pull!' : `It's on ${this.name(x < 0 ? 0 : 1)}'s side`;
+    return Math.abs(x) < 1.5 ? 'Grab an end! (JUMP heaves)' : `It's on ${this.name(x < 0 ? 0 : 1)}'s side`;
   }
 
   focus() {
@@ -146,17 +173,25 @@ export class Tug extends PartyGame {
       const tz = ez + ax.z * s * 0.55;
       const d = Math.hypot(me.bodyPos.x - ex, me.bodyPos.z - ez);
       if (d > 1.2) this.steer(me, tx, tz);
-      else this.steer(me, ex, ez, 0.4);
-      me.intent.grab = d < 1.1;
+      else this.steer(me, ex, ez, 0.5);
+      me.intent.grab = d < 0.95;
       return;
     }
     // got it: haul it to the truck, yanking from side to side now and then
     me.intent.grab = true;
+    // both on it: heave (as fast as a person mashes, near enough, on hard)
+    if (holding === 2 && Math.random() < dt * (2.5 + 5.5 * this.skill)) me.intent.jumpPressed = true;
     this.wiggle += dt * (1.5 + 2 * this.skill);
     const bay = this.bays[1];
     const yank = holding === 2 && this.skill > 0.7 ? Math.sin(this.wiggle) * 1.6 : 0;
     // round to the open back first (not into the side of the truck)
-    if (me.bodyPos.x < bay.minX + 0.4 && Math.abs(me.bodyPos.z) > 0.9) return this.steer(me, bay.minX - 1.2, 0);
-    this.steer(me, bay.maxX - 1, yank);
+    if (me.bodyPos.x < bay.minX + 0.4 && Math.abs(me.bodyPos.z) > 1.4) this.steer(me, bay.minX - 1.2, me.bodyPos.z * 0.5);
+    else this.steer(me, bay.maxX - 1, yank);
+    // (pulling, it's always flat out: an easy computer just isn't as quick to grab or as crafty)
+    const l = Math.hypot(me.intent.moveX, me.intent.moveZ);
+    if (l > 0.05) {
+      me.intent.moveX /= l;
+      me.intent.moveZ /= l;
+    }
   }
 }

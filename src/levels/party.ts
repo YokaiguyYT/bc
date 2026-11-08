@@ -32,7 +32,8 @@ export function party(
     checkpoints: [],
     killY: o.killY ?? -8,
     parTime: 999,
-    objects: [...o.objects, { type: 'hazard', kind: 'party', pos: [0, 0, 0], params: { mode, ...(o.params ?? {}) } }],
+    // (the floors can't be grabbed: a hand on the floor is never what anyone meant in a party game)
+    objects: [...o.objects.map((x) => (x.type === 'box' && x.pos[1] < 0 ? { ...x, grabbable: false } : x)), { type: 'hazard', kind: 'party', pos: [0, 0, 0], params: { mode, ...(o.params ?? {}) } }],
     hidden: true,
     party: mode,
   };

@@ -201,7 +201,7 @@ export class Lava extends PartyGame {
             if ((dx || dz) && nx >= 0 && nz >= 0 && nx < N && nz < N && up(nz * N + nx)) around++;
           }
         const away = Math.min(4, Math.hypot(t.x - fx, t.z - fz));
-        const score = around * 0.6 - d * 0.35 + away * 0.25 * this.skill - Math.hypot(t.x, t.z) * 0.12 + (i === here ? 0.3 : 0) + Math.random() * (1 - this.skill);
+        const score = around * 0.6 - d * 0.35 + away * 0.25 * this.skill - Math.hypot(t.x, t.z) * 0.3 + (i === here ? 0.15 : 0) + Math.random() * (1 - this.skill);
         if (score > bestScore) {
           bestScore = score;
           best = i;
