@@ -145,7 +145,8 @@ export interface HazardObj {
     | 'cannon'
     | 'collapse'
     | 'train'
-    | 'craneBeam';
+    | 'craneBeam'
+    | 'party';
   pos: Vec3;
   rot?: Vec3;
   /** Kind-specific parameters. */
@@ -257,4 +258,6 @@ export interface LevelDef {
   tips?: { pos: Vec3; radius: number; text: string }[];
   /** Hidden from the level list (dev playground). */
   hidden?: boolean;
+  /** A party game's arena (1v1, no delivery): which game (see game/party.ts). The load is put away. */
+  party?: string;
 }

@@ -120,8 +120,9 @@ export class Game {
     if (render) this.renderer.render();
   }
 
+  /** Every job with a load to deliver (tests walk these; party arenas aren't jobs). */
   get levels() {
-    return LEVELS;
+    return LEVELS.filter((l) => !l.party);
   }
 }
 

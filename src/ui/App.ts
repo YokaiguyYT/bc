@@ -27,6 +27,7 @@ import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
+import { bestBeaten, CPU_NAMES, CPU_PRIZE, LENGTH_NAMES, PARTY_GAMES, partyInfo, partyRecord, recordParty, type PartyLength } from '../game/party';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
 type Screen =
@@ -56,7 +57,8 @@ type Screen =
   | 'play'
   | 'quick'
   | 'locker'
-  | 'chaos';
+  | 'chaos'
+  | 'party';
 
 /** The developer tuning panel (backquote) only with ?dev in the address. */
 const DEV = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dev');
@@ -513,6 +515,12 @@ export class App {
            <div class="sub">Job after job, each one harder, until something breaks</div>
            <div class="best">${shiftBest ? `best: ${formatMoney(shiftBest.total)} in ${shiftBest.jobs} job${shiftBest.jobs === 1 ? '' : 's'}` : 'no shift worked yet'}</div>
          </button>
+         <button class="hub-tile party" data-nav id="p-party">
+           <div class="icon">🎉</div>
+           <div class="name">Party games</div>
+           <div class="sub">${PARTY_GAMES.length} quick 1v1 games: sumo, tug of war, football, hot potato…</div>
+           <div class="best">you vs a friend, or vs the computer</div>
+         </button>
          <button class="hub-tile chaos" data-nav id="p-versus">
            <div class="icon">⚔️</div>
            <div class="name">Versus</div>
@@ -541,6 +549,7 @@ export class App {
     this.bind('p-back', () => this.showMenu());
     this.bind('p-boards', () => this.showBoards());
     this.bind('p-versus', () => this.showVersus());
+    this.bind('p-party', () => this.showParty());
     const crew = (solo: boolean) => {
       this.game.settings.solo = solo;
       this.game.saveSettings();
@@ -1107,7 +1116,9 @@ export class App {
     this.audio.attach(s);
     s.ghostOn = this.game.settings.ghost !== false && !s.mirror;
     // solo: a robot buddy is the second mover (not online: there it's your friend)
-    s.buddy = this.solo() && !s.mirror && !this.host?.connected ? new Buddy(s) : null;
+    s.buddy = this.solo() && !s.mirror && !this.host?.connected && !s.def.party ? new Buddy(s) : null;
+    // a party game: the computer plays P2 (not online: there it's your friend)
+    if (s.party && !s.mirror) s.party.cpu = this.job?.kind === 'party' && !this.host?.connected ? this.job.cpu : 0;
     // (solo, the load is a bit tougher: one person's steering for two)
     if (s.buddy) s.sim.damageScale = (s.sim.damageScale ?? 1) * 0.75;
     s.events.on('cargoDamage', () => {
@@ -1202,6 +1213,7 @@ export class App {
 
   /** The same job again from the top. */
   private replay(def: LevelDef) {
+    if (this.job?.kind === 'party') return this.playParty(this.job.game, this.job.mix);
     // a race against the rival crew starts over as a race
     if (this.job?.kind === 'race' && this.job.vs === 'ai') return this.startRace(this.job.id, def.variant ?? null, 'ai');
     if (def.gen) this.playDef(def.gen.label?.startsWith('Shift') ? { ...generateJob(def.gen), name: def.name } : generateJob(def.gen));
@@ -1225,6 +1237,7 @@ export class App {
   }
 
   private showResults(r: SessionResult) {
+    if (r.party) return this.showPartyResults(r);
     const s = this.game.session!;
     this.resultsFor = 0;
     const def = s.def;
@@ -1580,6 +1593,202 @@ export class App {
 
   private versusJobs() {
     return PLAYABLE_LEVELS.filter((l) => !l.hidden);
+  }
+
+  // ------------------------------------------------------------ party games (1v1)
+
+  private partyOpts: { vs: 'friend' | 'cpu'; cpu: number; len: PartyLength } = { vs: 'cpu', cpu: 2, len: 1, ...(loadJSON<object>('ff.partyOpts') ?? {}) };
+
+  /** Party: pick a game, who you're playing (a friend here, the computer, or the friend you're hosting online), and how long. */
+  showParty(focus?: string) {
+    this.startAttract();
+    const o = this.partyOpts;
+    const online = !!this.host?.connected;
+    const save = () => saveJSON('ff.partyOpts', o);
+    const games = PARTY_GAMES.filter((g) => levelById(`party-${g.id}`));
+    const tiles = games
+      .map((g) => {
+        const rec = partyRecord(g.id);
+        const best = bestBeaten(g.id);
+        return `<button class="hub-tile party-tile" data-nav id="pa-${g.id}">
+           <div class="icon">${g.icon}</div>
+           <div class="name">${esc(g.name)}</div>
+           <div class="sub">${esc(g.blurb)}</div>
+           <div class="best">${best ? `beat the ${CPU_NAMES[best]} computer ${'★'.repeat(best)}` : rec.played ? `played ${rec.played}×` : '✨ new'}</div>
+         </button>`;
+      })
+      .join('');
+    const vs = online
+      ? '<div class="party-online">🌐 Your friend online plays <b>P2</b></div>'
+      : `<button class="seg-btn ${o.vs === 'friend' ? 'on' : ''}" data-nav id="pa-friend">👥 A friend, this keyboard</button>
+         <button class="seg-btn ${o.vs === 'cpu' ? 'on' : ''}" data-nav id="pa-cpu">🤖 The computer</button>`;
+    const cpu =
+      !online && o.vs === 'cpu'
+        ? `<div class="crew-pick small">${[1, 2, 3].map((k) => `<button class="seg-btn ${o.cpu === k ? 'on' : ''}" data-nav id="pa-lvl${k}">${['', '🙂', '😐', '😈'][k]} ${CPU_NAMES[k]}</button>`).join('')}</div>`
+        : '';
+    const phoneNote = this.game.touch.active && !online && o.vs === 'friend' ? '<p class="party-note">On one phone only one person can play: play the computer, or each use your own phone (Online → Host, then pick a party game).</p>' : '';
+    this.setScreen(
+      'party',
+      `<div class="logo" style="font-size:44px">🎉 PARTY</div>
+       <div class="party-opts">
+         <div class="crew-pick">${vs}</div>
+         ${cpu}
+         <div class="crew-pick small">${LENGTH_NAMES.map((n, i) => `<button class="seg-btn ${o.len === i ? 'on' : ''}" data-nav id="pa-len${i}">${['⚡', '🎯', '🏟️'][i]} ${n}</button>`).join('')}</div>
+         ${phoneNote}
+       </div>
+       <div class="hub party-hub">
+         ${tiles}
+         <button class="hub-tile party mix" data-nav id="pa-mix">
+           <div class="icon">🎲</div>
+           <div class="name">Party mix</div>
+           <div class="sub">${Math.min(5, games.length)} games in a row, picked at random. Most wins takes the trophy.</div>
+           <div class="best">the best way to settle it</div>
+         </button>
+       </div>
+       <p class="party-note">${online ? 'Playing online: you both see the same game; the score is kept here.' : `Online with a friend? <b>Online → Host</b> first, then come back here: they play P2 on their own laptop or phone.`}</p>
+       <div class="row"><button class="btn small" data-nav id="pa-back">← Back</button></div>`,
+      { back: () => this.showPlay() },
+    );
+    const again = (id: string) => {
+      save();
+      this.showParty(id);
+    };
+    this.bind('pa-friend', () => {
+      o.vs = 'friend';
+      again('pa-friend');
+    });
+    this.bind('pa-cpu', () => {
+      o.vs = 'cpu';
+      again('pa-cpu');
+    });
+    for (const k of [1, 2, 3])
+      this.bind(`pa-lvl${k}`, () => {
+        o.cpu = k;
+        again(`pa-lvl${k}`);
+      });
+    for (const i of [0, 1, 2] as PartyLength[])
+      this.bind(`pa-len${i}`, () => {
+        o.len = i;
+        again(`pa-len${i}`);
+      });
+    for (const g of games) this.bind(`pa-${g.id}`, () => this.playParty(g.id));
+    this.bind('pa-mix', () => {
+      const list = games.map((g) => g.id).sort(() => Math.random() - 0.5).slice(0, 5);
+      this.playParty(list[0], { list, at: 0, wins: [0, 0] });
+    });
+    this.bind('pa-back', () => this.showPlay());
+    this.focusById(focus ?? (games[0] ? `pa-${games[0].id}` : 'pa-back'));
+  }
+
+  /** The party games that have an arena (tests). */
+  partyGames() {
+    return PARTY_GAMES.filter((g) => levelById(`party-${g.id}`)).map((g) => g.id);
+  }
+
+  /** Start a party game (as part of a mix, maybe). */
+  playParty(game: string, mix?: PartyMix) {
+    const info = partyInfo(game);
+    let def = levelById(`party-${game}`);
+    if (!info || !def) return this.showParty();
+    const o = this.partyOpts;
+    const len = o.len;
+    const params: Record<string, number> = { target: info.targets[len] };
+    if (info.times) params.time = info.times[len];
+    if (info.gameTimes) params.gameTime = info.gameTimes[len];
+    def = {
+      ...def,
+      name: mix ? `${info.name} · game ${mix.at + 1} of ${mix.list.length}` : info.name,
+      hints: [info.how],
+      objects: def.objects.map((x) => (x.type === 'hazard' && x.kind === 'party' ? { ...x, params: { ...x.params, ...params } } : x)),
+    };
+    this.job = { kind: 'party', game, cpu: o.vs === 'cpu' ? o.cpu : 0, len, mix };
+    this.playDef(def);
+  }
+
+  private showPartyResults(r: SessionResult) {
+    const p = r.party!;
+    const s = this.game.session!;
+    this.resultsFor = 0;
+    const job = this.job?.kind === 'party' ? this.job : null;
+    const info = partyInfo(p.game);
+    const rec = recordParty(p.game, p.winner, p.cpu);
+    const hex = (i: number) => `#${(s.players[i]?.color ?? PLAYER_COLORS[i]).toString(16).padStart(6, '0')}`;
+    let prize = 0;
+    if (p.cpu && p.winner === 0) {
+      prize = CPU_PRIZE[p.cpu] ?? 0;
+      addCash(prize);
+    }
+    // a party mix: the running score, and what's next
+    const mix = job?.mix;
+    let mixBlock = '';
+    let next: string | null = null;
+    if (mix) {
+      if (p.winner >= 0) mix.wins[p.winner]++;
+      mix.at++;
+      next = mix.at < mix.list.length ? mix.list[mix.at] : null;
+      const left = mix.list.length - mix.at;
+      // (stop early once nobody can catch up)
+      const lead = Math.abs(mix.wins[0] - mix.wins[1]);
+      if (next && lead > left) next = null;
+      const dots = mix.list
+        .map((g, i) => `<span class="${i < mix.at ? 'done' : i === mix.at && next ? 'next' : ''}">${partyInfo(g)?.icon ?? '?'}</span>`)
+        .join('');
+      const champ: number = mix.wins[0] === mix.wins[1] ? -1 : mix.wins[0] > mix.wins[1] ? 0 : 1;
+      mixBlock = `<div class="party-mix"><div class="dots">${dots}</div>
+        <div>Party mix: <b style="color:${hex(0)}">${p.names[0]} ${mix.wins[0]}</b> – <b style="color:${hex(1)}">${mix.wins[1]} ${p.names[1]}</b></div>
+        ${next ? `<div>Next up: ${partyInfo(next)?.icon} <b>${esc(partyInfo(next)?.name ?? '')}</b></div>` : `<div class="mix-champ">${champ < 0 ? '🤝 The mix is a draw!' : `🏆 <b style="color:${hex(champ)}">${p.names[champ]}</b> takes the party mix!`}</div>`}
+      </div>`;
+    }
+    const title = p.winner < 0 ? 'It’s a draw!' : p.cpu && p.winner === 1 ? 'The computer wins!' : p.cpu ? 'You win!' : `${p.names[p.winner]} wins!`;
+    const sub =
+      p.winner < 0
+        ? 'Nobody could split you.'
+        : p.cpu
+          ? p.winner === 0
+            ? `You beat the ${CPU_NAMES[p.cpu]} computer${p.cpu < 3 ? '. Try a harder one?' : '. Impressive.'}`
+            : `The ${CPU_NAMES[p.cpu]} computer got you this time.`
+          : ['Bragging rights, for now.', 'Best of three? Best of five?', 'Rematch. Obviously.'][Math.floor(Math.random() * 3)];
+    const vsLine = p.cpu ? `<p style="font-size:14px">Vs the ${CPU_NAMES[p.cpu]} computer: ${rec.won[p.cpu]} won · ${rec.lost[p.cpu]} lost</p>` : '';
+    const buttons = mix
+      ? next
+        ? `<button class="btn primary" data-nav data-default id="r-mixnext">Next game →</button>
+           <button class="btn" data-nav id="r-party">Stop the mix</button>`
+        : `<button class="btn primary" data-nav data-default id="r-mixnew">New party mix</button>
+           <button class="btn" data-nav id="r-party">Party games</button>`
+      : `<button class="btn primary" data-nav data-default id="r-rematch">Rematch</button>
+         <button class="btn" data-nav id="r-party">Another game</button>
+         <button class="btn" data-nav id="r-menu">Main menu</button>`;
+    this.setScreen(
+      'results',
+      `<div class="panel results party-results">
+        <div class="party-trophy">${p.winner >= 0 ? '🏆' : '🤝'}</div>
+        <div class="verdict" style="color:${p.winner >= 0 ? hex(p.winner) : 'var(--ink)'}">${title}</div>
+        <p>${sub}</p>
+        <div class="party-final"><span class="pf-name" style="background:${hex(0)}">${p.names[0]}</span><b style="color:${hex(0)}">${p.score[0]}</b><i>–</i><b style="color:${hex(1)}">${p.score[1]}</b><span class="pf-name" style="background:${hex(1)}">${p.names[1]}</span></div>
+        ${p.line ? `<p style="font-size:16px">${esc(p.line)}</p>` : ''}
+        <p style="font-size:15px">${info?.icon ?? ''} ${esc(info?.name ?? p.title)}</p>
+        ${prize ? `<p class="party-prize">💵 +${formatMoney(prize)} into the company wallet</p>` : ''}
+        ${vsLine}
+        ${mixBlock}
+        <div class="row">${buttons}</div>
+      </div>`,
+      { dim: true, back: () => this.showParty() },
+    );
+    this.audio.sfx(p.winner === 0 || (p.winner === 1 && !p.cpu) ? 'payout' : 'fail');
+    this.bind('r-rematch', () => this.playParty(p.game));
+    this.bind('r-mixnext', () => mix && next && this.playParty(next, mix));
+    this.bind('r-mixnew', () => {
+      const list = PARTY_GAMES.filter((g) => levelById(`party-${g.id}`))
+        .map((g) => g.id)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 5);
+      this.playParty(list[0], { list, at: 0, wins: [0, 0] });
+    });
+    this.bind('r-party', () => {
+      this.quitToMenu();
+      this.showParty();
+    });
+    this.bind('r-menu', () => this.quitToMenu());
   }
 
   showVersus(focus = 'v-ai') {
@@ -2702,7 +2911,15 @@ type Job =
   | { kind: 'level'; id: string }
   | { kind: 'race'; id: string; vs: 'ai' | 'online'; pace: RivalPace }
   | { kind: 'random' | 'daily' | 'chaos' | 'chaosDaily'; gen: GenParams }
-  | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number };
+  | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number }
+  | { kind: 'party'; game: string; cpu: number; len: PartyLength; mix?: PartyMix };
+
+/** Party mix: several party games in a row; whoever wins the most takes it. */
+interface PartyMix {
+  list: string[];
+  at: number;
+  wins: [number, number];
+}
 
 /** The best endless shift so far. */
 interface ShiftBest {

@@ -11,3 +11,4 @@ import './chaos';
 import './chaos2';
 import './funhouse';
 import './course2';
+import './party';

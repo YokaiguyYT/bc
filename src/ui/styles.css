@@ -2030,3 +2030,166 @@ table.board .dot {
   margin: 10px 0;
   font-size: 19px;
 }
+
+/* ---------------------------------------------------------------- party games */
+.hud.party .cargo-card,
+.hud.party .timer-card,
+.hud.party .status-card,
+.hud.party .objective,
+.hud.party .goal-meter {
+  display: none !important;
+}
+.hud .party-board {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  padding: 6px 22px 8px;
+  min-width: 230px;
+}
+.hud .party-board .pb-title {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.hud .party-board .pb-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 40px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.hud .party-board .pb-score b:first-of-type {
+  color: var(--p1);
+  -webkit-text-stroke: 0.04em var(--ink);
+  paint-order: stroke fill;
+}
+.hud .party-board .pb-score b:last-of-type {
+  color: var(--p2);
+  -webkit-text-stroke: 0.04em var(--ink);
+  paint-order: stroke fill;
+}
+.hud .party-board .pb-score i {
+  font-style: normal;
+  color: var(--ink-soft);
+}
+.hud .party-board .pb-name {
+  font-size: 13px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  color: #fff;
+}
+.hud .party-board .pb-name.p1 {
+  background: var(--p1);
+}
+.hud .party-board .pb-name.p2 {
+  background: var(--p2);
+}
+.hud .party-board .pb-line {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.hud .party-board .pb-line span {
+  color: var(--ink);
+}
+.hud .banner.count {
+  font-size: clamp(60px, 11vw, 130px);
+  top: 40%;
+  animation: bannerIn 0.95s forwards;
+}
+.hud .banner.pc1 {
+  color: var(--p1);
+}
+.hud .banner.pc2 {
+  color: var(--p2);
+}
+.hub-tile.party {
+  background: linear-gradient(160deg, #fff0c8, #ffe0f0);
+}
+.hub-tile.party:hover,
+.hub-tile.party.focus {
+  background: linear-gradient(160deg, #ffe7a6, #ffd0e8);
+}
+.party-opts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.crew-pick.small .seg-btn {
+  font-size: 15px;
+  padding: 4px 11px;
+}
+.party-online {
+  font-size: 18px;
+  background: #fff;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  padding: 6px 14px;
+}
+.party-note {
+  font-size: 14px;
+  max-width: 640px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.party-results .party-trophy {
+  font-size: 64px;
+  line-height: 1;
+  animation: bannerIn 1.2s forwards;
+}
+.party-final {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 54px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.party-final b {
+  -webkit-text-stroke: 0.04em var(--ink);
+  paint-order: stroke fill;
+}
+.party-final i {
+  font-style: normal;
+  color: var(--ink-soft);
+}
+.party-final .pf-name {
+  font-size: 15px;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.party-prize {
+  font-size: 17px;
+  color: #1f7a4f;
+}
+.party-mix {
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 12px;
+  margin: 8px auto;
+  max-width: 420px;
+}
+.party-mix .dots {
+  font-size: 26px;
+  letter-spacing: 6px;
+}
+.party-mix .dots span {
+  opacity: 0.35;
+}
+.party-mix .dots span.done {
+  opacity: 1;
+}
+.party-mix .dots span.next {
+  opacity: 1;
+  display: inline-block;
+  animation: warnBlink 0.6s steps(2) infinite;
+}
+.party-mix .mix-champ {
+  font-size: 20px;
+  margin-top: 4px;
+}

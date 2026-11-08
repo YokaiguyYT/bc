@@ -32,6 +32,10 @@ export interface GameEvents {
   chaos: { kind: string; text: string };
   /** A player says something (EMOTES[kind]) over their head. */
   emote: { player: number; kind: number; text?: string };
+  /** A party game's announcement (a countdown, a point, the winner); `who` colours it. */
+  party: { text: string; small?: boolean; who?: number };
+  /** A party game's point was scored (for confetti and the like). */
+  partyPoint: { who: number; pos: THREE.Vector3 };
 }
 
 /** What the number keys make a mover say. */

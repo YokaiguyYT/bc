@@ -24,6 +24,7 @@ import { tuning } from '../config/tuning';
 import { createHazard, Hazard } from '../entities/hazards';
 import { Zone } from '../render/Zone';
 import { Effects } from '../render/Effects';
+import type { PartyGame } from '../entities/hazards/party/base';
 
 export const PLAYER_COLORS = [0xff7a3d, 0x3d9bff];
 export const PLAYER_NAMES = ['P1', 'P2'];
@@ -46,6 +47,8 @@ export interface SessionResult {
   /** Extra pay (a chaos job's multiplier). */
   bonus: number;
   cargoName: string;
+  /** A party game: who won, and the score. */
+  party?: { game: string; title: string; winner: number; score: [number, number]; names: [string, string]; cpu: number; line: string };
 }
 
 const v3 = (a: Vec3) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -119,6 +122,8 @@ export class LevelSession {
   rival: RivalCrew | null = null;
   /** Solo: the second mover is a robot that helps (the app sets this). */
   buddy: Buddy | null = null;
+  /** A party arena's game (1v1: rounds and a score instead of a delivery). */
+  party: PartyGame | null = null;
   /** Online play: where each mover's keys come from instead (null = this keyboard as usual). */
   input: NetInput | null = null;
   /** Phones and tablets: the on-screen controls, for this device's player (P1, here or hosting online) and the camera. */
@@ -197,6 +202,14 @@ export class LevelSession {
       this.root.add(rig.root);
     }
     this.cargo = createCargo(def.cargo, this.sim, { pos: s.cargo, yaw: 0, rot: s.cargoRot, vel: s.vel });
+    // a party arena has no load to deliver: put it away (made all the same, so both laptops have the same bodies)
+    this.party = (this.hazards.find((h) => (h as PartyGame).isParty) as PartyGame | undefined) ?? null;
+    if (def.party) {
+      this.cargo.body.setTranslation({ x: 0, y: -400, z: 0 }, false);
+      this.cargo.body.setEnabled(false);
+      this.cargo.visual.visible = false;
+      this.goalZone.object.visible = false;
+    }
     // the company's cargo skin (Player 1's pick in the Locker)
     this.cargoSkin = dressCargo(this.cargo, outfits[0].skin);
     this.sim.players = this.players;
@@ -257,6 +270,12 @@ export class LevelSession {
       this.cameraRig.addShake(Math.min(0.35, e.amount * 3));
       for (const r of this.rigs) r.worriedTime = 1.4;
     });
+    // a party point: confetti in the winner's colour
+    this.events.on('partyPoint', (e) => {
+      const col = this.players[e.who]?.color ?? 0xffffff;
+      this.effects.burst('confetti', e.pos.clone().setY(e.pos.y + 1.2), { count: 50, speed: 3.4, up: 5, size: 0.07, sizeVar: 0.4, life: 2.4, gravity: 4, drag: 1.2, colors: [col, col, 0xffffff, 0xffd23f] });
+      this.cameraRig.addShake(0.25);
+    });
   }
 
   /** Dev/test hook: replace what the camera frames. */
@@ -269,6 +288,10 @@ export class LevelSession {
       const v = this.physics.interpolatedPosition(p.body, new THREE.Vector3());
       // ignore a player who is far below (falling off) so the camera doesn't dive
       if (v.y > this.def.killY + 2) pts.push(v);
+    }
+    if (this.party) {
+      for (const f of this.party.focus()) pts.push(f);
+      return pts;
     }
     const c = this.physics.interpolatedPosition(this.cargo.body, new THREE.Vector3());
     // …or cargo floating away into the sky
@@ -295,7 +318,8 @@ export class LevelSession {
         // solo: the robot drives the second mover, and either set of keys drives the first
         if (i === 1 && this.buddy) return;
         let m = this.input?.player(i) ?? kb.readPlayer(binds[i]);
-        if (i === 0 && this.buddy && !this.input) m = mergeMoves(m, kb.readPlayer(binds[1]));
+        // (against the computer, too: it plays P2)
+        if (i === 0 && (this.buddy || this.party?.cpu) && !this.input) m = mergeMoves(m, kb.readPlayer(binds[1]));
         if (i === 0 && this.touch) m = this.touch.merge(m);
         const ctl = playing && this.state !== 'delivered';
         let mx = !ctl ? 0 : m.world ? m.x : camR.x * m.x + camF.x * m.y;
@@ -319,6 +343,8 @@ export class LevelSession {
       if (!this.scriptedInput) this.buddy.turn = Math.max(-1, Math.min(1, (kb.isDown(['KeyC', 'Period']) ? 1 : 0) - (kb.isDown(['KeyZ', 'Comma']) ? 1 : 0) + (this.touch?.turn() ?? 0)));
       this.buddy.update(frameDt);
     }
+    // a party game: everybody waits for the countdown; the computer plays P2
+    if (this.party && !this.mirror && !this.paused && !this.attractMode) this.party.drive(frameDt);
     // (chaos can slow the clock down or speed it up)
     // delivered: everybody does their victory dance (from the Locker)
     if (this.state === 'delivered' && !this.mirror && !this.attractMode && !this.scriptedInput && !this.paused)
@@ -396,6 +422,12 @@ export class LevelSession {
 
   private checkZones(dt: number) {
     const def = this.def;
+    if (def.party) {
+      // a party game keeps its own score; someone who falls right out comes back
+      for (const p of this.players) if (p.body.translation().y < def.killY) this.respawnPlayer(p);
+      if (this.party?.finished && !this.result) this.finishParty();
+      return;
+    }
     const cargoPos = this.cargo.position(new THREE.Vector3());
 
     // checkpoints: reached when the cargo (or both players) gets there
@@ -500,7 +532,7 @@ export class LevelSession {
 
   /** Hand-made jobs: record this run, and play back your best one alongside it. */
   private ghosts() {
-    if (this.def.generated || this.attractMode || this.mirror || this.state !== 'playing') return;
+    if (this.def.generated || this.def.party || this.attractMode || this.mirror || this.state !== 'playing') return;
     this.ghostRec ??= new GhostRecorder();
     this.ghostRec.sample(this.time, [this.players[0].bodyPos, this.players[1].bodyPos, this.cargo.position(new THREE.Vector3())]);
     if (this.ghostOn && !this.ghostTried) {
@@ -551,6 +583,27 @@ export class LevelSession {
       cargoName: this.cargo.displayName,
     };
     if (!success) this.state = 'failed';
+  }
+
+  /** A party game's over. */
+  private finishParty() {
+    const g = this.party!;
+    this.result = {
+      levelId: this.def.id,
+      success: g.winner === 0 || (g.winner === 1 && !g.cpu),
+      time: this.time,
+      condition: 1,
+      value: 0,
+      falls: 0,
+      payout: 0,
+      timeBonus: 0,
+      penalty: 0,
+      tips: 0,
+      tipCount: 0,
+      bonus: 0,
+      cargoName: '',
+      party: { game: this.def.party!, title: g.title, winner: g.winner, score: [g.score[0], g.score[1]], names: [g.name(0), g.name(1)], cpu: g.cpu, line: g.finalLine() },
+    };
   }
 
   private rainT = 0;

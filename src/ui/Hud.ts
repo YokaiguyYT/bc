@@ -67,7 +67,9 @@ export class Hud {
       <div class="hint" style="opacity:0"></div>
       <div class="objective"><svg class="arrow" viewBox="0 0 24 24" width="22" height="22"><path d="M4 12h13M12 6l6 6-6 6" stroke="currentColor" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></div>
       <div class="card goal-meter" style="display:none"><div class="goal-label" style="font-size:14px;text-align:center">DELIVERING…</div><div class="bar"><div class="fill" style="background:var(--good)"></div></div></div>
+      ${s.party ? `<div class="card party-board"><div class="pb-title">${s.party.title}</div><div class="pb-score"><span class="pb-name p1">P1</span><b class="pb-s0">0</b><i>–</i><b class="pb-s1">0</b><span class="pb-name p2">P2</span></div><div class="pb-line"></div></div>` : ''}
     `;
+    if (s.party) this.el.classList.add('party');
     parent.appendChild(this.el);
     const q = <T extends HTMLElement>(sel: string) => this.el.querySelector(sel) as T;
     this.cargoCard = q('.cargo-card');
@@ -94,7 +96,8 @@ export class Hud {
       s.events.on('checkpoint', () => this.banner('CHECKPOINT!', true)),
       s.events.on('goal', () => this.banner('DELIVERED!')),
       s.events.on('cargoBreak', () => this.banner(breakLine(s.def.cargo))),
-      s.events.on('respawn', () => this.banner('WHOOPS!', true)),
+      s.events.on('respawn', () => !s.party && this.banner('WHOOPS!', true)),
+      s.events.on('party', (e) => this.banner(e.text, !!e.small, (/^[0-9]$/.test(e.text) ? 'count ' : '') + (e.who === 0 ? 'pc1' : e.who === 1 ? 'pc2' : ''))),
       s.events.on('emote', (e) => this.bubble(e.player, e.text ?? EMOTES[e.kind] ?? '')),
       s.events.on('tip', (e) => this.tipPop(e.amount)),
       s.events.on('chaos', (e) => {
@@ -112,7 +115,40 @@ export class Hud {
     this.blackout = q('.blackout');
     this.chaosLine = q('.chaos-line');
     if (this.chaos) this.chaosLine.style.display = '';
-    this.banner(s.def.name.toUpperCase(), true);
+    if (!s.party) this.banner(s.def.name.toUpperCase(), true);
+    else {
+      this.pb = { s0: q('.pb-s0'), s1: q('.pb-s1'), line: q('.pb-line'), names: [...this.el.querySelectorAll<HTMLElement>('.pb-name')] };
+      this.el.querySelectorAll<HTMLElement>('.player-card .badge')[1].textContent = s.party.cpu ? '🤖' : 'P2';
+      if (s.party.cpu) this.tags[1].lastChild!.textContent = 'CPU';
+    }
+  }
+  private pb: { s0: HTMLElement; s1: HTMLElement; line: HTMLElement; names: HTMLElement[] } | null = null;
+  private pbWas = '';
+
+  /** A party game's scoreboard: the score (or the tally), the clock, what to do. */
+  private updateParty() {
+    const g = this.s.party!;
+    const pb = this.pb!;
+    const tally = g.showTally();
+    const clock = g.shownClock();
+    const key = `${g.score}|${tally}|${clock === null ? '' : Math.ceil(clock)}|${g.line()}|${g.cpu}|${g.target}|${g.goldenGoal}`;
+    if (key === this.pbWas) return;
+    this.pbWas = key;
+    setText(pb.names[1], g.name(1));
+    if (tally) {
+      const [a, b] = tally.split('|');
+      setText(pb.s0, a);
+      setText(pb.s1, b);
+    } else {
+      setText(pb.s0, String(g.score[0]));
+      setText(pb.s1, String(g.score[1]));
+    }
+    const bits = [];
+    if (clock !== null) bits.push(`⏱ ${formatClock(clock)}`);
+    else if (g.goldenGoal) bits.push('⚡ golden goal');
+    if (g.target > 1) bits.push(tally ? `rounds ${g.score[0]}–${g.score[1]} · first to ${g.target}` : `first to ${g.target}`);
+    const line = g.line();
+    pb.line.innerHTML = `${bits.join(' · ')}${line ? `<br><span>${line}</span>` : ''}`;
   }
 
   /** "+$20" rising off the payout card when a tip is pocketed. */
@@ -155,6 +191,7 @@ export class Hud {
 
   update(dt: number) {
     const s = this.s;
+    if (s.party) this.updateParty();
     if (this.darkener) {
       const k = Math.round((this.darkener.dark?.() ?? 0) * 100) / 100;
       if (k !== this.darkWas) {
@@ -216,7 +253,7 @@ export class Hud {
     this.goalLabel.textContent = s.goalHeld && g < 0.01 ? 'LET GO TO DELIVER' : 'DELIVERING…';
 
     // hints
-    const hints = [...(s.def.hints ?? []), s.cargo.tip];
+    const hints = [...(s.def.hints ?? []), ...(s.party ? [] : [s.cargo.tip])];
     this.hintTimer -= dt;
     if (this.hintTimer <= 0) {
       this.hintIdx++;
@@ -242,6 +279,11 @@ export class Hud {
     }
     // solo: P2 is the robot buddy, and P1 can also turn the load
     if (i === 1 && this.s.buddy) return '🤖 robot buddy<br>carries the other end';
+    if (i === 1 && this.s.party?.cpu) return `🤖 the computer<br>${['', 'easy', 'normal', 'hard'][this.s.party.cpu] ?? ''}`;
+    if (i === 0 && this.s.party?.cpu) {
+      const k1 = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="p1">${keyLabel(c)}</kbd>`).join('');
+      return `move ${k1(b.p1.up)}${k1(b.p1.left)}${k1(b.p1.down)}${k1(b.p1.right)} or arrows<br>jump ${k1(b.p1.jump)} grab ${k1(b.p1.grab)}`;
+    }
     if (i === 0 && this.s.buddy) {
       const k1 = (codes: string[]) => codes.slice(0, 1).map((c) => `<kbd class="p1">${keyLabel(c)}</kbd>`).join('');
       return `move ${k1(b.p1.up)}${k1(b.p1.left)}${k1(b.p1.down)}${k1(b.p1.right)} jump ${k1(b.p1.jump)}<br>grab ${k1(b.p1.grab)} turn it <kbd class="p1">Z</kbd><kbd class="p1">C</kbd>`;
@@ -366,6 +408,12 @@ function breakLine(kind: string) {
     default:
       return 'SMASHED!';
   }
+}
+
+/** 1:05, 0:09 (whole seconds, rounded up). */
+function formatClock(s: number) {
+  const t = Math.ceil(Math.max(0, s));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 }
 
 /** Write text only when it changed (no DOM churn every frame). */
