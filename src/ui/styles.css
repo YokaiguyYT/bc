@@ -2193,3 +2193,142 @@ table.board .dot {
   font-size: 20px;
   margin-top: 4px;
 }
+
+/* ---------------------------------------------------------------- build a job */
+.panel.builder {
+  width: min(900px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bd-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+}
+.bd-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bd-val {
+  min-width: 190px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+}
+.bd-course {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #fff;
+  border: 3px dashed var(--ink-soft);
+  border-radius: 14px;
+  padding: 8px;
+  min-height: 52px;
+}
+.bd-end {
+  font-weight: 700;
+  font-size: 15px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: #e9f6ff;
+}
+.bd-arrow {
+  color: var(--ink-soft);
+  font-size: 20px;
+  font-weight: 800;
+}
+.bd-empty {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.piece-chip {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 14px;
+  border: 3px solid var(--ink);
+  border-radius: 11px;
+  background: #fff4d6;
+  padding: 3px 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.piece-chip .x {
+  margin-left: 6px;
+  color: var(--bad);
+  opacity: 0.5;
+}
+.piece-chip:hover .x,
+.piece-chip.focus .x {
+  opacity: 1;
+}
+.piece-chip.focus,
+.piece-chip:hover {
+  background: #ffe0d6;
+}
+.bd-count {
+  font-size: 13px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.bd-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+  max-height: 34vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+.piece-btn {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  border: 3px solid var(--ink);
+  border-radius: 11px;
+  background: #fff;
+  padding: 4px 7px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.piece-btn .pi {
+  font-size: 20px;
+}
+.piece-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.piece-btn.focus,
+.piece-btn:hover:not(:disabled) {
+  background: #fff1b8;
+}
+.bd-code {
+  text-align: center;
+  font-size: 16px;
+}
+.bd-code b {
+  font-size: 22px;
+  letter-spacing: 1px;
+  user-select: all;
+}
+.code-input {
+  font-family: var(--font);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+  width: min(420px, 80vw);
+  padding: 8px 12px;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+  outline: none;
+}

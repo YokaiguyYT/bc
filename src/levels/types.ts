@@ -197,6 +197,8 @@ export interface GenParams {
   chaos?: number;
   /** A chaos job: which kinds of chaos (CHAOS_KINDS bits; all if absent). */
   chaosMask?: number;
+  /** A job someone built (Build a job): its code, which says everything about it (see levels/gen/plan.ts). */
+  plan?: string;
 }
 
 /** What the sky's doing (random jobs' rain twist). */

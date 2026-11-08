@@ -21,7 +21,9 @@ import { CODE_LEN, LevelMsg, mergeMoves, OnlineGuest, OnlineHost } from '../net/
 import { GuestSync } from '../net/sync';
 import type { GenParams, LevelDef, Variant } from '../levels/types';
 import { goalId, goalMet, goalText, rollVariant, withVariant } from '../levels/variants';
-import { dailySeed, generateJob, hashSeed, randomSeed, TWISTS } from '../levels/gen/generate';
+import { dailySeed, generateJob, hashSeed, pieceSuits, planSeed, randomSeed, TWISTS } from '../levels/gen/generate';
+import { BUILD_CARGO, BUILD_DIFF_NAMES, BUILD_PIECES, BUILD_TIMES, cleanCode, decodePlan, encodePlan, MAX_PIECES, PIECE_INFO, type Plan } from '../levels/gen/plan';
+import { THEMES } from '../levels/gen/kits';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
@@ -58,7 +60,9 @@ type Screen =
   | 'quick'
   | 'locker'
   | 'chaos'
-  | 'party';
+  | 'party'
+  | 'builder'
+  | 'buildcode';
 
 /** The developer tuning panel (backquote) only with ?dev in the address. */
 const DEV = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dev');
@@ -230,6 +234,8 @@ export class App {
       this.toggleDev();
       return;
     }
+    // a text box with the keyboard's focus (a friend's job code) takes the keys itself
+    if ((e.target as HTMLElement | null)?.classList?.contains('code-input') && code !== 'Escape') return;
     if (this.screen === 'join' && this.typeCode(code, e)) return;
     if (this.screen === 'jobnum' && this.typeJobNumber(code, e)) return;
     if (this.screen === 'boardname' && this.typeName(e)) return;
@@ -579,14 +585,199 @@ export class App {
            <div class="sub">Type the number from a friend's results card</div>
            <div class="best">same number, same course</div>
          </button>
+         <button class="hub-tile party" data-nav id="q-build">
+           <div class="icon">🛠️</div>
+           <div class="name">Build a job</div>
+           <div class="sub">Pick the load and the place, line up the obstacles yourself, then play it or share its code</div>
+           <div class="best">${this.draft.pieces.length ? `your job: ${this.draft.pieces.length} pieces, ${CARGO_INFO[this.draft.cargo]?.icon ?? ''}` : 'start from scratch'}</div>
+         </button>
+         <button class="hub-tile" data-nav id="q-code">
+           <div class="icon">🔑</div>
+           <div class="name">A friend's built job</div>
+           <div class="sub">Type the code of a job a friend built</div>
+           <div class="best">it starts with a B</div>
+         </button>
        </div>
        <div class="row"><button class="btn small" data-nav id="q-back">← Back</button></div>`,
       { back: () => this.showPlay() },
     );
     this.bind('q-random', () => this.playGenerated('random', { seed: randomSeed() }));
     this.bind('q-number', () => this.showJobNumber());
+    this.bind('q-build', () => this.showBuilder());
+    this.bind('q-code', () => this.showBuildCode());
     this.bind('q-back', () => this.showPlay());
   }
+
+  // ------------------------------------------------------------ build a job
+
+  /** The job being built (kept between visits). */
+  private draft: Plan = { cargo: 'crate', theme: 0, time: 'day', rain: false, diff: 1, pieces: ['ramp', 'door', 'corner', 'slalom'], ...(loadJSON<Partial<Plan>>('ff.builder') ?? {}) };
+
+  /** Build a job: the load, the place, the time of day, and the course piece by piece; then play it, or share its code. */
+  showBuilder(focus?: string) {
+    this.startAttract();
+    const d = this.draft;
+    if (!BUILD_CARGO.includes(d.cargo)) d.cargo = 'crate';
+    // pieces that don't suit the load (a piano and some stairs) are taken out
+    d.pieces = d.pieces.filter((id) => pieceSuits(id, d.cargo)).slice(0, MAX_PIECES);
+    saveJSON('ff.builder', d);
+    const info = CARGO_INFO[d.cargo];
+    const th = THEMES[d.theme] ?? THEMES[0];
+    const code = d.pieces.length ? encodePlan(d) : '';
+    const full = d.pieces.length >= MAX_PIECES;
+    const chips = d.pieces
+      .map((id, i) => `<button class="piece-chip" data-nav id="bd-rm${i}" title="Take it out">${PIECE_INFO[id]?.icon ?? '?'} ${esc(PIECE_INFO[id]?.name ?? id)}<span class="x">✕</span></button>`)
+      .join('<span class="bd-arrow">›</span>');
+    const palette = BUILD_PIECES.map((id) => {
+      const ok = pieceSuits(id, d.cargo);
+      return `<button class="piece-btn" data-nav id="bd-add-${id}" ${ok && !full ? '' : 'disabled'} title="${ok ? `Add ${esc(PIECE_INFO[id].name)}` : `Not with the ${esc(info.name.toLowerCase())}`}"><span class="pi">${PIECE_INFO[id].icon}</span><span>${esc(PIECE_INFO[id].name)}</span></button>`;
+    }).join('');
+    const seg = (id: string, on: boolean, label: string) => `<button class="seg-btn ${on ? 'on' : ''}" data-nav id="${id}">${label}</button>`;
+    this.setScreen(
+      'builder',
+      `<div class="logo" style="font-size:40px">🛠️ BUILD A JOB</div>
+       <div class="panel builder">
+         <div class="bd-row">
+           <div class="bd-pick"><button class="btn small" data-nav id="bd-cargo-prev">◀</button><div class="bd-val">${info.icon} ${esc(info.name)}</div><button class="btn small" data-nav id="bd-cargo-next">▶</button></div>
+           <div class="bd-pick"><button class="btn small" data-nav id="bd-th-prev">◀</button><div class="bd-val">${THEME_ICONS[th.name] ?? '📍'} ${esc(themeName(th.name))}</div><button class="btn small" data-nav id="bd-th-next">▶</button></div>
+         </div>
+         <div class="bd-row">
+           <div class="crew-pick small">${seg('bd-t-day', d.time === 'day', '☀️ Day')}${seg('bd-t-sunset', d.time === 'sunset', '🌇 Sunset')}${seg('bd-t-night', d.time === 'night', '🌙 Night')}${seg('bd-rain', d.rain, d.rain ? '🌧️ Rain' : '🌤️ Dry')}</div>
+           <div class="crew-pick small">${BUILD_DIFF_NAMES.map((n, i) => seg(`bd-d${i}`, d.diff === i, n)).join('')}</div>
+         </div>
+         <div class="bd-course"><span class="bd-end">🚚 Start</span><span class="bd-arrow">›</span>${chips || '<span class="bd-empty">add pieces from below</span>'}<span class="bd-arrow">›</span><span class="bd-end">🏁 Drop-off</span></div>
+         <div class="bd-count">${d.pieces.length} of ${MAX_PIECES} pieces${full ? ' (full)' : ''} · click a piece in the course to take it out</div>
+         <div class="bd-palette">${palette}</div>
+         <div class="bd-code">${code ? `Its code: <b id="bd-code">${code}</b> <button class="btn small" data-nav id="bd-copy">📋 Copy</button>` : 'Add a piece or two to get a code'}</div>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="bd-play" ${d.pieces.length ? '' : 'disabled'}>▶ Play it</button>
+         <button class="btn" data-nav id="bd-random">🎲 Surprise me</button>
+         <button class="btn" data-nav id="bd-clear" ${d.pieces.length ? '' : 'disabled'}>🗑️ Clear</button>
+         <button class="btn" data-nav id="bd-friend">🔑 A friend's code</button>
+         <button class="btn small" data-nav id="bd-back">← Back</button>
+       </div>`,
+      { back: () => this.showQuick() },
+    );
+    const again = (id: string) => this.showBuilder(id);
+    const turn = <T,>(list: T[], at: T, by: number) => list[(list.indexOf(at) + by + list.length) % list.length];
+    this.bind('bd-cargo-prev', () => {
+      d.cargo = turn(BUILD_CARGO, d.cargo, -1);
+      again('bd-cargo-prev');
+    });
+    this.bind('bd-cargo-next', () => {
+      d.cargo = turn(BUILD_CARGO, d.cargo, 1);
+      again('bd-cargo-next');
+    });
+    this.bind('bd-th-prev', () => {
+      d.theme = (d.theme + THEMES.length - 1) % THEMES.length;
+      again('bd-th-prev');
+    });
+    this.bind('bd-th-next', () => {
+      d.theme = (d.theme + 1) % THEMES.length;
+      again('bd-th-next');
+    });
+    for (const t of BUILD_TIMES)
+      this.bind(`bd-t-${t}`, () => {
+        d.time = t;
+        again(`bd-t-${t}`);
+      });
+    this.bind('bd-rain', () => {
+      d.rain = !d.rain;
+      again('bd-rain');
+    });
+    BUILD_DIFF_NAMES.forEach((_, i) =>
+      this.bind(`bd-d${i}`, () => {
+        d.diff = i;
+        again(`bd-d${i}`);
+      }),
+    );
+    d.pieces.forEach((_, i) =>
+      this.bind(`bd-rm${i}`, () => {
+        d.pieces.splice(i, 1);
+        again(d.pieces.length ? `bd-rm${Math.min(i, d.pieces.length - 1)}` : 'bd-add-flat');
+      }),
+    );
+    for (const id of BUILD_PIECES)
+      this.bind(`bd-add-${id}`, () => {
+        if (d.pieces.length >= MAX_PIECES) return;
+        d.pieces.push(id);
+        again(`bd-add-${id}`);
+      });
+    this.bind('bd-copy', () => {
+      void copyText(code).then((ok) => {
+        const b = this.layer.querySelector('#bd-copy');
+        if (b) b.textContent = ok ? '✅ Copied!' : 'Select it to copy';
+      });
+    });
+    this.bind('bd-random', () => {
+      // a handful of pieces that suit the load
+      const ok = BUILD_PIECES.filter((id) => pieceSuits(id, d.cargo) && !['turntable', 'bumpers', 'trampolines', 'cannons'].includes(id));
+      const n = 4 + Math.floor(Math.random() * 4);
+      d.pieces = Array.from({ length: n }, () => ok[Math.floor(Math.random() * ok.length)]);
+      again('bd-random');
+    });
+    this.bind('bd-clear', () => {
+      d.pieces = [];
+      again('bd-add-flat');
+    });
+    this.bind('bd-play', () => code && this.playBuilt(code));
+    this.bind('bd-friend', () => this.showBuildCode());
+    this.bind('bd-back', () => this.showQuick());
+    if (focus) this.focusById(focus);
+  }
+
+  /** Play a built job by its code. */
+  playBuilt(code: string) {
+    const plan = decodePlan(code, THEMES.length);
+    if (!plan) return this.showBuildCode('That code doesn’t look right: check it with your friend?');
+    const c = encodePlan(plan);
+    this.job = { kind: 'built', gen: { seed: planSeed(c), plan: c, label: 'Built job' } };
+    this.playDef(generateJob(this.job.gen));
+  }
+
+  /** Type (or paste) the code of a job a friend built. */
+  private showBuildCode(error = '') {
+    this.startAttract();
+    this.setScreen(
+      'buildcode',
+      `<div class="logo" style="font-size:40px">🔑 A FRIEND'S JOB</div>
+       <div class="panel" style="text-align:center;max-width:min(640px,92vw)">
+         <p>Type or paste the code of a job your friend built (it starts with a B)</p>
+         <input class="code-input" id="bc-code" type="text" placeholder="B…" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" maxlength="24">
+         <p class="bc-note" style="font-size:14px;color:var(--bad)">${esc(error)}</p>
+         <p style="font-size:14px">The code is on the Build a job screen, and on the results card of a built job. Same code, same course, same load.</p>
+       </div>
+       <div class="row">
+         <button class="btn primary" data-nav data-default id="bc-go" disabled>Play it</button>
+         <button class="btn small" data-nav id="bc-edit" disabled>🛠️ Open it in the builder</button>
+         <button class="btn small" data-nav id="bc-back">← Back</button>
+       </div>`,
+      { back: () => this.showBuilder() },
+    );
+    const input = this.layer.querySelector<HTMLInputElement>('#bc-code');
+    const check = () => {
+      const plan = input ? decodePlan(input.value, THEMES.length) : null;
+      this.layer.querySelectorAll<HTMLButtonElement>('#bc-go, #bc-edit').forEach((b) => (b.disabled = !plan));
+      const note = this.layer.querySelector('.bc-note');
+      if (note) note.textContent = input?.value && cleanCode(input.value).length > 6 && !plan ? 'Not a code yet: check it with your friend?' : error;
+      return plan;
+    };
+    input?.addEventListener('input', check);
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && check()) this.playBuilt(input.value);
+    });
+    if (!this.game.touch.active) input?.focus();
+    this.bind('bc-go', () => input && check() && this.playBuilt(input.value));
+    this.bind('bc-edit', () => {
+      const plan = check();
+      if (!plan) return;
+      this.draft = plan;
+      this.showBuilder();
+    });
+    this.bind('bc-back', () => this.showBuilder());
+  }
+
 
   // ------------------------------------------------------------ chaos jobs
 
@@ -1216,6 +1407,7 @@ export class App {
     if (this.job?.kind === 'party') return this.playParty(this.job.game, this.job.mix);
     // a race against the rival crew starts over as a race
     if (this.job?.kind === 'race' && this.job.vs === 'ai') return this.startRace(this.job.id, def.variant ?? null, 'ai');
+    if (def.gen?.plan) return this.playBuilt(def.gen.plan);
     if (def.gen) this.playDef(def.gen.label?.startsWith('Shift') ? { ...generateJob(def.gen), name: def.name } : generateJob(def.gen));
     else this.playLevel(def.id);
   }
@@ -1381,6 +1573,8 @@ export class App {
         ? `<p style="font-size:14px">Daily <b>#${dailyNumber()}</b>${twist ? ` · ${twist.icon} ${twist.name}` : ''} · the same course for everyone today</p>`
         : job.kind === 'chaosDaily'
           ? `<p style="font-size:14px">💥 Chaos Daily <b>#${dailyNumber()}</b> · ${chaosLevel(def.gen?.chaos).icon} ${chaosLevel(def.gen?.chaos).name} · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'} · the same chaos for everyone today</p>`
+        : def.gen?.plan
+          ? `<p style="font-size:14px">🛠️ A built job · code <b>${esc(def.gen.plan)}</b> · tell a friend the code to play the same course</p>`
         : def.gen?.chaos
           ? `<p style="font-size:14px">${chaosLevel(def.gen.chaos).icon} ${chaosLevel(def.gen.chaos).name} chaos job <b>#${def.gen.seed}</b>${surprises ? ` · ${r.success ? 'survived' : 'lasted through'} <b>${surprises}</b> surprise${surprises === 1 ? '' : 's'}` : ''}<br>Challenge a friend: Chaos → 🔢 A friend's number, on ${chaosLevel(def.gen.chaos).name}</p>`
           : def.gen && job.kind !== 'shift'
@@ -1407,6 +1601,9 @@ export class App {
             ? `<button class="btn primary" data-nav data-default id="r-rematch">Race again</button>
            <button class="btn" data-nav id="r-versus">Leave the race</button>`
             : `<button class="btn" data-nav data-default id="r-versus">Leave the race</button>`;
+    else if (job.kind === 'built')
+      buttons = `<button class="btn primary" data-nav data-default id="r-retry">${r.success ? 'Play it again' : 'Retry'}</button>
+           <button class="btn" data-nav id="r-builder">🛠️ Back to the builder</button>`;
     else if (job.kind === 'random')
       buttons = `<button class="btn primary" data-nav data-default id="r-random">New random job →</button>
            <button class="btn" data-nav id="r-retry">${r.success ? 'Play this one again' : 'Retry'}</button>
@@ -1429,7 +1626,7 @@ export class App {
           ${r.success ? row('Time', `${formatTime(r.time)}${beat.time ? '<span class="new-best">NEW BEST</span>' : ''}`) : ''}
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
           ${r.tips ? row(`Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
-          ${r.bonus ? row(`${chaosLevel(def.gen?.chaos).icon} Chaos pay (×${def.payScale})`, '+' + formatMoney(r.bonus)) : ''}
+          ${r.bonus && def.gen?.plan ? row(`🛠️ Built-job rate (×${def.payScale})`, '−' + formatMoney(-r.bonus)) : r.bonus ? row(`${chaosLevel(def.gen?.chaos).icon} Chaos pay (×${def.payScale})`, '+' + formatMoney(r.bonus)) : ''}
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
           <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout || chaosBestLine ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
@@ -1463,6 +1660,10 @@ export class App {
       });
     });
     this.bind('r-random', () => this.playGenerated('random', { seed: randomSeed() }));
+    this.bind('r-builder', () => {
+      this.quitToMenu();
+      this.showBuilder();
+    });
     this.bind('r-chaos', () => def.gen && this.playGenerated('chaos', { seed: randomSeed(), chaos: def.gen.chaos, chaosMask: def.gen.chaosMask }));
     this.bind('r-shift', () => {
       if (this.job?.kind !== 'shift') return;
@@ -2921,7 +3122,7 @@ export class App {
 type Job =
   | { kind: 'level'; id: string }
   | { kind: 'race'; id: string; vs: 'ai' | 'online'; pace: RivalPace }
-  | { kind: 'random' | 'daily' | 'chaos' | 'chaosDaily'; gen: GenParams }
+  | { kind: 'random' | 'daily' | 'chaos' | 'chaosDaily' | 'built'; gen: GenParams }
   | { kind: 'shift'; gen: GenParams; base: number; round: number; total: number }
   | { kind: 'party'; game: string; cpu: number; len: PartyLength; mix?: PartyMix };
 
@@ -2975,6 +3176,11 @@ function syncTypeBox(layer: HTMLElement, id: string, code: string) {
   const el = layer.querySelector<HTMLInputElement>('#' + id);
   if (el && el.value !== code) el.value = code;
 }
+
+/** The builder's places: a picture and a name for each of the random courses' themes. */
+const THEME_ICONS: Record<string, string> = { docks: '⚓', suburb: '🏡', park: '🌳', snow: '❄️', office: '🏢', sky: '☁️', beach: '🏖️', site: '🚧', downtown: '🏙️', market: '🧺', airport: '✈️', factory: '🏭', rooftops: '🏠', haunted: '👻', desert: '🌵', jungle: '🌴', pirate: '🏴‍☠️' };
+const THEME_NAMES: Record<string, string> = { docks: 'The docks', suburb: 'The suburbs', park: 'The park', snow: 'Snowy town', office: 'The office', sky: 'Up in the sky', beach: 'The beach', site: 'Building site', downtown: 'Downtown', market: 'The market', airport: 'The airport', factory: 'The factory', rooftops: 'The rooftops', haunted: 'Haunted house', desert: 'The desert', jungle: 'The jungle', pirate: 'Pirate cove' };
+const themeName = (n: string) => THEME_NAMES[n] ?? n[0].toUpperCase() + n.slice(1);
 
 function keys(codes: string[], cls: string) {
   return codes.map((c) => `<kbd class="${cls}">${esc(keyLabel(c))}</kbd>`).join('');
