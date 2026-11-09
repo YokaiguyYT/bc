@@ -102,7 +102,8 @@ async function direct(): Promise<{ state: CheckState; detail: string }> {
         }
         const m = / typ (\w+)/.exec(e.candidate.candidate);
         if (m) kinds.add(m[1]);
-        if (kinds.has('srflx')) {
+        // (both found: no need to wait for the rest)
+        if (kinds.has('srflx') && kinds.has('relay')) {
           clearTimeout(done);
           resolve();
         }
@@ -114,6 +115,9 @@ async function direct(): Promise<{ state: CheckState; detail: string }> {
   } finally {
     pc.close();
   }
-  if (kinds.has('srflx')) return { state: 'ok', detail: 'likely to work (found this laptop on the internet)' };
-  return { state: 'warn', detail: "uncertain here: if the laptops can't link directly, the relay carries the game" };
+  // a relay candidate means the TURN server answered: even when a straight link can't be made, a fast one through it can
+  const turn = kinds.has('relay');
+  if (kinds.has('srflx')) return { state: 'ok', detail: `likely to work (found this device on the internet)${turn ? ', and the fast relay answered too' : ''}` };
+  if (turn) return { state: 'ok', detail: 'through the fast relay (a straight link may not work here, but that will)' };
+  return { state: 'warn', detail: "uncertain here: if the devices can't link directly, the matchmaking servers carry the game (slower)" };
 }

@@ -71,6 +71,10 @@ export class Conn {
   get open() {
     return !!this.via;
   }
+  /** The direct link goes through the TURN server. */
+  get turned() {
+    return !!this.direct?.open && this.direct.turned;
+  }
   /** Seconds since anything arrived on either route. */
   get quiet() {
     return (performance.now() - Math.max(this.direct?.lastHeard ?? 0, this.relay?.lastHeard ?? 0)) / 1000;
@@ -208,6 +212,11 @@ export class OnlineHost {
     return this.conn?.rtt ?? null;
   }
 
+  /** The direct link goes through the TURN server. */
+  get turned() {
+    return !!this.conn?.turned;
+  }
+
   /** Seconds since the guest was last heard from. */
   get quiet() {
     return this.conn?.quiet ?? 0;
@@ -233,7 +242,8 @@ export class OnlineHost {
         if (conn && !conn.lost && conn.open && conn.quiet < 4) return this.sig.send(m.from, { k: 'busy' });
         this.accept(m.from);
       } else if (ours && d.k === 'rl') conn.relay?.receive(d);
-      else if (ours && (d.k === 'answer' || d.k === 'ice')) conn.direct?.signal(d);
+      // (only for the attempt it belongs to: a retry is a new link)
+      else if (ours && (d.k === 'answer' || d.k === 'ice') && (!d.lid || d.lid === conn.direct?.lid)) conn.direct?.signal(d);
       else if (ours && d.k === 'bye') conn.lose('left');
     };
     // the matchmaking server hung up (it does, now and then): get back on it under the same code
@@ -312,10 +322,27 @@ export class OnlineHost {
     };
     this.sig.send(guest, { k: 'welcome', v: NET_VERSION });
     if (allowed('relay')) conn.attach(new RelayLink(this.sig, guest));
-    if (allowed('p2p') && typeof RTCPeerConnection === 'function') {
+    const tryDirect = () => {
       const link = new PeerLink(this.sig, guest);
       conn.attach(link);
       link.offer(true).catch((e) => console.warn('offer', e));
+    };
+    if (allowed('p2p') && typeof RTCPeerConnection === 'function') {
+      // (tests: ?p2plate as if the first try failed, to see the retry find a direct link)
+      if (!new URLSearchParams(location.search).has('p2plate')) tryDirect();
+      // stuck on the slow relay (the direct link didn't open, or dropped): keep trying for a direct one now and then
+      let tries = 0;
+      let last = performance.now();
+      const watch = window.setInterval(() => {
+        if (this.conn !== conn || conn.lost) return clearInterval(watch);
+        const d = conn.direct;
+        if (!conn.relay?.open || d?.open || (d && !d.stuck)) return;
+        const wait = tries < 3 ? 15000 : 60000;
+        if (performance.now() - last < wait) return;
+        tries++;
+        last = performance.now();
+        tryDirect();
+      }, 2000);
     }
     // a guest that never gets through
     setTimeout(() => {
@@ -540,8 +567,19 @@ export class OnlineGuest {
       if (m.from !== this.target) return;
       const d = m.data;
       if (d.k === 'rl') conn.relay?.receive(d);
-      else if (d.k === 'offer' && typeof d.sdp === 'string') this.takeOffer(d.sdp);
-      else if (d.k === 'ice') conn.direct?.signal(d);
+      else if (d.k === 'offer' && typeof d.sdp === 'string') this.takeOffer(d.sdp, typeof d.lid === 'string' ? d.lid : undefined);
+      else if (d.k === 'ice') {
+        // for the link it belongs to (one being set up right now may not exist yet: keep it till it does)
+        if (!d.lid || d.lid === conn.direct?.lid) conn.direct?.signal(d);
+        else {
+          const l = String(d.lid);
+          if (!this.earlyIce.has(l)) {
+            this.earlyIce.set(l, []);
+            if (this.earlyIce.size > 3) this.earlyIce.delete(this.earlyIce.keys().next().value!);
+          }
+          this.earlyIce.get(l)!.push(d);
+        }
+      }
       else if (d.k === 'bye') conn.lose('left');
     };
   }
@@ -554,20 +592,30 @@ export class OnlineGuest {
     return this.conn.rtt;
   }
 
+  /** The direct link goes through the TURN server. */
+  get turned() {
+    return this.conn.turned;
+  }
+
   /** Seconds since the host was last heard from. */
   get quiet() {
     return this.conn.quiet;
   }
 
-  private takeOffer(sdp: string) {
+  /** ICE candidates that arrived before their link's offer (by link id). */
+  private earlyIce = new Map<string, Record<string, unknown>[]>();
+
+  private takeOffer(sdp: string, lid?: string) {
     if (!allowed('p2p') || typeof RTCPeerConnection !== 'function') return;
-    const link = new PeerLink(this.sig, this.target);
+    const link = new PeerLink(this.sig, this.target, lid);
     link.onStream = (s) => {
       this.stream = s;
       this.onStream?.(s);
     };
     this.conn.attach(link);
     link.answer(sdp).catch((e) => console.warn('answer', e));
+    for (const d of this.earlyIce.get(link.lid) ?? []) void link.signal(d);
+    this.earlyIce.delete(link.lid);
   }
 
   private ctl(m: CtlMsg) {

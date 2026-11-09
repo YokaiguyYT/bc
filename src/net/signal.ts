@@ -17,7 +17,8 @@ export interface SignalMsg {
 
 export interface Signal {
   readonly id: string;
-  send(to: string, data: Record<string, unknown>): void;
+  /** `all`: through every server at once (the relay: whichever copy arrives first is used). */
+  send(to: string, data: Record<string, unknown>, all?: boolean): void;
   onMessage: ((m: SignalMsg) => void) | null;
   /** Lost the relay (not fatal once the peers are connected). */
   onClose: ((reason: string) => void) | null;
@@ -300,10 +301,10 @@ export function openMulti(id: string, ways: (() => Promise<Signal>)[]): Promise<
       id,
       onMessage: null,
       onClose: null,
-      send(to, data) {
+      send(to, data, all) {
         const msg = { ...data, _i: Math.random().toString(36).slice(2, 10) };
         const via = route.get(to);
-        if (via && live.includes(via)) via.send(to, msg);
+        if (via && live.includes(via) && !all) via.send(to, msg);
         else for (const s of live) s.send(to, msg);
       },
       close() {

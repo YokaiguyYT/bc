@@ -2631,10 +2631,11 @@ export class App {
   }
 
   /** How the friend is connected, in words (with the round trip, once it's known). */
-  private viaText(via: 'direct' | 'relay' | null, video = false, rtt: number | null = null) {
+  private viaText(via: 'direct' | 'relay' | null, video = false, rtt: number | null = null, turned = false) {
     const ms = rtt === null ? '' : ` · ${Math.round(rtt)} ms`;
-    if (via === 'direct') return (video ? 'connected directly · streaming the picture' : 'connected directly') + ms;
-    if (via === 'relay') return `connected through the relay (a little slower)${ms}`;
+    const how = turned ? 'connected through a fast relay' : 'connected directly';
+    if (via === 'direct') return (video ? `${how} · streaming the picture` : how) + ms;
+    if (via === 'relay') return `🐢 through the matchmaking server (slower: still looking for a faster way)${ms}`;
     return 'connecting…';
   }
 
@@ -2777,7 +2778,7 @@ export class App {
         ? h.connected
           ? h.quiet > 3
             ? `⚠️ No word from your friend's laptop for ${Math.round(h.quiet)} s… (their Wi-Fi?)`
-            : `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video', h.rtt)}`
+            : `🌐 Online · your friend is P2 · ${this.viaText(h.via, h.mode === 'video', h.rtt, h.turned)}`
           : `🌐 Hosting · code ${h.code} · waiting for your friend`
         : '');
     if (!t) {
@@ -2973,7 +2974,7 @@ export class App {
     const g = this.guest;
     if (!g) return '';
     if (g.quiet > 3) return `⚠️ No word from your friend's laptop for ${Math.round(g.quiet)} s… (Wi-Fi?)`;
-    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt)}${this.game.touch.active ? '' : ' · Esc: online menu'}`;
+    return `🌐 On your friend's game · ${this.viaText(g.via, g.mode === 'video', g.rtt, g.turned)}${this.game.touch.active ? '' : ' · Esc: online menu'}`;
   }
 
   /** Show the host's game the way the current mode says: drawn here (light) or streamed (video). */
@@ -3101,7 +3102,7 @@ export class App {
          ${video ? '' : `<button class="btn" data-nav id="g-gfx">Graphics: ${({ low: 'Fast', medium: 'Balanced', high: 'Pretty' } as const)[this.game.settings.quality]}</button>`}
          <button class="btn" data-nav id="g-leave">Leave</button>
        </div>
-       <div class="hint-line">${esc(this.viaText(g.via, video, g.rtt))}. ${
+       <div class="hint-line">${esc(this.viaText(g.via, video, g.rtt, g.turned))}. ${
          video
            ? 'Streaming suits a slow laptop on a fast network.'
            : g.canVideo

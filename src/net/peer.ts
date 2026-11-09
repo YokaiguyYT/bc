@@ -1,13 +1,34 @@
 import type { Signal } from './signal';
 
-/** Free public STUN servers: they only tell each laptop its public address. */
-export const ICE: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
+/**
+ * How two devices find a way to each other:
+ * - free public STUN servers tell each device its public address, which is
+ *   enough for most home Wi-Fi;
+ * - when that isn't enough (a phone on mobile data, a hotspot, some routers),
+ *   a free public TURN server passes the packets on instead. That's still a
+ *   UDP link straight between the two games, far quicker than the matchmaking
+ *   servers' relay. Open Relay's shared login is published by them for anyone
+ *   to use (no account); if it's ever gone, the link just tries without it.
+ * `?turn=0` leaves the TURN server out.
+ */
+function iceServers(): RTCIceServer[] {
+  const list: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
+  const off = typeof location !== 'undefined' && new URLSearchParams(location.search).get('turn') === '0';
+  if (!off)
+    list.push({
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    });
+  return list;
+}
+export const ICE: RTCIceServer[] = iceServers();
 
 /**
  * Bump when host and guest builds can no longer talk to each other, or when
  * random jobs come out differently (the guest rebuilds them from their number).
  */
-export const NET_VERSION = 12;
+export const NET_VERSION = 13;
 
 /** Messages bigger than this go over the control channel in pieces. */
 const CHUNK = 16000;
@@ -69,10 +90,16 @@ export class PeerLink implements Pipe {
   /** When we last heard anything from the other side (performance.now()). */
   lastHeard = performance.now();
   private pinger = 0;
+  /** Once open: whether the packets go through the TURN server (rather than straight between the two). */
+  turned = false;
+  /** When this attempt started (performance.now()). */
+  readonly born = performance.now();
 
   constructor(
     private sig: Signal,
     readonly remote: string,
+    /** This attempt's id: a retry is a fresh link, and its signals mustn't reach an older one. */
+    readonly lid = Math.random().toString(36).slice(2, 8),
   ) {
     this.pc = new RTCPeerConnection({ iceServers: ICE });
     // both sides create the same two channels by id: no extra round trip
@@ -80,7 +107,7 @@ export class PeerLink implements Pipe {
     this.fast = this.pc.createDataChannel('fast', { negotiated: true, id: 1, ordered: false, maxRetransmits: 0 });
     this.fast.binaryType = 'arraybuffer';
     this.pc.onicecandidate = (e) => {
-      if (e.candidate) this.sig.send(this.remote, { k: 'ice', c: e.candidate.toJSON() });
+      if (e.candidate) this.sig.send(this.remote, { k: 'ice', c: e.candidate.toJSON(), lid: this.lid });
     };
     this.pc.ontrack = (e) => {
       const r = e.receiver as RTCRtpReceiver & { playoutDelayHint?: number; jitterBufferTarget?: number };
@@ -104,6 +131,8 @@ export class PeerLink implements Pipe {
         if (performance.now() - this.lastHeard > TIMEOUT * 1000) this.lose('timeout');
       }, 1000);
       this.onOpen?.();
+      // which way did it go? (for the line that says how you're connected)
+      setTimeout(() => void this.readRoute(), 1500);
     };
     this.ctl.onclose = () => this.lose('closed');
     this.ctl.onmessage = (e) => this.receive(String(e.data));
@@ -118,11 +147,37 @@ export class PeerLink implements Pipe {
     };
   }
 
+  private async readRoute() {
+    try {
+      const stats = await this.pc.getStats();
+      let pair: { localCandidateId?: string; remoteCandidateId?: string } | null = null;
+      stats.forEach((r) => {
+        if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId) ?? pair;
+      });
+      if (!pair)
+        stats.forEach((r) => {
+          if (r.type === 'candidate-pair' && (r.selected || (r.nominated && r.state === 'succeeded'))) pair = r;
+        });
+      const p = pair as { localCandidateId?: string; remoteCandidateId?: string } | null;
+      if (!p) return;
+      const kind = (id?: string) => (id ? (stats.get(id) as { candidateType?: string } | undefined)?.candidateType : undefined);
+      this.turned = kind(p.localCandidateId) === 'relay' || kind(p.remoteCandidateId) === 'relay';
+    } catch {
+      /* no stats here: never mind */
+    }
+  }
+
+  /** Not open, and not going to open: worth a fresh try. */
+  get stuck() {
+    const s = this.pc.connectionState;
+    return !this.open && (this.closed || s === 'failed' || s === 'closed' || performance.now() - this.born > 15000);
+  }
+
   /** Host: make the offer (with a video slot, filled later if the guest wants the picture streamed). */
   async offer(withVideo: boolean) {
     if (withVideo) this.videoTx = this.pc.addTransceiver('video', { direction: 'sendonly' });
     await this.pc.setLocalDescription(await this.pc.createOffer());
-    this.sig.send(this.remote, { k: 'offer', sdp: this.pc.localDescription!.sdp });
+    this.sig.send(this.remote, { k: 'offer', sdp: this.pc.localDescription!.sdp, lid: this.lid });
   }
 
   /** Guest: take the host's offer and answer it. */
@@ -131,7 +186,7 @@ export class PeerLink implements Pipe {
     this.remoteSet = true;
     this.flushIce();
     await this.pc.setLocalDescription(await this.pc.createAnswer());
-    this.sig.send(this.remote, { k: 'answer', sdp: this.pc.localDescription!.sdp });
+    this.sig.send(this.remote, { k: 'answer', sdp: this.pc.localDescription!.sdp, lid: this.lid });
   }
 
   /** Signalling messages from the other side. */

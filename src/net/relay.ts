@@ -107,7 +107,8 @@ export class RelayLink implements Pipe {
   }
 
   private send(x: Record<string, unknown>) {
-    if (!this.closed) this.sig.send(this.remote, { k: 'rl', ...x });
+    // through every matchmaking server at once: the quicker one wins (the other copy is dropped as a repeat)
+    if (!this.closed) this.sig.send(this.remote, { k: 'rl', ...x }, true);
   }
 
   private lose(why: string) {
