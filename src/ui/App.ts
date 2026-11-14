@@ -114,7 +114,8 @@ export class App {
     tuning.damage.scale = game.settings.damage ?? 1;
     game.keyboard.onKey = (code, e) => this.onKey(code, e);
     game.touch.onMenu = () => (this.guest ? this.showGuestMenu() : this.pause());
-    window.addEventListener('pointerdown', () => this.audio.unlock(), { once: false });
+    // (browsers only let sound start from a tap, a click or a key; iPhones are fussy about which)
+    for (const ev of ['pointerdown', 'touchend', 'click']) window.addEventListener(ev, () => this.audio.unlock(), { passive: true });
     game.onFrame = (dt) => this.frame(dt);
     window.addEventListener('paste', this.onPaste);
     // switching to another app or tab pauses, rather than leaving the movers standing in traffic
@@ -1302,7 +1303,7 @@ export class App {
     this.wireSession(s);
     this.hud = new Hud(this.hudLayer, this.game, s);
     this.setScreen('playing', '');
-    this.audio.music(def.cargo === 'crate' ? 'menu' : 'level');
+    this.audio.music(def.party ? 'party' : def.cargo === 'crate' && !def.generated ? 'menu' : 'level');
   }
 
   /** Playing on your own (the robot buddy carries the other end); ?solo in the address for tests. */
@@ -3069,6 +3070,7 @@ export class App {
     g.attachSync(sync);
     this.wireSession(s);
     this.hud = new Hud(this.hudLayer, this.game, s);
+    this.audio.music(def.party ? 'party' : def.cargo === 'crate' && !def.generated ? 'menu' : 'level');
   }
 
   /** Light mode: the host is back in the menus. */

@@ -400,9 +400,12 @@ export class Player {
       this.coyote = tuning.jump.coyote;
       if (this.airTime > 0.25) this.onLand();
       this.airTime = 0;
+      this.fallPeak = 0;
     } else {
       this.coyote -= dt;
       this.airTime += dt;
+      // (the fastest it fell: by the time the feet are down, the legs have already taken most of it up)
+      this.fallPeak = Math.max(this.fallPeak, -this.parts.body.linvel().y);
     }
 
     this.updateState(dt);
@@ -524,8 +527,9 @@ export class Player {
     this.sim.events.emit('knock', { player: this.index, pos: this.bodyPos.clone(), strength });
   }
 
+  private fallPeak = 0;
   private onLand() {
-    const speed = Math.max(0, -this.vyPre);
+    const speed = Math.max(0, -this.vyPre, this.fallPeak);
     this.landSquash = clamp(speed / 9, 0, 0.35);
     if (speed > 2) this.sim.events.emit('land', { player: this.index, pos: this.groundPoint.clone(), speed });
   }
