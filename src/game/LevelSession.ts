@@ -44,11 +44,15 @@ export interface SessionResult {
   /** Cash tips pocketed on the way (paid on delivery), and how many. */
   tips: number;
   tipCount: number;
+  /** Stretches without a scratch (their bonus is part of `tips`). */
+  cleans?: number;
   /** Extra pay (a chaos job's multiplier). */
   bonus: number;
   cargoName: string;
   /** Stacking Tower: boxes standing on the pallet at the drop-off. */
   tower?: number;
+  /** Little end-of-job awards (who slipped most, who jumped about…). */
+  awards?: string[];
   /** A party game: who won, and the score. */
   party?: { game: string; title: string; winner: number; score: [number, number]; names: [string, string]; cpu: number; line: string };
 }
@@ -104,6 +108,8 @@ export class LevelSession {
   /** Cash tips pocketed so far (on the online guest too: it hears the same events). */
   tips = 0;
   tipCount = 0;
+  /** Stretches done without a scratch (their bonuses are in `tips`). */
+  cleans = 0;
   checkpoint = -1;
   private spawn: SpawnSet;
   private goalZone: Zone;
@@ -122,6 +128,13 @@ export class LevelSession {
   scriptedInput = false;
   /** Versus: the other crew (AI, or another laptop's), shown as see-through movers. */
   rival: RivalCrew | null = null;
+  /** What each mover got up to (for the awards on the results card). */
+  readonly stats = [0, 1].map(() => ({ jumps: 0, slips: 0, knocks: 0, steps: 0, falls: 0, carry: 0 }));
+  /** The load's condition at the last checkpoint (a stretch without a scratch earns a bonus). */
+  private cleanFrom = 1;
+  /** A beat of slow motion for a big moment: real seconds left, and how slow. */
+  private slowT = 0;
+  private slowK = 1;
   /** Solo: the second mover is a robot that helps (the app sets this). */
   buddy: Buddy | null = null;
   /** A party arena's game (1v1: rounds and a score instead of a delivery). */
@@ -244,7 +257,8 @@ export class LevelSession {
     this.events.on('cargoBreak', () => this.cameraRig.addShake(0.5));
     this.events.on('tip', (e) => {
       this.tips += e.amount;
-      this.tipCount++;
+      if (e.clean) this.cleans++;
+      else this.tipCount++;
     });
     // a little celebration: confetti for a delivery, a puff of stars for a checkpoint
     const confetti = [0xff7a3d, 0x3d9bff, 0xffd23f, 0x52d39a, 0xff8fab, 0xffffff];
@@ -272,6 +286,28 @@ export class LevelSession {
       this.cameraRig.addShake(Math.min(0.35, e.amount * 3));
       for (const r of this.rigs) r.worriedTime = 1.4;
     });
+    // big moments get a beat of slow motion and a push in from the camera
+    this.events.on('cargoDamage', (e) => {
+      if (e.amount >= 0.05) {
+        this.slowMo(0.05 + Math.min(0.09, e.amount * 0.4), 0.12);
+        this.cameraRig.punch(Math.min(0.6, e.amount * 3));
+      }
+    });
+    this.events.on('cargoBreak', () => {
+      this.slowMo(0.3, 0.12);
+      this.cameraRig.punch(1);
+    });
+    this.events.on('knock', (e) => e.strength >= 9 && this.slowMo(0.05, 0.2));
+    this.events.on('goal', () => {
+      this.slowMo(0.8, 0.4);
+      this.cameraRig.punch(1);
+    });
+    this.events.on('partyPoint', () => this.slowMo(0.14, 0.25));
+    // who did what (for the awards)
+    this.events.on('jump', (e) => this.stats[e.player] && this.stats[e.player].jumps++);
+    this.events.on('slip', (e) => this.stats[e.player] && this.stats[e.player].slips++);
+    this.events.on('knock', (e) => this.stats[e.player] && this.stats[e.player].knocks++);
+    this.events.on('step', (e) => this.stats[e.player] && this.stats[e.player].steps++);
     // a party point: confetti in the winner's colour
     this.events.on('partyPoint', (e) => {
       const col = this.players[e.who]?.color ?? 0xffffff;
@@ -351,7 +387,11 @@ export class LevelSession {
     // delivered: everybody does their victory dance (from the Locker)
     if (this.state === 'delivered' && !this.mirror && !this.attractMode && !this.scriptedInput && !this.paused)
       this.players.forEach((p, i) => danceIntent(p, this.outfits[i]?.dance ?? 'wave', this.stateTime, frameDt, i, v3(this.def.goal.pos)));
-    const dt = this.paused || this.mirror ? 0 : frameDt * (this.sim.timeScale ?? 1);
+    // (a beat of slow motion runs on the real clock)
+    const slow = this.slowT > 0 ? this.slowK : 1;
+    if (this.slowT > 0 && !this.paused) this.slowT -= frameDt;
+    const dt = this.paused || this.mirror ? 0 : frameDt * (this.sim.timeScale ?? 1) * slow;
+    if (dt > 0 && this.state === 'playing') for (const p of this.players) if (p.hands.some((h) => h.grip?.kind === 'cargo')) this.stats[p.index].carry += dt;
     if (dt > 0) {
       this.physics.advance(dt);
       this.time += this.state === 'playing' ? dt : 0;
@@ -440,6 +480,7 @@ export class LevelSession {
         this.checkpoint = i;
         this.spawn = cp.spawn;
         this.events.emit('checkpoint', { index: i, pos: v3(cp.pos) });
+        this.cleanStretch(v3(cp.pos));
       }
     });
 
@@ -476,6 +517,7 @@ export class LevelSession {
       if (this.goalProgress >= this.goalNeeded) {
         this.state = 'delivered';
         this.stateTime = 0;
+        if (def.checkpoints.length) this.cleanStretch(v3(def.goal.pos));
         this.events.emit('goal', {});
         for (const r of this.rigs) r.happyTime = 4;
       }
@@ -513,7 +555,27 @@ export class LevelSession {
     };
   }
 
+  /** A beat of slow motion (`k` of normal speed, for `seconds` of real time): the slowest asked for wins. */
+  slowMo(seconds: number, k: number) {
+    if (this.attractMode || this.mirror) return;
+    if (this.slowT <= 0 || k <= this.slowK) {
+      this.slowT = Math.max(this.slowT, seconds);
+      this.slowK = k;
+    }
+  }
+
+  /** A stretch of the course done without a scratch on the load: a little bonus (paid like a tip). */
+  private cleanStretch(at: THREE.Vector3) {
+    if (this.attractMode || this.cargo.destroyed) return;
+    const clean = this.cargo.health >= this.cleanFrom - 0.002;
+    this.cleanFrom = this.cargo.health;
+    if (!clean || this.cargo.kind === 'pallet') return;
+    const amount = Math.max(10, Math.round((this.cargo.value * 0.02) / 5) * 5);
+    this.events.emit('tip', { amount, pos: at.clone().setY(at.y + 0.4), clean: true });
+  }
+
   respawnPlayer(p: Player) {
+    this.stats[p.index] && this.stats[p.index].falls++;
     const s = this.spawnPose(this.spawn);
     const pos = s.p[p.index];
     p.teleport(pos.clone().add(_a.set(0, 0.3, 0)), s.yaw[p.index], s.vel);
@@ -581,11 +643,35 @@ export class LevelSession {
       penalty: Math.round(penalty),
       tips,
       tipCount: this.tipCount,
+      cleans: this.cleans,
       bonus,
       cargoName: this.cargo.displayName,
+      awards: this.awards(),
       tower: this.cargo.kind === 'pallet' ? (this.cargo as unknown as { boxes: number }).boxes : undefined,
     };
     if (!success) this.state = 'failed';
+  }
+
+  /** Up to two little awards for the results card: whoever stood out, for better or worse. */
+  private awards(): string[] {
+    const [a, b] = this.stats;
+    const name = (i: number) => (i === 1 && this.buddy ? '🤖 The robot' : `P${i + 1}`);
+    const out: [number, string][] = [];
+    const most = (key: 'jumps' | 'slips' | 'knocks' | 'falls' | 'steps') => (a[key] >= b[key] ? 0 : 1);
+    const top = (key: 'jumps' | 'slips' | 'knocks' | 'falls' | 'steps') => Math.max(a[key], b[key]);
+    if (top('slips') >= 3) out.push([top('slips') * 3, `🧈 Butterfingers: ${name(most('slips'))} (${top('slips')} slips)`]);
+    if (top('knocks') >= 2) out.push([top('knocks') * 5, `😵 Crash test dummy: ${name(most('knocks'))} (knocked over ${top('knocks')}×)`]);
+    if (top('falls') >= 2) out.push([top('falls') * 6, `🪂 Sky diver: ${name(most('falls'))} (fell off ${top('falls')}×)`]);
+    if (top('jumps') >= 10) out.push([top('jumps'), `🦘 Kangaroo: ${name(most('jumps'))} (${top('jumps')} jumps)`]);
+    const lift = a.carry >= b.carry ? 0 : 1;
+    const [hi, lo] = lift === 0 ? [a.carry, b.carry] : [b.carry, a.carry];
+    if (hi > 12 && hi > lo * 1.5) out.push([8, `💪 Did the heavy lifting: ${name(lift)}`]);
+    if (a.jumps + b.jumps === 0 && this.time > 25) out.push([6, '🧘 Feet on the ground: nobody jumped once']);
+    if (Math.max(a.steps, b.steps) > 60 && Math.max(a.steps, b.steps) > Math.min(a.steps, b.steps) * 1.6) out.push([4, `🏃 Busy feet: ${name(most('steps'))}`]);
+    return out
+      .sort((x, y) => y[0] - x[0])
+      .slice(0, 2)
+      .map((x) => x[1]);
   }
 
   /** A party game's over. */

@@ -94,12 +94,37 @@ export class Hud {
 
     this.offs.push(
       s.events.on('checkpoint', () => this.banner('CHECKPOINT!', true)),
-      s.events.on('goal', () => this.banner('DELIVERED!')),
+      s.events.on('goal', () => {
+        this.banner('DELIVERED!', false, 'stamp');
+        this.buzz([40, 50, 40, 50, 120]);
+      }),
+      // what a knock just cost, popping off the load where it was hit
+      s.events.on('cargoDamage', (e) => {
+        this.loss += e.amount * s.cargo.value * (s.def.payScale ?? 1);
+        this.lossAt.copy(e.pos);
+        this.buzz(Math.min(90, 25 + e.amount * 300));
+        if (!this.lossTimer)
+          this.lossTimer = window.setTimeout(() => {
+            this.lossTimer = 0;
+            const lost = Math.round(this.loss);
+            this.loss = 0;
+            if (lost >= 1) this.pop(this.lossAt, `−${formatMoney(lost)}`, 'loss', Math.min(2.1, 0.9 + lost / 250));
+            this.pulse('down');
+          }, 110);
+      }),
+      s.events.on('grab', (e) => e.player === this.me && e.kind === 'cargo' && this.buzz(12)),
+      s.events.on('knock', (e) => e.player === this.me && this.buzz(70)),
+      s.events.on('partyPoint', () => this.buzz(60)),
       s.events.on('cargoBreak', () => this.banner(breakLine(s.def.cargo))),
       s.events.on('respawn', () => !s.party && this.banner('WHOOPS!', true)),
       s.events.on('party', (e) => this.banner(e.text, !!e.small, (/^[0-9]$/.test(e.text) ? 'count ' : '') + (e.who === 0 ? 'pc1' : e.who === 1 ? 'pc2' : ''))),
       s.events.on('emote', (e) => this.bubble(e.player, e.text ?? EMOTES[e.kind] ?? '')),
-      s.events.on('tip', (e) => this.tipPop(e.amount)),
+      s.events.on('tip', (e) => {
+        this.tipPop(e.amount);
+        this.pulse('up');
+        if (e.clean) this.banner(`✨ CLEAN STRETCH +${formatMoney(e.amount)}`, true, 'clean');
+        else this.pop(e.pos, `+${formatMoney(e.amount)}`, 'gain', 1);
+      }),
       s.events.on('chaos', (e) => {
         // the siren before something happens
         if (e.kind === 'warn') return this.banner(e.text, true, 'chaos warn');
@@ -149,6 +174,45 @@ export class Hud {
     if (g.target > 1) bits.push(tally ? `rounds ${g.score[0]}–${g.score[1]} · first to ${g.target}` : `first to ${g.target}`);
     const line = g.line();
     pb.line.innerHTML = `${bits.join(' · ')}${line ? `<br><span>${line}</span>` : ''}`;
+  }
+
+  /** Which mover is this device's (online, the guest is P2). */
+  private get me() {
+    return this.game.onlineGuest ? 1 : 0;
+  }
+  private loss = 0;
+  private lossAt = new THREE.Vector3();
+  private lossTimer = 0;
+
+  /** A phone's buzz (where there is one). */
+  private buzz(pattern: number | number[]) {
+    if (!this.game.touch.active) return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {
+      /* not allowed here */
+    }
+  }
+
+  /** A word or a number popping up at a place in the world and floating off. */
+  private pop(at: THREE.Vector3, text: string, cls: string, size = 1) {
+    _v.copy(at).project(this.game.renderer.camera);
+    if (_v.z > 1) return;
+    const d = document.createElement('div');
+    d.className = `world-pop ${cls}`;
+    d.textContent = text;
+    d.style.left = `${(((_v.x + 1) / 2) * this.el.clientWidth).toFixed(0)}px`;
+    d.style.top = `${(((1 - _v.y) / 2) * this.el.clientHeight).toFixed(0)}px`;
+    d.style.fontSize = `${Math.round(22 * size)}px`;
+    this.el.appendChild(d);
+    setTimeout(() => d.remove(), 1150);
+  }
+
+  /** The payout figure flinches when it drops and hops when it grows. */
+  private pulse(dir: 'up' | 'down') {
+    this.payout.classList.remove('up', 'down');
+    void this.payout.offsetWidth;
+    this.payout.classList.add(dir);
   }
 
   /** "+$20" rising off the payout card when a tip is pocketed. */
@@ -376,6 +440,7 @@ export class Hud {
   }
 
   dispose() {
+    clearTimeout(this.lossTimer);
     for (const off of this.offs) off();
     this.el.remove();
   }

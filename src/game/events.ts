@@ -27,7 +27,7 @@ export interface GameEvents {
   chime: { pos: THREE.Vector3 };
   tick: { pos: THREE.Vector3; tock: boolean };
   /** A cash tip was pocketed (paid with the delivery). */
-  tip: { amount: number; pos: THREE.Vector3 };
+  tip: { amount: number; pos: THREE.Vector3; /** A bonus for a stretch without a scratch (not a banknote). */ clean?: boolean };
   /** Something crazy started in a chaos job (see game/chaos.ts). */
   chaos: { kind: string; text: string };
   /** A player says something (EMOTES[kind]) over their head. */

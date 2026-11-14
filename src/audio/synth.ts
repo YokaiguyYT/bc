@@ -364,6 +364,12 @@ export class Synth {
     this.burst(t + 0.34, d, 0.7, 0.12, { type: 'highpass', f0: 6000 }, 0.2);
   }
 
+  /** The drop-off filling up: a tick that climbs as it fills (k 0..1). */
+  charge(k: number, vol = 1) {
+    const t = this.ctx.currentTime;
+    this.blip(t, this.dest(vol * 0.22), 520 + 620 * k, 560 + 660 * k, 0.05, 0.3, 'triangle', 0.004);
+  }
+
   /** Off the edge and back: a slide whistle down. */
   respawn(vol = 1) {
     const t = this.ctx.currentTime;

@@ -155,7 +155,9 @@ export class App {
     this.updateFocus();
     for (const el of this.focusables) {
       el.addEventListener('mouseenter', () => {
-        this.focusIndex = this.focusables.indexOf(el);
+        const i = this.focusables.indexOf(el);
+        if (i !== this.focusIndex) this.audio.ui('move');
+        this.focusIndex = i;
         this.updateFocus();
       });
       el.addEventListener('click', () => {
@@ -955,19 +957,23 @@ export class App {
           }
           if (it.quest) {
             const q = QUESTS.find((x) => x.id === it.quest);
+            this.audio.ui('error');
             this.toast(`🔒 ${it.icon} ${it.name}: win it from the quest “${q?.name}” (${q?.text}).`);
             return;
           }
           if (it.rank !== undefined) {
             const rk = RANKS[it.rank];
+            this.audio.ui('error');
             this.toast(`🔒 ${it.icon} ${it.name}: the company gets it at the rank of ${rk.icon} ${rk.name} (${formatMoney(rk.at)} earned in all).`);
             return;
           }
           if (!buy(tab, id)) {
+            this.audio.ui('error');
             this.toast(`${it.icon} ${it.name} costs ${formatMoney(it.price)}: ${formatMoney(it.price - w.cash)} more to earn. Every delivery pays into the wallet.`);
             return;
           }
           wear(p, tab, id);
+          this.audio.ui('buy');
           this.toast(`Bought the ${it.name}! ${formatMoney(loadWardrobe().cash)} left.`);
           again();
         });
@@ -1214,6 +1220,8 @@ export class App {
       inp.addEventListener('input', () => {
         (st as unknown as Record<string, number>)[inp.dataset.vol!] = parseFloat(inp.value);
         this.audio.setVolumes(st.master, st.music, st.sfx);
+        // (so you can hear what you've set)
+        this.audio.ui('pop');
         this.game.saveSettings();
       }),
     );
@@ -1652,7 +1660,7 @@ export class App {
            <button class="btn" data-nav id="r-levels">${job.kind === 'level' ? 'Job list' : 'Back to Play'}</button>`;
     this.setScreen(
       'results',
-      `<div class="panel results">
+      `${r.success && stars === 3 ? confettiHtml() : ''}<div class="panel results">
         <div class="stars">${[0, 1, 2].map((i) => `<span class="${i < stars ? '' : 'off'}" style="animation-delay:${0.15 + i * 0.18}s">★</span>`).join('')}</div>
         <div class="verdict" style="color:${r.success ? 'var(--ink)' : 'var(--bad)'}">${verdicts[0]}</div>
         <p>${verdicts[1]}</p>
@@ -1663,14 +1671,15 @@ export class App {
           ${tower >= 0 ? '' : row('Condition', `${Math.round(r.condition * 100)}%`)}
           ${r.success ? row('Time', `${formatTime(r.time)}${beat.time ? '<span class="new-best">NEW BEST</span>' : ''}`) : ''}
           ${r.timeBonus ? row(`Speedy bonus (under ${formatTime(def.parTime)})`, '+' + formatMoney(r.timeBonus)) : ''}
-          ${r.tips ? row(`Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
+          ${r.tips ? row(r.cleans ? `${r.tipCount ? `Tips (${r.tipCount}) · c` : 'C'}lean stretches (${r.cleans})` : `Tips (${r.tipCount})`, '+' + formatMoney(r.tips)) : ''}
           ${r.bonus && def.gen?.plan ? row(`🛠️ Built-job rate (×${def.payScale})`, '−' + formatMoney(-r.bonus)) : r.bonus ? row(`${chaosLevel(def.gen?.chaos).icon} Chaos pay (×${def.payScale})`, '+' + formatMoney(r.bonus)) : ''}
           ${r.falls ? row(`Falls (${r.falls}×)`, '−' + formatMoney(r.penalty)) : ''}
-          <tr class="total"><td>Payout</td><td>${formatMoney(r.payout)}${beat.payout || chaosBestLine ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
+          <tr class="total"><td>Payout</td><td><span id="r-pay">${formatMoney(r.payout)}</span>${beat.payout || chaosBestLine ? '<span class="new-best">NEW BEST</span>' : ''}</td></tr>
           ${job.kind === 'shift' && r.success ? row('Shift so far', `<b>${formatMoney(job.total)}</b> · ${job.round} job${job.round === 1 ? '' : 's'}`) : ''}
         </table>
         ${shiftLine}
         ${job.kind === 'race' ? `<div class="race-line" id="r-race">${this.raceLine()}</div>${job.vs === 'online' && this.raceLink?.role === 'guest' ? '<p style="font-size:14px">Your friend can start another race from their results.</p>' : ''}` : ''}
+        ${r.awards?.length ? `<div class="awards">${r.awards.map((a) => `<span>${esc(a)}</span>`).join('')}</div>` : ''}
         ${boardBlock}
         ${goalsBlock}
         ${s.ghostSaved && this.game.settings.ghost !== false ? '<p style="font-size:14px">👻 Your fastest run yet: next time, its ghost runs alongside you.</p>' : ''}
@@ -1681,7 +1690,7 @@ export class App {
       </div>`,
       { dim: true, back: () => this.backToList() },
     );
-    this.audio.sfx(r.success ? 'payout' : 'fail');
+    this.celebrate(r.success, stars, r.payout);
     boardPost?.();
     this.bind('r-rematch', () => {
       if (job.kind !== 'race') return;
@@ -1954,6 +1963,34 @@ export class App {
     this.playDef(def);
   }
 
+  /** The results card comes alive: the verdict lands, the stars ring out one by one, the payout counts up. */
+  private celebrate(success: boolean, stars: number, payout: number) {
+    if (!success) return this.audio.sfx('fail');
+    this.audio.ui('stamp');
+    // (tests step the clock by hand, and a friend online gets a copy of this card: no ticking numbers for them)
+    if (this.game.manual || this.host?.connected) return this.audio.sfx('payout');
+    const at = this.layer.firstElementChild;
+    const same = () => this.screen === 'results' && this.layer.firstElementChild === at;
+    for (let i = 0; i < stars; i++) setTimeout(() => same() && this.audio.ui('star'), 150 + i * 180);
+    const el = this.layer.querySelector<HTMLElement>('#r-pay');
+    if (!el || payout <= 0) return this.audio.sfx('payout');
+    const t0 = performance.now() + 500;
+    const ms = Math.min(1300, 500 + payout * 0.4);
+    el.textContent = formatMoney(0);
+    el.classList.add('counting');
+    const step = () => {
+      if (!same()) return;
+      const k = Math.min(1, Math.max(0, (performance.now() - t0) / ms));
+      // (quick at first, easing into the last few dollars)
+      el.textContent = formatMoney(Math.round(payout * (1 - (1 - k) ** 3)));
+      if (k > 0 && k < 1) this.audio.ui('tick');
+      if (k < 1) return void requestAnimationFrame(step);
+      el.classList.remove('counting');
+      this.audio.sfx('payout');
+    };
+    requestAnimationFrame(step);
+  }
+
   private showPartyResults(r: SessionResult) {
     const p = r.party!;
     const s = this.game.session!;
@@ -2009,7 +2046,7 @@ export class App {
          <button class="btn" data-nav id="r-menu">Main menu</button>`;
     this.setScreen(
       'results',
-      `<div class="panel results party-results">
+      `${p.winner === 0 || (p.winner === 1 && !p.cpu) ? confettiHtml() : ''}<div class="panel results party-results">
         <div class="party-trophy">${p.winner >= 0 ? '🏆' : '🤝'}</div>
         <div class="verdict" style="color:${p.winner >= 0 ? hex(p.winner) : 'var(--ink)'}">${title}</div>
         <p>${sub}</p>
@@ -2023,7 +2060,7 @@ export class App {
       </div>`,
       { dim: true, back: () => this.showParty() },
     );
-    this.audio.sfx(p.winner === 0 || (p.winner === 1 && !p.cpu) ? 'payout' : 'fail');
+    this.audio.sfx(p.winner === 0 || (p.winner === 1 && !p.cpu) ? 'fanfare' : 'fail');
     this.bind('r-rematch', () => this.playParty(p.game));
     this.bind('r-mixnext', () => mix && next && this.playParty(next, mix));
     this.bind('r-mixnew', () => {
@@ -3259,6 +3296,14 @@ const themeName = (n: string) => THEME_NAMES[n] ?? n[0].toUpperCase() + n.slice(
 function inviteLink(code: string) {
   if (typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return '';
   return `${location.origin}${location.pathname}?join=${code}`;
+}
+
+/** A shower of confetti over a card (a perfect delivery, a party win). */
+function confettiHtml() {
+  const cols = ['#ff7a3d', '#3d9bff', '#ffd23f', '#52d39a', '#ff8fab', '#9a6bff'];
+  let bits = '';
+  for (let i = 0; i < 36; i++) bits += `<i style="left:${(Math.random() * 100).toFixed(1)}%;background:${cols[i % cols.length]};animation-duration:${(1.8 + Math.random() * 1.6).toFixed(2)}s;animation-delay:${(Math.random() * 0.9).toFixed(2)}s"></i>`;
+  return `<div class="confetti">${bits}</div>`;
 }
 
 function keys(codes: string[], cls: string) {

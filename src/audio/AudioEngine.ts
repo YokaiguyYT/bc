@@ -268,6 +268,8 @@ export class AudioEngine {
       want = s.state !== 'playing' ? 0.9 : hands >= 2 ? 1 : hands === 1 ? 0.75 : 0.45;
     } else if (m.track === 'party') want = 1;
     m.intensity += (want - m.intensity) * Math.min(1, dt * 1.5);
+    // the drop-off filling up
+    if (s && !s.attractMode && s.state === 'playing' && s.goalProgress > 0.02) this.ok('charge', 0.11)?.charge(s.goalProgress / s.goalNeeded);
   }
 
   /** Tests: render a sound (or eight seconds of a tune) off-line and measure it. */

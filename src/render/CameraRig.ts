@@ -39,6 +39,12 @@ export class CameraRig {
     this.shake = Math.min(0.6, this.shake + amount);
   }
 
+  /** A quick push in toward the action (a big hit, a delivery), easing back out. */
+  punch(amount: number) {
+    this.kick = Math.min(1, Math.max(this.kick, amount));
+  }
+  private kick = 0;
+
   /** World-space direction for "up on the keyboard" (away from the camera). */
   forward(out: THREE.Vector3) {
     return out.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
@@ -99,7 +105,8 @@ export class CameraRig {
       this.distance = damp(this.distance, dist, dist > this.distance ? k * 1.4 : k * 0.5, dt);
     }
 
-    const pos = this.camera.position.copy(this.focus).addScaledVector(_fwd, -this.distance);
+    this.kick = Math.max(0, this.kick - dt * 1.4);
+    const pos = this.camera.position.copy(this.focus).addScaledVector(_fwd, -this.distance * (1 - 0.13 * this.kick * (2 - this.kick)));
     if (this.shake > 0.001) {
       this.shakeT += dt * 40;
       const s = this.shake * this.shake;

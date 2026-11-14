@@ -121,6 +121,13 @@ export class Effects {
         if (e.material === 'metal') this.burst('spark', e.pos, { count: n, speed: 3, up: 1.5, size: 0.025, life: 0.35, gravity: 9, colors: [0xffe28a, 0xffb347] });
         else this.burst('dust', e.pos, { count: n, speed: 1.2, up: 0.4, size: 0.08, life: 0.5, gravity: -0.2, drag: 3 });
       }),
+      events.on('grab', (e) => {
+        if (e.kind === 'cargo') this.burst('star', e.pos, { count: 3, speed: 1.3, up: 0.8, size: 0.05, life: 0.4, gravity: 2, colors: [0xffffff, 0xfff2b0] });
+      }),
+      events.on('cargoDamage', (e) => {
+        if (e.amount < 0.02) return;
+        this.burst('star', e.pos, { count: Math.min(12, 3 + Math.floor(e.amount * 50)), speed: 3, up: 2, size: 0.09, life: 0.6, gravity: 6, colors: [0xff5a4f, 0xffffff, 0xffd84d] });
+      }),
       events.on('tip', (e) => {
         this.burst('star', e.pos, { count: 7, speed: 2.2, up: 1.6, size: 0.08, life: 0.8, gravity: 3, colors: [0xffd84d, 0x8be39a, 0xffffff] });
         this.burst('confetti', e.pos, { count: 8, speed: 1.6, up: 1.4, size: 0.07, life: 1.0, gravity: 2.5, drag: 2, colors: [0x5fc46f, 0xffd23f] });
