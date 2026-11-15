@@ -4,6 +4,7 @@ import { Keyboard } from '../input/Keyboard';
 import { Touch } from '../input/Touch';
 import { LevelSession, NetInput } from './LevelSession';
 import { LEVELS, levelById } from '../levels';
+import { setGeoDetail } from '../levels/LevelBuilder';
 import type { LevelDef } from '../levels/types';
 import { loadJSON, saveJSON } from '../util/storage';
 
@@ -73,6 +74,8 @@ export class Game {
     const d = typeof def === 'string' ? levelById(def) : def;
     if (!d) throw new Error(`no level ${def}`);
     this.endLevel();
+    const q = this.settings.quality;
+    setGeoDetail(q === 'low' ? 0 : q === 'high' ? 2 : 1);
     this.session = new LevelSession(d, this.renderer, this.keyboard);
     this.session.input = this.input;
     this.session.touch = this.touch;

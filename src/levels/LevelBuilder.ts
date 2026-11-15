@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RAPIER } from '../physics/rapier';
 import type { Collider, RigidBody } from '../physics/rapier';
 import { G, groups, SOLID } from '../physics/groups';
@@ -25,14 +25,28 @@ export interface BuiltLevel {
 
 const geoCache = new Map<string, THREE.BufferGeometry>();
 
+/**
+ * How finely rounded edges are cut, from the Graphics setting (2 Pretty, 1 Balanced, 0 Fast).
+ * A box is 588 triangles at its finest and 108 at its plainest, and a job is mostly boxes;
+ * the edges are a few centimetres wide, so it is hard to see and a lot less to draw.
+ * Set before a job is built.
+ */
+let detail: 0 | 1 | 2 = 1;
+export function setGeoDetail(d: 0 | 1 | 2) {
+  detail = d;
+}
+
 export function roundedBox(size: Vec3, radius: number | undefined, tile: number): THREE.BufferGeometry {
   const r = radius ?? Math.min(0.07, Math.min(size[0], size[1], size[2]) * 0.22);
-  const key = `rb_${size.join('_')}_${r.toFixed(3)}_${tile}`;
+  const big = Math.max(...size) > 6;
+  const segs = detail === 2 ? (big ? 2 : 3) : detail === 1 ? (big ? 1 : 2) : 1;
+  const key = `rb_${size.join('_')}_${r.toFixed(3)}_${tile}_${segs}`;
   let g = geoCache.get(key);
   if (!g) {
-    const big = Math.max(...size) > 6;
-    g = new RoundedBoxGeometry(size[0], size[1], size[2], big ? 2 : 3, Math.max(0.001, r));
+    g = new RoundedBoxGeometry(size[0], size[1], size[2], segs, Math.max(0.001, r));
     applyBoxUV(g, tile);
+    // (it comes with every triangle's corners its own: share them, a sixth of the points to work out)
+    g = mergeVertices(g, 1e-4);
     geoCache.set(key, g);
   }
   return g;
@@ -154,9 +168,10 @@ export class LevelBuilder {
       if (opts.fade) built.faders.push(mesh);
       return;
     }
-    // merge statics by material to keep draw calls low
+    // merge statics by material to keep draw calls low (corners stay shared: a quarter of the points to work out)
     mesh.updateMatrix();
-    const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+    const g = mesh.geometry.clone();
+    if (!g.index) g.setIndex(Array.from({ length: g.attributes.position.count }, (_, i) => i));
     g.applyMatrix4(mesh.matrix);
     const mat = mesh.material as THREE.Material;
     let arr = this.staticBatches.get(mat);
@@ -165,18 +180,35 @@ export class LevelBuilder {
   }
 
   private flushStatic(root: THREE.Group) {
+    // One mesh per material per neighbourhood: a job is a long road, and a single mesh for all of it
+    // would be drawn whole (twice: once for the shadows) however little of it is in view.
+    const CELL = 28;
+    const box = new THREE.Box3();
+    const mid = new THREE.Vector3();
+    const span = new THREE.Vector3();
     for (const [mat, geos] of this.staticBatches) {
+      const cells = new Map<string, THREE.BufferGeometry[]>();
       for (const g of geos) {
         for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+        box.setFromBufferAttribute(g.attributes.position as THREE.BufferAttribute);
+        box.getCenter(mid);
+        box.getSize(span);
+        // (very long things, a floor the length of the road, are in view from everywhere: together)
+        const key = Math.max(span.x, span.z) > CELL * 2 ? 'long' : `${Math.floor(mid.x / CELL)},${Math.floor(mid.z / CELL)}`;
+        let list = cells.get(key);
+        if (!list) cells.set(key, (list = []));
+        list.push(g);
       }
-      const merged = mergeGeometries(geos, false);
+      for (const list of cells.values()) {
+        const merged = mergeGeometries(list, false);
+        if (!merged) continue;
+        const m = new THREE.Mesh(merged, mat);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        m.name = 'static_batch';
+        root.add(m);
+      }
       for (const g of geos) g.dispose();
-      if (!merged) continue;
-      const m = new THREE.Mesh(merged, mat);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      m.name = 'static_batch';
-      root.add(m);
     }
     this.staticBatches.clear();
   }

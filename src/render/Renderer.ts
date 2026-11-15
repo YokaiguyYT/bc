@@ -138,9 +138,13 @@ export class Renderer {
     this.resize();
   }
 
+  /** The cloud puffs' shape, round and rounder (380 of them are drawn every frame: Fast graphics takes the plainer). */
+  private puffGeo = [new THREE.IcosahedronGeometry(1, 2), new THREE.IcosahedronGeometry(1, 3)];
+  private puffs: THREE.InstancedMesh[] = [];
+
   private makeClouds() {
     const g = new THREE.Group();
-    const geo = new THREE.IcosahedronGeometry(1, 3);
+    const geo = this.puffGeo[1];
     const count = 320;
     const inst = new THREE.InstancedMesh(geo, this.cloudMat, count);
     const m = new THREE.Matrix4();
@@ -179,6 +183,7 @@ export class Renderer {
       puffs.setMatrixAt(i, m);
     }
     g.add(puffs);
+    this.puffs = [inst, puffs];
     return g;
   }
 
@@ -218,6 +223,7 @@ export class Renderer {
     }
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.sun.shadow.radius = q === 'low' ? 1 : q === 'medium' ? 3 : 4;
+    for (const p of this.puffs) p.geometry = this.puffGeo[q === 'low' ? 0 : 1];
     this.resize();
   }
 
