@@ -193,7 +193,10 @@ export class Player {
    * Online guest: the host runs this mover; these are its hands and strain as
    * the host last reported them (our own grips stay empty).
    */
-  mirror: { stretch: number; held: number; grip: [boolean, boolean]; reach: [boolean, boolean] } | null = null;
+  mirror: { stretch: number; held: number; grip: [boolean, boolean]; reach: [boolean, boolean]; cap: number; accel: number } | null = null;
+  /** Walking right now: the top speed (m/s) and the push toward it (m/s²). An online friend's screen predicts with these. */
+  moveCap = tuning.move.maxSpeed;
+  moveAccel = tuning.move.accel;
 
   /** What a hand looks like it's doing, for the HUD. */
   handLook(j: 0 | 1): 'grip' | 'reach' | null {
@@ -570,6 +573,8 @@ export class Player {
     if (this.grounded && (this.groundFriction < T.move.slipperyFriction || this.slippery)) accel *= T.move.slipperyAccelScale;
     // rain: wet floors are a bit slippery
     else if (this.grounded && this.sim.wet) accel *= 0.6;
+    this.moveCap = speed;
+    this.moveAccel = accel;
     const need = _c.set(goal.x - v.x, 0, goal.z - v.z).multiplyScalar(1 / dt);
     const nl = need.length();
     if (nl > accel) need.multiplyScalar(accel / nl);

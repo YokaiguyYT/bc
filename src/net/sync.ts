@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { LevelSession, MirrorDriver, SessionState } from '../game/LevelSession';
+import { RAPIER } from '../physics/rapier';
+import { tuning } from '../config/tuning';
 import type { GameEvents } from '../game/events';
 import type { BurstOptions, ParticleKind } from '../render/Effects';
 import type { PlayerState } from '../entities/Player';
@@ -186,6 +188,9 @@ interface ActorLook {
   air: number;
   stretch: number;
   held: number;
+  /** Walking right now: top speed (m/s) and push (m/s²). */
+  cap: number;
+  accel: number;
 }
 
 interface Extras {
@@ -284,6 +289,8 @@ export class HostSync {
       w.f32(a.airTime);
       w.f32(a.maxGripStretch());
       w.f32(a.heldMass());
+      w.u8(Math.min(255, Math.round(a.moveCap * 20)));
+      w.u8(Math.min(255, Math.round(a.moveAccel * 4)));
     }
     // hazards with looks of their own
     const hz: [number, number[]][] = [];
@@ -340,6 +347,8 @@ const _p1 = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _q1 = new THREE.Quaternion();
 const _v = new THREE.Vector3();
+const IDQ = { x: 0, y: 0, z: 0, w: 1 };
+let BALL: InstanceType<typeof RAPIER.Ball> | null = null;
 
 export class GuestSync implements MirrorDriver {
   private frames: Frame[] = [];
@@ -377,7 +386,170 @@ export class GuestSync implements MirrorDriver {
 
   /** How far behind the host we show things (s): enough to always have a snapshot either side. */
   get delay() {
-    return Math.min(0.5, Math.max(0.07, this.gap * 1.6 + this.jitter * 2.5));
+    return Math.min(0.5, Math.max(0.045, this.gap * 1.6 + this.jitter * 2.5));
+  }
+
+  // ---- our own mover, drawn where our keys say it will be
+  //
+  // Everything on this screen is the host's picture, a moment old; by the time the
+  // host has heard a key press, moved our mover and sent the picture back, a round
+  // trip and more has gone by, and that wait is what online lag feels like. So a
+  // pretend mover is driven here by our keys, by the same rules as the real one
+  // (the host says how fast ours may go and how hard it may push), and ours is
+  // drawn ahead of the host's picture by as far as the pretend one has gone in
+  // the time the picture is behind. Standing still, the two are the same place.
+  // Only the drawing moves: the host still decides where everyone really is.
+
+  /** Our mover (the guest is P2). */
+  private readonly me = 1;
+  private own: number[] | null = null;
+  private ownBody = -1;
+  /** What our keys ask for now: a world direction, length up to 1. */
+  private ask = { x: 0, z: 0 };
+  /** The pretend mover's velocity, and what it has been frame by frame (on `clock`, s). */
+  private vel = { x: 0, z: 0 };
+  private trail: { t: number; dt: number; x: number; z: number }[] = [];
+  private clock = 0;
+  /** How far behind our keys the picture is (s), smoothed. */
+  private behind = 0.15;
+  private lead = new THREE.Vector3();
+  private ownVel = new THREE.Vector3();
+  /** How well the host's mover is answering the keys, 0..1 (against a wall: not at all). */
+  private mobility = 1;
+  /** Round trip to the host (s); the connection keeps it up to date. */
+  rtt = 0.1;
+  /** Off: our mover is shown only where the host's picture has it (tests, and for comparing). */
+  predictOwn = true;
+
+  /** How far ahead of the host's picture our mover is drawn (m). */
+  get leadDistance() {
+    return this.lead.length();
+  }
+
+  /** The direction our keys ask for now (world x, z). */
+  noteInput(x: number, z: number) {
+    const l = Math.hypot(x, z);
+    this.ask.x = l > 1 ? x / l : x;
+    this.ask.z = l > 1 ? z / l : z;
+  }
+
+  private predict(s: LevelSession, dt: number, renderT: number, latest: number) {
+    const ph = s.physics;
+    const p = s.players[this.me];
+    if (!p) return;
+    if (!this.own) {
+      // which of the level's moving parts are our mover's
+      const mine = new Set(Object.values(p.parts).map((b) => b.handle));
+      this.own = [];
+      for (let i = 0; i < ph.linkCount; i++) {
+        const b = ph.linkPose(i).body;
+        if (mine.has(b.handle)) {
+          this.own.push(i);
+          if (b.handle === p.parts.body.handle) this.ownBody = i;
+        }
+      }
+      // (the walls have to be findable; this copy of the world is never stepped otherwise)
+      try {
+        ph.world.step();
+      } catch {
+        /* never mind: the lead just isn't stopped by walls */
+      }
+    }
+    const m = p.mirror;
+    const cap = m?.cap || tuning.move.maxSpeed;
+    const accel = m?.accel || tuning.move.accel;
+    const party = s.party;
+    const live = this.predictOwn && dt > 0 && s.state === 'playing' && p.state === 'active' && this.rate > 0.4 && !(party && party.phase === 'ready');
+    // the pretend mover: pushed toward what the keys ask for, as hard as the real one may be
+    const v = this.vel;
+    const ax = live ? this.ask.x : 0;
+    const az = live ? this.ask.z : 0;
+    if (!live) v.x = v.z = 0;
+    else if (Math.hypot(ax, az) > 0.1 || p.airTime < 0.05) {
+      // (in the air with the keys let go, a mover keeps going as it was)
+      let nx = ax * cap - v.x;
+      let nz = az * cap - v.z;
+      const nl = Math.hypot(nx, nz);
+      const most = accel * dt;
+      if (nl > most) {
+        nx *= most / nl;
+        nz *= most / nl;
+      }
+      v.x += nx;
+      v.z += nz;
+    }
+    this.clock += dt;
+    const now = this.clock;
+    const trail = this.trail;
+    if (dt > 0) trail.push({ t: now, dt, x: v.x, z: v.z });
+    while (trail.length > 2 && trail[0].t < now - 1) trail.shift();
+    // how old the picture is: the round trip, how far behind the newest snapshot we draw, and how long ago that came
+    // (and about half a frame that a snapshot waits to be read)
+    const real = performance.now() / 1000;
+    const w = Math.min(0.6, Math.max(0, this.rtt + (latest - renderT) + Math.min(0.3, real - this.lastArrival) + Math.min(0.1, dt) * 0.5));
+    this.behind += (w - this.behind) * Math.min(1, dt * 3);
+    const from = now - this.behind;
+    // how far the pretend mover has gone in that time
+    let tx = 0;
+    let tz = 0;
+    let then: { x: number; z: number } | null = null;
+    for (let i = trail.length - 1; i >= 0; i--) {
+      const f = trail[i];
+      if (f.t <= from) {
+        then = f;
+        break;
+      }
+      const part = Math.min(1, (f.t - from) / f.dt);
+      tx += f.x * f.dt * part;
+      tz += f.z * f.dt * part;
+    }
+    // the picture shows how the real one answered those keys: if it isn't getting anywhere, neither do we.
+    // (Judged only while walking steadily one way for a good while around the moment the picture shows:
+    //  setting off, stopping and turning are no time to compare, and that moment is only roughly known.)
+    let steady = live && !!then && trail[0].t < from - 0.4;
+    if (steady && then) {
+      const e2 = then.x * then.x + then.z * then.z;
+      if (e2 < cap * cap * 0.16) steady = false;
+      for (let i = trail.length - 1; i >= 0 && steady; i--) {
+        const f = trail[i];
+        if (f.t > from + 0.1) continue;
+        if (f.t < from - 0.4) break;
+        if (f.x * then.x + f.z * then.z < e2 * 0.7) steady = false;
+      }
+      if (steady) {
+        const r = Math.min(1, Math.max(0, (this.ownVel.x * then.x + this.ownVel.z * then.z) / e2));
+        this.mobility += (r - this.mobility) * Math.min(1, dt * (r < this.mobility ? 5 : 8));
+      }
+    }
+    if (!steady) this.mobility += (1 - this.mobility) * Math.min(1, dt * 2);
+    if (!live) tx = tz = 0;
+    else {
+      // (hands on something: stay nearer to them, the load has to come too)
+      const k = this.mobility * (m && (m.grip[0] || m.grip[1]) ? 0.6 : 1);
+      tx *= k;
+      tz *= k;
+      // not through a wall
+      const len = Math.hypot(tx, tz);
+      if (len > 0.08 && this.ownBody >= 0) {
+        const at = ph.linkPose(this.ownBody).pos;
+        try {
+          const hit = ph.world.castShape({ x: at.x, y: at.y - 0.2, z: at.z }, IDQ, { x: tx / len, y: 0, z: tz / len }, (BALL ??= new RAPIER.Ball(0.3)), 0, len, true, RAPIER.QueryFilterFlags.ONLY_FIXED);
+          if (hit) {
+            const ok = Math.max(0, hit.time_of_impact - 0.03) / len;
+            tx *= ok;
+            tz *= ok;
+          }
+        } catch {
+          /* no walls to be found: go without */
+        }
+      }
+    }
+    // (a touch of easing rounds off the corners; knocked over or stopped by the game, it slides back gently)
+    const ease = Math.min(1, dt * (live ? 30 : 6));
+    this.lead.x += (tx - this.lead.x) * ease;
+    this.lead.z += (tz - this.lead.z) * ease;
+    if (this.lead.lengthSq() < 1e-6) return;
+    for (const i of this.own) ph.shiftLink(i, this.lead);
   }
 
   /** A snapshot from the host. */
@@ -407,7 +579,7 @@ export class GuestSync implements MirrorDriver {
     for (let i = 0, k = r.u8(); i < k; i++) {
       const state = ACTOR_STATES[r.u8()] ?? 'active';
       const b = r.u8();
-      x.actors.push({ state, grab: !!(b & 1), grip: [!!(b & 2), !!(b & 4)], reach: [!!(b & 8), !!(b & 16)], air: r.f32(), stretch: r.f32(), held: r.f32() });
+      x.actors.push({ state, grab: !!(b & 1), grip: [!!(b & 2), !!(b & 4)], reach: [!!(b & 8), !!(b & 16)], air: r.f32(), stretch: r.f32(), held: r.f32(), cap: r.u8() / 20, accel: r.u8() / 4 });
     }
     for (let i = 0, k = r.u8(); i < k; i++) {
       const idx = r.u16();
@@ -509,7 +681,9 @@ export class GuestSync implements MirrorDriver {
         _q.slerp(_q1, k);
       }
       ph.setLinkPose(i, _p, _q, _v);
+      if (i === this.ownBody && span > 1e-6 && !jump) this.ownVel.lerp(_v, Math.min(1, dt * 12));
     }
+    this.predict(s, dt, t, latest);
     ph.time = t;
     ph.alpha = 1;
     this.applyExtras(s, b.x, dt);
@@ -548,7 +722,7 @@ export class GuestSync implements MirrorDriver {
       p.state = l.state;
       p.intent.grab = l.grab;
       p.airTime = l.air;
-      p.mirror = { stretch: l.stretch, held: l.held, grip: l.grip, reach: l.reach };
+      p.mirror = { stretch: l.stretch, held: l.held, grip: l.grip, reach: l.reach, cap: l.cap, accel: l.accel };
     });
     // movers' handy numbers that the steps would have filled in
     for (const p of actors) {

@@ -223,6 +223,95 @@ export class Renderer {
 
   /** Pixel ratio from the quality setting. */
   private baseRatio = 1;
+
+  // ---- keeping it smooth
+  //
+  // A slow machine is nearly always slow at filling pixels, so when frames come
+  // slowly the picture is drawn a step smaller (and stretched to fit), and at the
+  // last steps the shadows are redrawn only every other frame. Steps come back
+  // one at a time when there's time to spare. If two steps down made no real
+  // difference (the browser is holding frames back to save battery, or it's the
+  // sums that are slow, not the drawing), they're undone and it leaves well alone.
+
+  /** Whether the picture may be shrunk to keep the frames coming (Settings; off under automation). */
+  smooth = true;
+  /** The steps: how much of the full picture is drawn, and whether shadows are redrawn every frame. */
+  private static readonly STEPS: [number, boolean][] = [[1, true], [0.85, true], [0.72, true], [0.6, true], [0.6, false], [0.5, false]];
+  private step = 0;
+  private pacing = { avg: 1 / 60, t: 0, slow: 0, good: 0, wait: 6, before: 0, noGain: 0, rest: 0, since: 99 };
+  private shadowTurn = false;
+
+  /** How far the picture has been stepped down (0 = full size). */
+  get smoothStep() {
+    return this.step;
+  }
+
+  /** Each frame: how long since the last one, by the clock (s). */
+  pace(dt: number) {
+    const p = this.pacing;
+    if (!this.smooth) {
+      if (this.step) this.setStep(0);
+      return;
+    }
+    // (a tab coming back isn't a slow frame; and one long hitch, a level being built, isn't a trend)
+    if (dt <= 0 || dt > 1) return;
+    dt = Math.min(dt, 0.25);
+    p.avg += (dt - p.avg) * 0.06;
+    p.t += dt;
+    p.since += dt;
+    if (p.t < 1) return;
+    p.t = 0;
+    if (p.rest > 0) {
+      p.rest -= 1;
+      return;
+    }
+    const steps = Renderer.STEPS;
+    if (p.avg > 1 / 45) {
+      p.good = 0;
+      if (++p.slow < 2) return;
+      p.slow = 0;
+      // did the last step down help?
+      if (p.before) {
+        if (p.avg > p.before * 0.92) p.noGain++;
+        else p.noGain = 0;
+        if (p.noGain >= 2) {
+          // no: put the picture back and leave it be for a good while
+          this.setStep(Math.max(0, this.step - 2));
+          p.noGain = 0;
+          p.before = 0;
+          p.rest = 90;
+          return;
+        }
+      }
+      if (this.step < steps.length - 1) {
+        // (a step back up that didn't hold: wait longer before trying that again)
+        if (p.since < 8) p.wait = Math.min(120, p.wait * 2);
+        p.before = p.avg;
+        this.setStep(this.step + 1);
+      }
+    } else if (p.avg < 1 / 54) {
+      p.slow = 0;
+      p.before = 0;
+      p.noGain = 0;
+      if (this.step > 0 && ++p.good >= p.wait) {
+        p.good = 0;
+        p.since = 0;
+        this.setStep(this.step - 1);
+      }
+    } else {
+      p.slow = 0;
+      p.good = 0;
+    }
+  }
+
+  private setStep(n: number) {
+    if (n === this.step) return;
+    this.step = n;
+    const full = Renderer.STEPS[n][1];
+    this.renderer.shadowMap.autoUpdate = full;
+    if (full) this.renderer.shadowMap.needsUpdate = true;
+    this.resize();
+  }
   /** While streaming online: keep the picture at most this many pixels wide (cheaper to capture and send). */
   capWidth: number | null = null;
 
@@ -230,7 +319,8 @@ export class Renderer {
     const el = this.renderer.domElement.parentElement;
     const w = el?.clientWidth || window.innerWidth;
     const h = el?.clientHeight || window.innerHeight;
-    const ratio = this.capWidth ? Math.min(this.baseRatio, this.capWidth / Math.max(1, w)) : this.baseRatio;
+    const mine = this.baseRatio * Renderer.STEPS[this.step][0];
+    const ratio = this.capWidth ? Math.min(mine, this.capWidth / Math.max(1, w)) : mine;
     if (this.renderer.getPixelRatio() !== ratio) this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = '100%';
@@ -266,6 +356,11 @@ export class Renderer {
 
   render() {
     this.sky.position.copy(this.camera.position);
+    // (stepped right down: shadows every other frame)
+    if (!this.renderer.shadowMap.autoUpdate) {
+      this.shadowTurn = !this.shadowTurn;
+      if (this.shadowTurn) this.renderer.shadowMap.needsUpdate = true;
+    }
     this.renderer.render(this.scene, this.camera);
   }
 }

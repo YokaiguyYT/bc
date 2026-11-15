@@ -44,6 +44,8 @@ export function allowed(name: 'p2p' | 'relay') {
 export { mergeMoves };
 
 export type NetMode = 'light' | 'video';
+/** Tests: a pretend slow line (ms each way). */
+const LAG = typeof location === 'undefined' ? 0 : Math.max(0, Number(new URLSearchParams(location.search).get('lag')) || 0);
 export type Via = 'direct' | 'relay';
 
 /**
@@ -66,7 +68,7 @@ export class Conn {
   /** Round trip on the route in use (ms), once measured. */
   get rtt(): number | null {
     const p = this.direct?.open ? this.direct : this.relay?.open ? this.relay : null;
-    return p?.rtt ?? null;
+    return p?.rtt === null || p?.rtt === undefined ? null : p.rtt + LAG * 2;
   }
   get open() {
     return !!this.via;
@@ -97,8 +99,14 @@ export class Conn {
       this.relay?.close(false);
       this.relay = p as RelayLink;
     }
-    p.onCtl = (m) => this.onCtl?.(m);
-    p.onFast = (m) => this.onFast?.(m);
+    // (tests: ?lag=120 holds everything that arrives back that many milliseconds, like a slow line)
+    if (LAG) {
+      p.onCtl = (m) => setTimeout(() => this.onCtl?.(m), LAG);
+      p.onFast = (m) => setTimeout(() => this.onFast?.(m), LAG);
+    } else {
+      p.onCtl = (m) => this.onCtl?.(m);
+      p.onFast = (m) => this.onFast?.(m);
+    }
     p.onOpen = () => this.onChange?.();
     p.onLost = (why) => {
       if (this.lost) return;
@@ -174,6 +182,8 @@ export class OnlineHost {
   private sync: HostSync | null = null;
   private synced: LevelSession | null = null;
   private snapT = 0;
+  /** How big snapshots have been lately (bytes). */
+  private snapBytes = 0;
   /** Fallback when capturing the 3D canvas gives the guest a blank picture: copy each frame to a plain canvas and send that. */
   private copy: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; stream: MediaStream } | null = null;
 
@@ -462,6 +472,7 @@ export class OnlineHost {
       this.synced = s;
       if (s) {
         this.sync = new HostSync(s);
+        this.snapBytes = 0;
         // a generated job travels as its recipe: the guest makes the very same one
         conn.sendCtl({ k: 'level', id: s.def.id, cargo: s.def.cargo, gen: s.def.gen, name: s.def.name, outfits: s.outfits, variant: s.def.variant });
       } else conn.sendCtl({ k: 'end' });
@@ -469,11 +480,15 @@ export class OnlineHost {
     }
     if (!this.sync) return;
     this.snapT += dt;
-    const every = conn.via === 'direct' ? 1 / 30 : 1 / 15;
+    // every frame on a link straight between the two (less for the picture to be behind by), unless the job
+    // is so busy that would be a lot to send (over about 0.6 Mbit/s); gentler through a relay
+    const every = conn.via !== 'direct' ? 1 / 15 : conn.turned || this.snapBytes > 1250 ? 1 / 30 : 1 / 70;
     if (this.snapT < every) return;
     const ev = this.sync.takeEvents();
     if (ev.length) conn.sendCtl({ k: 'ev', l: ev });
-    conn.sendFast(this.sync.snapshot(this.snapT));
+    const snap = this.sync.snapshot(this.snapT);
+    this.snapBytes += (snap.byteLength - this.snapBytes) * 0.05;
+    conn.sendFast(snap);
     this.snapT = 0;
   }
 
@@ -752,6 +767,11 @@ export class OnlineGuest {
         world = true;
         cam = 0; // our camera is our own business
       }
+    }
+    // (our own mover is drawn where these keys will take it)
+    if (this.sync) {
+      this.sync.rtt = (this.conn.rtt ?? 100) / 1000;
+      this.sync.noteInput(world ? m.x : 0, world ? m.y : 0);
     }
     const state = `${m.x},${m.y},${+world},${+m.jump},${this.jumps},${+m.grab},${cam}`;
     // changes go at once; otherwise a reminder every so often (packets can get lost)

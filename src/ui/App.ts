@@ -318,6 +318,8 @@ export class App {
     const g = this.guest;
     if (g) {
       const s = this.game.session;
+      // (our keys go to the host at once, not at the next tick of the timer)
+      if (this.screen === 'guest') g.sendKeys(this.game.keyboard, 0, s?.mirror ? s : null, this.game.touch);
       if (g.mode === 'light') {
         this.attract?.update(dt);
         if (s?.mirror && this.hud) {
@@ -1187,13 +1189,14 @@ export class App {
       `<div class="panel" style="min-width:min(560px,92vw)">
         <h2>Settings</h2>
         <div class="setting"><span>Graphics</span>${seg('quality', [['low', 'Fast'], ['medium', 'Balanced'], ['high', 'Pretty']], st.quality)}</div>
+        <div class="setting"><span>Keep it smooth</span>${seg('smooth', [['1', 'On'], ['0', 'Off']], st.smooth === false ? '0' : '1')}</div>
         <div class="setting"><span>Cargo toughness</span>${seg('damage', [['1', 'Normal'], ['0.5', 'Sturdy'], ['0', 'Unbreakable']], String(st.damage ?? 1))}</div>
         <div class="setting"><span>Screen shake</span>${seg('shake', [['1', 'On'], ['0', 'Off']], st.shake ? '1' : '0')}</div>
         <div class="setting"><span>Ghost of your best run</span>${seg('ghost', [['1', 'On'], ['0', 'Off']], st.ghost === false ? '0' : '1')}</div>
         <div class="setting"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" value="${st.master}" data-vol="master"></div>
         <div class="setting"><span>Music</span><input type="range" min="0" max="1" step="0.05" value="${st.music}" data-vol="music"></div>
         <div class="setting"><span>Sound effects</span><input type="range" min="0" max="1" step="0.05" value="${st.sfx}" data-vol="sfx"></div>
-        <p style="margin-top:12px">Running slow in Safari? Pick <b>Fast</b>. Want it bigger? In Safari: <b>View → Enter Full Screen</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
+        <p style="margin-top:12px"><b>Keep it smooth</b> draws the picture a little smaller whenever frames come slowly, and puts it back when they don't. Still slow? Pick <b>Fast</b>. Want it bigger? In Safari: <b>View → Enter Full Screen</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
        </div>
        <div class="row"><button class="btn" data-nav data-default id="s-back">Done</button></div>`,
       { back, dim: true },
@@ -1209,6 +1212,9 @@ export class App {
           } else if (name === 'damage') {
             st.damage = parseFloat(v);
             tuning.damage.scale = st.damage;
+          } else if (name === 'smooth') {
+            st.smooth = v === '1';
+            this.game.renderer.smooth = st.smooth;
           } else if (name === 'shake') st.shake = v === '1';
           else if (name === 'ghost') st.ghost = v === '1';
           this.game.saveSettings();

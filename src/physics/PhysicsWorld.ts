@@ -173,6 +173,15 @@ export class PhysicsWorld {
     l.body.setLinvel({ x: v.x, y: v.y, z: v.z }, false);
   }
 
+  /** Online guest: move link i (and its body) over by `d`, on top of where it was just put. */
+  shiftLink(i: number, d: THREE.Vector3) {
+    const l = this.links[i];
+    if (!l || !l.body.isValid()) return;
+    l.currPos.add(d);
+    l.prevPos.copy(l.currPos);
+    l.body.setTranslation({ x: l.currPos.x, y: l.currPos.y, z: l.currPos.z }, false);
+  }
+
   /** Interpolated position of a body (for things that aren't linked meshes). */
   interpolatedPosition(body: RigidBody, out: THREE.Vector3) {
     const l = this.links.find((x) => x.body === body);

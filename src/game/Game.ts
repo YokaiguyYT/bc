@@ -19,6 +19,8 @@ export interface Settings {
   solo?: boolean;
   /** Cargo damage multiplier (1 normal, 0.5 sturdy, 0 unbreakable). */
   damage: number;
+  /** Shrink the picture a little when frames come slowly (on unless switched off). */
+  smooth?: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = { quality: 'medium', master: 0.8, music: 0.55, sfx: 0.9, shake: true, damage: 1 };
@@ -56,6 +58,9 @@ export class Game {
     // first time on a Chromebook (usually a modest GPU): start on Fast graphics
     if (!saved?.quality && /CrOS/.test(navigator.userAgent)) this.settings.quality = 'low';
     this.renderer = new Renderer(container);
+    // (not under automation: tests run on a software renderer, where it would always be at its smallest)
+    const asked = new URLSearchParams(location.search).get('smooth');
+    this.renderer.smooth = asked ? asked === '1' : this.settings.smooth !== false && !navigator.webdriver;
     this.renderer.setQuality(this.settings.quality);
     window.addEventListener('resize', () => this.renderer.resize());
   }
@@ -89,9 +94,11 @@ export class Game {
       if (!this.running) return;
       requestAnimationFrame(loop);
       if (this.manual) return;
-      const dt = Math.min(0.1, Math.max(0, (t - this.last) / 1000));
+      const real = (t - this.last) / 1000;
+      const dt = Math.min(0.1, Math.max(0, real));
       this.last = t;
       this.frame(dt);
+      if (!this.halted) this.renderer.pace(real);
     };
     requestAnimationFrame(loop);
   }
