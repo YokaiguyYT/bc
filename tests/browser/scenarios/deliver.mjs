@@ -9,6 +9,7 @@
 // Waypoints are [x, z, formation?]: 'inline' (one mover leads), 'broad'
 // (side by side), 'front' (both movers on the same side, load in front).
 // Without a formation both movers just push the same direction.
+// A stretch with steady: true steers against moving floors (a belt), as a person would.
 // the balloon bouquet's way through the Tunnel of Love and Hedgehog Hollow (job 10)
 const FUNFAIR_TUNNEL = [[0, -6.4], [-0.75, -8.6], [-0.75, -12.0], [0.75, -13.6], [0.75, -15.6], [-0.75, -17.2], [-0.75, -19.2], [0.75, -20.8], [0.75, -22.8], [0, -25.6], [0, -28.4]].map(([x, z]) => [x, z, 'broad']);
 const FUNFAIR_HOLLOW = [[0, -30.2], [1.5, -32.0], [1.5, -35.2], [-1.5, -37.0], [-1.5, -40.2], [1.5, -42.0], [1.5, -45.2], [0, -47.6], [0, -51.0], [0, -53.0], [0, -55.6]].map(([x, z]) => [x, z, 'broad']);
@@ -26,6 +27,7 @@ const ROUTES = {
   'glass-full': {
     site: {
       start: true,
+      steady: true,
       path: [
         [0, 6.6, 'broad'],
         [-2.4, 5.6, 'broad'],
@@ -42,20 +44,41 @@ const ROUTES = {
         [-15.6, -16.3, 'inline'],
         // line up in the middle of the belt before stepping on (it has railings both sides)
         [-15.2, -15.4, 'broad'],
+        [-15.2, -11, 'broad'],
         [-15.2, -6.6, 'broad'],
-        [-15.3, -3.9, 'broad'],
+        [-15.3, -4.5, 'broad'],
         { wait: 'ball' },
         [-15.3, -0.6, 'broad'],
         [-15.2, 3.4, 'broad'],
-        [-15.2, 11.2, 'broad'],
-        [-15.2, 13.4, 'broad'],
       ],
-      place: true,
     },
+    // a fresh hold at checkpoint 2 for the last ramp (a rail either side, a pane's width between): after
+    // the long walk the two hold it at arm's length and askew, and would set it down on its corner
+    top: { cargo: [-15.2, 3.9, 3.4], yaw: 0, path: [[-15.2, 6.5, 'broad'], [-15.2, 11.2, 'broad'], [-15.2, 13.4, 'broad']], place: true },
+  },
+  // the middle of the glass job: off deck 1, over the see-saw, onto the belt (which drags east: keep to the west of it)
+  'glass-mid': {
+    mid: {
+      steady: true,
+      cargo: [-4.4, 3.9, -16.3],
+      yaw: 90,
+      path: [
+        [-7.8, -16.3, 'inline'],
+        [-13.6, -16.3, 'inline'],
+        [-15.6, -16.3, 'inline'],
+        [-15.2, -15.4, 'broad'],
+        [-15.2, -6.6, 'broad'],
+        [-15.3, -4.5, 'broad'],
+      ],
+    },
+  },
+  // just setting the pane down at the window, end-on
+  'glass-end': {
+    end: { cargo: [-15.2, 6.9, 11.0], yaw: 90, path: [[-15.2, 13.4, 'inline']], place: true },
   },
   // second half of the glass job, from deck 2 heading south
   'glass-south': {
-    south: { cargo: [-15.2, 3.9, -16.0], yaw: 0, path: [[-15.6, -6.6, 'broad'], [-15.3, -3.9, 'broad'], { wait: 'ball' }, [-15.3, -0.6, 'broad'], [-15.4, 3.4, 'broad'], [-15.2, 11.2, 'broad'], [-15.2, 13.4, 'broad']], place: true },
+    south: { cargo: [-15.2, 3.9, -16.0], yaw: 0, path: [[-15.6, -6.6, 'broad'], [-15.3, -4.5, 'broad'], { wait: 'ball' }, [-15.3, -0.6, 'broad'], [-15.4, 3.4, 'broad'], [-15.2, 11.2, 'broad'], [-15.2, 13.4, 'broad']], place: true },
   },
   // CRT TV: out of the living room, down the hall, through the tight door, down the fire escape, into the truck
   'moveout-full': {
@@ -332,7 +355,10 @@ const ROUTES = {
   'mansion-full': {
     study: { start: true, path: [[-4.6, -8.8, 'inline'], [2.6, -8.8, 'inline']] },
     stairs: { keep: true, path: [[8, -8.8, 'inline'], [12.4, -8.8, 'inline'], [12.4, -6.2, 'inline']] },
-    hall: { keep: true, path: [[11.6, 3.4, 'inline'], [6.6, 4.6, 'inline'], [6, 7.0, 'inline'], [6, 12.5, 'inline'], [6, 18.6, 'inline'], [6, 22.6, 'inline']], place: true },
+    hall: { keep: true, path: [[11.6, 3.4, 'inline'], [6.6, 4.6, 'inline'], [6, 7.0, 'inline'], [6, 12.5, 'inline']] },
+    // (a fresh single file for the ramp: after the turns in the hall the two have closed up, and the one behind
+    //  would hold back instead of pushing the clock up the slope)
+    van: { keep: true, fresh: true, path: [[6, 18.6, 'inline'], [6, 22.6, 'inline']], place: true },
   },
   // chandelier: out of the storeroom, between the waltzers, up the grand stairs, onto the stage
   'ballroom-full': {
@@ -635,6 +661,12 @@ export default async function ({ page, base, shot }) {
         const P = s.players;
         const pos = (p) => p.body.translation();
         const setI = (p, x, z) => {
+          // steady: on a floor that moves (a belt), steer against it like a person would
+          if (window.__steady && p.grounded && p.groundVel) {
+            const cap = Math.max(1, p.moveCap ?? 3);
+            x -= p.groundVel.x / cap;
+            z -= p.groundVel.z / cap;
+          }
           const l = Math.hypot(x, z);
           // DIGITAL: like a keyboard, either full speed or stopped
           const m = window.__digital ? (l > 0.15 ? 1 : 0) : Math.min(1, l);
@@ -1043,6 +1075,7 @@ export default async function ({ page, base, shot }) {
     if (!seg.keep || seg.fresh) await page.evaluate(() => { window.__snake = null; });
     // broad: how close either side of the load the movers stay [min, max] (small loads want them close)
     await page.evaluate((b) => { window.__broad = b; }, seg.broad ?? route.broad ?? null);
+    await page.evaluate((b) => { window.__steady = b; }, !!seg.steady);
     if (seg.start) {
       await adv(1.2);
       await grab();
