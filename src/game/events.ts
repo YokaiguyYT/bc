@@ -50,6 +50,8 @@ export class EventBus {
    * listeners raise in reaction), to send them to the other laptop.
    */
   tap: ((type: keyof GameEvents, payload: unknown) => void) | null = null;
+  /** The same again, for the instant replay's recorder. */
+  rec: ((type: keyof GameEvents, payload: unknown) => void) | null = null;
   /** >0 while listeners are running. */
   dispatching = 0;
 
@@ -62,6 +64,7 @@ export class EventBus {
 
   emit<K extends keyof GameEvents>(type: K, payload: GameEvents[K]) {
     if (this.tap && this.dispatching === 0) this.tap(type, payload);
+    if (this.rec && this.dispatching === 0) this.rec(type, payload);
     const set = this.handlers.get(type);
     if (!set) return;
     this.dispatching++;

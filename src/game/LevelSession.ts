@@ -584,6 +584,11 @@ export class LevelSession {
     this.events.emit('respawn', { pos: pos.clone() });
   }
 
+  /** The camera, at once, on where everybody is now (a replay starts mid-job). */
+  snapCamera() {
+    this.cameraRig.reset(this.def.cameraYaw, this.focusPoints());
+  }
+
   /** Put players and cargo back at the last checkpoint. */
   respawnAll(cargoFell: boolean) {
     const s = this.spawnPose(this.spawn);

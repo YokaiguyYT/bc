@@ -226,10 +226,15 @@ export class HostSync {
   private seq = 0;
   private pending: NetEvent[] = [];
 
-  constructor(private s: LevelSession) {
+  /** `taps` false: only the snapshots (the instant replay's recorder listens for itself). */
+  constructor(
+    private s: LevelSession,
+    private taps = true,
+  ) {
     const n = s.physics.linkCount;
     this.lastPos = new Float32Array(n * 3).fill(NaN);
     this.lastQuat = new Float32Array(n * 4).fill(NaN);
+    if (!taps) return;
     s.events.tap = (type, payload) => {
       if (s.inVisuals) return;
       this.pending.push({ t: s.physics.time, e: type, p: pack(payload) });
@@ -335,6 +340,7 @@ export class HostSync {
   }
 
   dispose() {
+    if (!this.taps) return;
     if (this.s.events.tap) this.s.events.tap = null;
     if (this.s.effects.tap) this.s.effects.tap = null;
   }
@@ -639,12 +645,16 @@ export class GuestSync implements MirrorDriver {
     for (const e of list) this.events.push(e);
   }
 
+  /** The instant replay: show exactly this moment of the host's clock (instead of keeping up with what arrives). */
+  playhead: number | null = null;
+
   frame(s: LevelSession, dt: number) {
     const fr = this.frames;
     if (!fr.length) return;
     const latest = fr[fr.length - 1].t;
     const target = latest - this.delay;
-    if (this.renderT < 0 || Math.abs(target - this.renderT) > 0.75) this.renderT = target;
+    if (this.playhead !== null) this.renderT = this.playhead;
+    else if (this.renderT < 0 || Math.abs(target - this.renderT) > 0.75) this.renderT = target;
     else this.renderT += dt * this.rate + (target - this.renderT) * Math.min(1, dt * 1.5);
     this.renderT = Math.min(this.renderT, latest);
     const t = this.renderT;

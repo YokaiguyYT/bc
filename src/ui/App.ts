@@ -29,6 +29,7 @@ import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, trackParty, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
+import { ReplayPlayer, ReplayRecorder } from '../game/replay';
 import { bestBeaten, CPU_NAMES, CPU_PRIZE, LENGTH_NAMES, PARTY_GAMES, partyInfo, partyRecord, recordParty, type PartyLength } from '../game/party';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
@@ -237,6 +238,12 @@ export class App {
       this.toggleDev();
       return;
     }
+    // the instant replay: any key ends it (and does nothing else)
+    if (this.instant) {
+      e.preventDefault();
+      this.endReplay();
+      return;
+    }
     // a text box with the keyboard's focus (a friend's job code) takes the keys itself
     if ((e.target as HTMLElement | null)?.classList?.contains('code-input') && code !== 'Escape') return;
     if (this.screen === 'join' && this.typeCode(code, e)) return;
@@ -343,6 +350,11 @@ export class App {
     if (s && this.stretches && this.screen === 'playing') {
       const c = s.cargo.body.translation();
       this.stretches.update(c.x, c.z, s.cargo.health);
+    }
+    if (s && this.screen === 'playing' && !s.paused) this.recorder?.update(dt);
+    if (this.instant) {
+      this.instant.player.update(dt);
+      if (this.instant.player.done) this.endReplay();
     }
     if (s && this.screen === 'playing' && s.result) this.showResults(s.result);
     if (this.screen === 'controls') {
@@ -1316,11 +1328,64 @@ export class App {
     this.stretches = def.stretches ? new StretchTracker(def.stretches) : null;
     // restart / retry / next job: the old HUD goes with the old session
     this.hud?.dispose();
+    this.endReplay();
     const s = this.game.startLevel(def);
     this.wireSession(s);
+    // the instant replay: keep a few seconds round the run's biggest moment (jobs; a party game has no one moment)
+    this.recorder?.dispose();
+    this.recorder = def.party ? null : new ReplayRecorder(s);
     this.hud = new Hud(this.hudLayer, this.game, s);
     this.setScreen('playing', '');
     this.audio.music(def.party ? 'party' : def.cargo === 'crate' && !def.generated ? 'menu' : 'level');
+  }
+
+  // ---- the instant replay
+  private recorder: ReplayRecorder | null = null;
+  private instant: { player: ReplayPlayer; el: HTMLElement } | null = null;
+
+  /**
+   * The run's biggest moment again, slowly: the job is built afresh and shown from the recording (nothing is
+   * simulated, scored or paid). The results card waits underneath, exactly as it was.
+   */
+  private startReplay(r: SessionResult) {
+    const clip = this.recorder?.best;
+    const old = this.game.session;
+    if (!clip || !old || this.instant || this.screen !== 'results') return;
+    const def = old.def;
+    this.hud?.dispose();
+    this.hud = null;
+    // (dressed as they were)
+    setActiveOutfits(old.outfits);
+    let s: LevelSession;
+    try {
+      s = this.game.startLevel(def);
+    } finally {
+      setActiveOutfits(null);
+    }
+    const player = new ReplayPlayer(s, clip);
+    this.wireSession(s);
+    // (it stands in for the job that was just finished, for everything the results card's buttons look at)
+    s.result = r;
+    s.update(0);
+    s.snapCamera();
+    const el = document.createElement('div');
+    el.className = 'replay-banner';
+    el.innerHTML = `<div class="replay-tag">🎬 REPLAY</div><div class="replay-what">${esc(clip.label)}</div><div class="replay-skip">any key to skip</div>`;
+    el.addEventListener('click', () => this.endReplay());
+    this.hudLayer.appendChild(el);
+    this.layer.classList.add('replaying');
+    this.instant = { player, el };
+    this.audio.ui('whoosh');
+  }
+
+  /** Back to the results card (the last picture of the replay stays behind it). */
+  private endReplay() {
+    const rp = this.instant;
+    if (!rp) return;
+    this.instant = null;
+    rp.el.remove();
+    this.layer.classList.remove('replaying');
+    this.resultsFor = 0.6;
   }
 
   /** Playing on your own (the robot buddy carries the other end); ?solo in the address for tests. */
@@ -1695,10 +1760,12 @@ export class App {
         ${shareBlock}
         ${this.paydayBlock(payday)}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
+        ${this.recorder?.best && !s.mirror ? `<button class="btn small replay-btn" data-nav id="r-replay">🎬 Watch it again in slow motion: <b>${esc(this.recorder.best.label)}</b></button>` : ''}
         <div class="row">${buttons}</div>
       </div>`,
       { dim: true, back: () => this.backToList() },
     );
+    this.bind('r-replay', () => this.startReplay(r));
     this.celebrate(r.success, stars, r.payout);
     boardPost?.();
     this.bind('r-rematch', () => {

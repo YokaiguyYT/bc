@@ -2276,6 +2276,63 @@ table.board .dot {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* the instant replay: the results card steps aside, a tag in the corner */
+#ui.replaying > .screen,
+.replaying > .screen {
+  display: none;
+}
+.replay-banner {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: var(--font);
+  color: #fff;
+  /* a film look: dark bars top and bottom */
+  background: linear-gradient(#0b0b12cc 0, #0b0b12cc 9%, transparent 9%, transparent 91%, #0b0b12cc 91%);
+  animation: replayIn 0.25s ease-out;
+}
+.replay-banner .replay-tag {
+  position: absolute;
+  top: 2.2%;
+  left: 22px;
+  font-size: clamp(18px, 3.2vh, 28px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  animation: replayBlink 1.1s steps(2, start) infinite;
+}
+.replay-banner .replay-what {
+  position: absolute;
+  top: 2.6%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(15px, 2.6vh, 22px);
+  font-weight: 700;
+  opacity: 0.92;
+}
+.replay-banner .replay-skip {
+  position: absolute;
+  bottom: 2.8%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(12px, 2vh, 16px);
+  opacity: 0.7;
+}
+@keyframes replayIn {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes replayBlink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.replay-btn {
+  margin: 4px auto 8px;
+}
 .crew-pick.small .seg-btn {
   font-size: 15px;
   padding: 4px 11px;
