@@ -77,6 +77,72 @@ export default async function ({ page, base, shot }) {
       chest.body.setTranslation({ x: -9.5, y: 0.5, z: 0 }, true);
       g.clock = 0.3;
     }).then(() => adv(1)) },
+    // P1's throw lands on the computer
+    dodge: {
+      who: 0,
+      before: () =>
+        page.evaluate(() => {
+          const g = window.__FF.game;
+          const p = g.session.party;
+          for (let i = 0; i < 100 && p.phase !== 'play'; i++) g.advance(0.1, 60, false);
+          return [...p.score];
+        }),
+      act: () =>
+        // (the computer is quick to hit someone standing still: wait for a round to be on, and stand it down)
+        page.evaluate(() => {
+          const g = window.__FF.game;
+          const s = g.session;
+          const p = s.party;
+          for (let i = 0; i < 100 && p.phase !== 'play'; i++) g.advance(0.1, 60, false);
+          const cpu = p.cpu;
+          p.cpu = 0;
+          Object.assign(s.players[1].intent, { moveX: 0, moveZ: 0, grab: false });
+          for (const b of p.balls) b.hot = -1;
+          const b = p.balls[0];
+          const v = s.players[1].bodyPos;
+          b.prop.body.setTranslation({ x: v.x - 1.6, y: v.y + 0.1, z: v.z }, true);
+          b.prop.body.setLinvel({ x: 12, y: 0.6, z: 0 }, true);
+          Object.assign(b, { hot: 0, hotUntil: s.sim.time() + 2, luck: 1 });
+          g.advance(1, 60, false);
+          p.cpu = cpu;
+          return [...p.score];
+        }),
+    },
+    // P1 comes down on the computer's head, and its last balloon goes
+    stomp: {
+      who: 0,
+      before: () =>
+        page.evaluate(() => {
+          const g = window.__FF.game;
+          const p = g.session.party;
+          for (let i = 0; i < 100 && p.phase !== 'play'; i++) g.advance(0.1, 60, false);
+          return [...p.score];
+        }),
+      act: () =>
+        page.evaluate(() => {
+          const g = window.__FF.game;
+          const s = g.session;
+          const p = s.party;
+          for (let i = 0; i < 100 && p.phase !== 'play'; i++) g.advance(0.1, 60, false);
+          const cpu = p.cpu;
+          p.cpu = 0;
+          Object.assign(s.players[1].intent, { moveX: 0, moveZ: 0, grab: false });
+          // (the computer may be in the air over P1 already: P1 can't be stomped while this is set up)
+          p.lives[0] = 3;
+          p.safe[0] = 9;
+          g.advance(0.6, 60, false);
+          p.lives[1] = 1;
+          p.safe[1] = 0;
+          const c = s.players[1].bodyPos;
+          const V = c.constructor;
+          // (over its head, wherever it has got to: it may be up on a block)
+          s.players[0].teleport(new V(c.x, c.y + 0.6, c.z), 0, new V(0, -2.5, 0));
+          g.advance(0.8, 60, false);
+          p.cpu = cpu;
+        }),
+    },
+    // P1 has held the parcel long enough
+    keep: { who: 0, act: () => page.evaluate(() => (window.__FF.game.session.party.secs[0] = 999)).then(() => adv(0.5)) },
     football: { who: 0, act: () => page.evaluate(() => window.__FF.game.session.party.ball.body.setTranslation({ x: 10.9, y: 0.7, z: 0 }, true)).then(() => adv(1)) },
   };
   const p1walk = (x, z, secs) =>
@@ -118,11 +184,14 @@ export default async function ({ page, base, shot }) {
     await shot(`party_${game}`);
     const cpuMoved = Math.hypot(s.p[1][0] - c0[0], s.p[1][2] - c0[2]);
     // (on the lava, standing still on a safe tile is often right)
-    check(`${game}: the computer plays`, cpuMoved > (game === 'lava' ? 0.3 : 0.8), +cpuMoved.toFixed(2));
+    // (keep-away: it has fetched the parcel and may well be back where it started)
+    check(`${game}: the computer plays`, cpuMoved > (game === 'lava' ? 0.3 : 0.8) || (game === 'keep' && s.tally[1] > 0), +cpuMoved.toFixed(2));
     // a round won the game's own way
     const w = WIN[game];
     if (w) {
-      const sc = s.score;
+      let sc = s.score;
+      // (a game whose act waits for the next round: the score as it was when the act began)
+      if (w.before) sc = await w.before();
       await w.act();
       for (let i = 0; i < 20 && (await st()).score.join() === sc.join(); i++) await adv(0.5);
       s = await st();

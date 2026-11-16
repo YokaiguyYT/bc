@@ -25,6 +25,9 @@ export const PARTY_GAMES: PartyInfo[] = [
   { id: 'potato', name: 'Hot Potato', icon: '💣', blurb: 'Tag with a bomb on a fuse. Pass it on by touching them.', how: 'Holding the bomb? Tag them before it goes off. Not? Run!', targets: [2, 3, 5] },
   { id: 'paint', name: 'Paint the Floor', icon: '🎨', blurb: 'Every tile you walk on turns your colour.', how: 'Cover more floor than them before time runs out. Grab the paint buckets.', targets: [1, 2, 3], times: [40, 45, 45] },
   { id: 'lava', name: 'The Floor is Lava', icon: '🌋', blurb: 'Tiles over lava keep falling away.', how: 'Stay on the tiles. Last one standing wins the round.', targets: [2, 3, 4] },
+  { id: 'dodge', name: 'Dodgeball', icon: '🏐', blurb: 'Five balls on the line. Throw them at each other.', how: 'Hold grab to pick a ball up, let go to throw. Press grab as one arrives to catch it.', targets: [2, 3, 5] },
+  { id: 'stomp', name: 'Balloon Stomp', icon: '🎈', blurb: 'Springy boots, and three balloons each over your heads.', how: 'Jump on their head to pop a balloon. Pop all three (or have more left at the end).', targets: [1, 2, 3], times: [45, 60, 60] },
+  { id: 'keep', name: 'Keep-Away', icon: '🎁', blurb: 'One golden parcel. Every second in your hands counts.', how: 'Hold the parcel for 20 seconds in all. Grab whoever has it to take it off them.', targets: [1, 2, 3] },
 ];
 
 export const partyInfo = (id: string) => PARTY_GAMES.find((g) => g.id === id);

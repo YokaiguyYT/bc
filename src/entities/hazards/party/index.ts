@@ -8,6 +8,9 @@ import { Paint } from './paint';
 import { Lava } from './lava';
 import { Tug } from './tug';
 import { King } from './king';
+import { KeepAway } from './keep';
+import { Dodgeball } from './dodge';
+import { Stomp } from './stomp';
 
 type Make = new (...a: ConstructorParameters<typeof Sumo>) => PartyGame;
 
@@ -20,6 +23,9 @@ const GAMES: Record<string, Make> = {
   lava: Lava,
   tug: Tug,
   king: King,
+  keep: KeepAway,
+  dodge: Dodgeball,
+  stomp: Stomp,
 };
 
 registerHazard('party', (o, sim, level) => {

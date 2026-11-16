@@ -137,6 +137,8 @@ export class Player {
   groundVel = new THREE.Vector3();
   groundFriction = 0.8;
   airTime = 0;
+  /** How hard a jump launches, as a multiple of the usual (springy boots in a party game). */
+  jumpScale = 1;
   private coyote = 0;
   private jumpBuffer = 0;
   private jumpCooldown = 0;
@@ -617,7 +619,7 @@ export class Player {
 
     // --- jump
     if (this.jumpBuffer > 0 && this.coyote > 0 && this.jumpCooldown <= 0 && this.state === 'active') {
-      const jv = T.jump.velocity;
+      const jv = T.jump.velocity * this.jumpScale;
       for (const name of PART_NAMES) {
         const p = this.parts[name];
         const lv = p.linvel();
