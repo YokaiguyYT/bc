@@ -1,6 +1,6 @@
 # Fragile Freight
 
-A goofy **2-player** physics game: share **one keyboard**, play **online** with each of you on your own laptop, or play **solo** with a robot buddy. You and a friend are two wobbly movers in work overalls. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece, a bunch of helium balloons, a crystal chandelier, a beehive, a giant jelly, a snowman, a space rocket) through chaotic obstacle courses without breaking them. Race other crews in **Versus**, and chase the fastest times on the **leaderboards**.
+A goofy **2-player** physics game: share **one keyboard**, play **online** with each of you on your own laptop, or play **solo** with a robot buddy. You and a friend are two wobbly movers in work overalls. Your job: carry very expensive, very fragile things (a CRT TV, a full aquarium, a grandfather clock, a pane of glass, a wedding cake, a melting ice swan, a dinosaur egg, an upright piano, a masterpiece, a bunch of helium balloons, a crystal chandelier, a beehive, a giant jelly, a snowman, a space rocket) through chaotic obstacle courses without breaking them. Race other crews in **Versus**, chase the fastest times on the **leaderboards**, or settle things in ten 1v1 **party games**. Every sound and every note of music is made by the game itself as it plays, so it's still one file.
 
 It runs in **Safari or Chrome**, on a Mac or a **Chromebook**. There's nothing to install.
 
@@ -39,6 +39,7 @@ No more four hands on one keyboard. Both of you need the game: the same link (be
 3. The host picks a job (or **🎉 Party games**) as usual. The friend plays **P2** (blue).
 
 - **How it works:** the game runs on the host's laptop. The friend's laptop draws the same scene itself from a stream of positions (a couple of kilobytes, many times a second), so it stays sharp and needs very little Wi-Fi.
+- **No lag on your own mover:** on the friend's screen, their own mover answers their keys straight away. It's drawn where their keys are taking it, a little ahead of the host's picture, and settles onto it when they stop (walls stop it, as they would the real one). Everything else on their screen is the host's picture, a moment old.
 - **Different Wi-Fi, mobile data, school:** the game first tries a direct link between your two devices (the quickest). Where a router or a phone network won't allow that, it goes through a free relay server that's still quick. Only if that's blocked too do your messages go the slow way, through the matchmaking server, and then it keeps trying for a faster route every few seconds and switches over without stopping the game. The line at the bottom of the friend's screen says which: **connected directly**, **connected through a fast relay**, or **🐢 through the matchmaking server** (with the ping).
 - **Won't connect?** **Play Online → Check this network** (on both laptops) tests the two matchmaking servers and whether a direct link looks possible, and says in plain words whether online play will work there. If the network blocks both servers, a phone's hotspot works.
 - **Both laptops need the same version of the game** (the same link, or files from the same day): a random job's number only makes the same course in the same version.
@@ -96,6 +97,17 @@ No app store needed: it runs in the browser.
 - **Lost?** When the next checkpoint (🚩) or the drop-off (🏁) is off screen, an arrow at the edge of the screen points to it.
 - **Switching apps** pauses the game. `Esc` or `P` carries on.
 
+## Sound, and the little things
+
+Everything you do makes a noise: footsteps, grabs, slips, thuds that depend on what hit what (wood, metal, glass…), the load creaking and smashing, splashes, the dog, car horns, the clock's tick, and music that picks up while you're both carrying something. All of it is made by the game as it plays, with no sound files. It starts after your first key press or tap (browsers insist on that) and goes quiet when you switch away. **On an iPhone, the ring/silent switch mutes it**: flip it to ring to hear it.
+
+- **Every knock costs money, and you see it:** the dollars knocked off fly off the load (−$112). Tips pop up as you pick them up (+$20).
+- **A moment of slow motion** when something big happens: a bad drop, a smash, a hard fall, the delivery itself.
+- **Clean stretch bonus:** get the load from one checkpoint to the next (or on to the drop-off) without a new scratch and you're tipped for it.
+- **Awards** on the results card for whoever earned them: 🧈 Butterfingers, 😵 Crash test dummy, 🪂 Sky diver, 🦘 Kangaroo, 💪 Did the heavy lifting, 🧘 Feet on the ground, 🏃 Busy feet.
+- **🎬 Instant replay:** if the load took a bad knock (or broke), the results card offers to **watch it again in slow motion**: the few seconds round the worst moment, in close. Any key skips it. Hosting online, your friend sees it too. **🎥 Record it** plays the replay again while recording it, sound and all, then gives you **💾 Save the video** (on a laptop it goes to your Downloads) or, on a phone, **📨 Send the video** (straight into Messages or wherever). Safari and recent Chrome make an MP4 that plays anywhere, iPhones included; older Chrome makes a WebM.
+- On an Android phone, a hard knock gives a little buzz (iPhones don't let web pages do that).
+
 ## The jobs
 
 1. **Move-Out Day** (CRT TV): out of the flat, through a very tight door, down the fire escape and into the truck.
@@ -128,7 +140,7 @@ There's also a **Practice Yard** to learn the controls.
 
 - **🚚 Jobs:** the hand-made jobs above, with the **Practice Yard** first (marked START HERE the first time).
 - **📅 Daily #N:** one course for everyone each day, Wordle-style, with a **twist** (night, rush hour, double tips, an extra-long route, busy streets). Deliver it every day for a 🔥 **streak**; the last seven days show as ticks. The results card gives you a spoiler-free line of squares (🟩 barely a scratch · 🟨 a few knocks · 🟥 a beating · 💥 broke here, one per stretch of course) and a **Copy** button to paste it in the group chat.
-- **🎉 Party games:** seven quick 1v1 games (below), also on the main menu.
+- **🎉 Party games:** ten quick 1v1 games (below), also on the main menu.
 - **🎲 Quick job:** a brand-new random course (any cargo, any place, a string of obstacles: ramps, stairs, doors, swing doors, slaloms, wrecking balls, traffic, laser gates, ice, pedestrians, conveyor belts, lifts, cable cars, see-saws, ferries, bridges with no railings, collapsing planks, level crossings with trains, crane beams, sprinklers, escalators, narrow ledges, stepping stones, mud, spinning arms, corners), in all sorts of places (streets, parks, docks, a market, an airport, a factory, rooftops at sunset, a haunted graveyard at night, the desert, the jungle, a pirate cove…). Some come with a **twist**: rain, fog, a hilly route, an extra-fragile load (pays more), or no checkpoints (pays more). Or **type a job number** from a friend's results card to play that exact course. Or **🛠️ Build a job** (below).
 - **🌀 Chaos Daily #N:** one chaos course for everyone each day (wilder at weekends), with its own share line.
 - **💥 Chaos:** courses where crazy things keep happening (below).
@@ -149,6 +161,9 @@ Quick games for two, nothing to do with careful carrying. Play them against **a 
 - **💣 Hot Potato:** tag with a bomb on a fuse. Holding it? Touch them to pass it on. Nobody knows how long the fuse is, but it blinks faster near the end. Whoever's holding it when it goes off loses the round.
 - **🎨 Paint the Floor:** every tile you walk on turns your colour. Grab the paint buckets for a big splash. Most floor when the clock runs out wins the round.
 - **🌋 The Floor is Lava:** tiles over the lava shake, glow and drop, faster and faster. Last one standing wins the round.
+- **🏐 Dodgeball:** five balls on the middle line. **Hold grab** to pick one up and **let go** to throw it the way you're facing (it bends toward them if you're nearly on target). Hit them and the round is yours. Press grab just as one arrives, hands empty and facing it, and you **catch** it instead.
+- **🎈 Balloon Stomp:** springy boots (everybody jumps higher) and three balloons each, tied on over your heads. **Come down on their head** to pop one, and bounce off for another go. Pop all three, or have more left when the clock runs out.
+- **🎁 Keep-Away:** one golden parcel. Every second it's in your hands counts: first to 20 seconds wins the round. **Grab whoever has it** to take it off them (and they go flying). Carrying it slows you down a little, so keep moving and use the crate stacks.
 - **🎲 Party mix:** five of them in a row, picked at random; most wins takes the trophy.
 
 Beating the computer pays a little into the Locker wallet ($25 / $50 / $100), and the Party screen shows which computer you've beaten at each game.
@@ -172,9 +187,11 @@ Every random course is checked to be fair: each obstacle is built so the cargo i
 ## Settings
 
 - **Graphics:** Fast / Balanced / Pretty. Pick **Fast** if Safari stutters.
+- **Keep it smooth:** on unless you switch it off. When frames come slowly (a busy job on a phone or a Chromebook), the picture is drawn a little smaller, and at the last steps the shadows are redrawn every other frame; it goes back to full size when there's time to spare.
 - **Cargo toughness:** Normal / Sturdy / Unbreakable, for a relaxed game.
 - **Screen shake:** on or off.
 - **Ghost of your best run:** on or off.
+- **Master volume, Music, Sound effects:** each slider plays a little pop so you can hear where it is. All the way down is silent.
 
 ---
 
@@ -201,11 +218,11 @@ src/
   physics/    Rapier setup, fixed-step world, collision groups, joint motors
   entities/   Player (active ragdoll), PlayerRig (visuals), cargo/ (one class per cargo), hazards/
   levels/     types, LevelBuilder, helpers (ramps, stairs, walls), props, defs/ (one file per level)
-  game/       Game, LevelSession (one attempt at a level), progress (best payouts/times)
+  game/       Game, LevelSession (one attempt at a level), progress (best payouts/times), replay (the instant replay)
   render/     renderer, camera, materials, effects, model loading
   input/      keyboard
   net/        online play: matchmaking (PeerJS + MQTT), direct link and relay, snapshots (sync.ts), menu mirror
-  audio/      AudioEngine stub (audio is planned, not yet implemented; see NOTES.md)
+  audio/      sound effects (synth.ts) and music (music.ts), made with Web Audio as the game plays; AudioEngine.ts wires them to game events
   ui/         menus, HUD, dev panel
 ```
 
@@ -219,7 +236,7 @@ src/
 
 ```sh
 npx vite --port 5199 &
-FF_URL=http://localhost:5199/ node tests/browser/run.mjs deliver   # ROUTE=moveout-full|delivery-full|mansion-full|glass-south|city-full|cold-full|museum-full|hills-full
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs deliver   # ROUTE=<job>-full: moveout, delivery, mansion, glass, city, cold, museum, hills, wind, funfair, ballroom, bees, jelly, snowman, rocket
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs carryall  # every cargo: lift, carry, set down
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs menus     # screenshots of every menu
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs online    # host + guest in two tabs: join, picture, keys, pause, leave
@@ -227,6 +244,11 @@ FF_URL=http://localhost:5199/ node tests/browser/run.mjs online-errors   # wrong
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs genbuild  # build 24 random jobs and check them (SEEDS=n)
 FF_URL=http://localhost:5199/ GEN=123456 CARGO=tv node tests/browser/run.mjs deliver   # the bot plays a random job by number
 FF_URL=http://localhost:5199/ node tests/browser/run.mjs genflow   # random / daily / shift menus and results
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs party     # every party game vs the computer, a friend, a party mix (GAMES=…)
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs party-cpu # the computer actually plays each game (CPU=1..3)
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs online-predict   # the friend's own mover on a pretend slow line (LAG=150)
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs replay    # the instant replay (replay-online: with a friend)
+FF_URL=http://localhost:5199/ node tests/browser/run.mjs audio     # every sound measured, the music, the sliders
 ```
 
 Screenshots go to a `test-shots` folder (pass a folder as the second argument to choose one). The `deliver` scenario is a scripted pair of movers that carries the cargo through a whole level, waiting for traffic lights, gaps in traffic and the wrecking ball. Add `DIGITAL=1` to make them move like keyboard players (full speed or stopped), `SOLO=1` to drive Player 1 only with the robot buddy as Player 2, and `GHOST_OUT=<file>` to save the run (the rival crews' runs are made that way: `node scripts/make-rivals.mjs <folder>`). `keys` replays the key events Safari sends, including its two-Shift-keys quirk.

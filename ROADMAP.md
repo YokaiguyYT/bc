@@ -6,8 +6,9 @@ checks, push.
 
 ## Ground rules (from the owner)
 
-- **No audio.** Don't build music, sound effects or the synth AudioEngine. Keep
-  the `AudioEngine` stub and the game events as they are.
+- **Sound** was built in build 14, on the owner's go-ahead for the plan that
+  listed it. Keep it synthesized (no sound files: the single file must stay
+  one file) and keep the volume sliders working.
 - **No gamepad.** Keyboard only (touch only if the mobile item below is picked).
 - **Nothing that costs money.** Free public services only, no accounts.
 - **Never commit the Sketchfab token** (`.env` is gitignored).
@@ -16,7 +17,8 @@ checks, push.
   on a **school Chromebook** (Chrome, weak GPU, school Wi-Fi).
 - **Online play (MacBook + Chromebook, on school-style networks) must keep working.**
   Bump `NET_VERSION` (`src/net/peer.ts`) whenever random jobs come out
-  differently: the online guest rebuilds them from their number.
+  differently (the online guest rebuilds them from their number) or the
+  snapshot format changes.
 
 ## How to check things
 
@@ -75,6 +77,23 @@ over many numbers and greps each log for `"state":"delivered"`.
   friend by code, quick match with a stranger, falling back to the rival
   crew), and movers in **work overalls**. New scenarios: `solo`, `board`,
   `versus`.
+
+- Build 13: **party games** (seven 1v1 games on one keyboard, vs the computer
+  at three levels, or online; a party mix), **Stack 'Em High** (job 16),
+  **Build a job** (pick the pieces, share a code), invite links, and a TURN
+  fallback with retries for online play between different networks. New
+  scenarios: `party`, `party-cpu`, `party-online`, `tower`, `builder`,
+  `invite`, `online-route`.
+- Build 14: **sound** (synthesized effects and music), **feel** (money flying
+  off a knocked load, slow-motion moments, clean-stretch bonuses, awards, a
+  results card that counts up), **online prediction** (the friend's own mover
+  answers their keys at once), **Keep it smooth** and less to draw, the test
+  robot's weak spots (mud no longer stops the piano; the clock and glass
+  jobs' full routes deliver), **three more party games** (Dodgeball, Balloon Stomp,
+  Keep-Away) with the computer graded by level, and an **instant replay**
+  that can be saved as a video (or sent, on a phone).
+  New scenarios: `audio`, `juice`, `online-predict`, `smooth`, `party-duel`,
+  `replay`, `replay-online`.
 
 ## Work items (independent; pick any)
 
@@ -136,8 +155,25 @@ iPhone and Android phone; maybe a lower default quality on phones.
 1. Make `online` run the guest at a low frame rate (throttle) and check play.
 2. A long soak: host plays three jobs in a row with a guest connected.
 3. WebKit runs of the new menus (`levelnav`, `menus`, `genflow`, `netcheck`, `touch`).
-4. `pickup`: two long-standing misses when grab is held while walking up: job 2's
-   start (in the truck bed, P1's hands catch the truck wall before the
-   aquarium) and job 1's start (the crate only lifts 3 cm in the test's
-   1.2 s). Consider letting a hand that's about to touch the cargo skip the
-   scenery on the way.
+4. `pickup`: two misses in 92, both on job 2 with grab held while walking
+   up: the start (in the truck bed P1's hands catch the truck wall, out of
+   reach of the aquarium) and checkpoint 2 (one hand catches the scenery).
+   Each try now gets a freshly built job. A hand on the scenery
+   that swaps to the cargo once it's within reach was tried in build 14 and
+   taken out again: it changed where the movers took hold of the TV at job 1's
+   start (lower, more strained), and the bot's carry then caught the hallway
+   counter.
+
+### I. Left over from the Fable session's plan
+1. **Split `src/ui/App.ts`** (about 3,400 lines) into a file per screen. Not
+   done on purpose: it's one class whose screens share a lot of state, so a
+   split is a big diff with real risk and nothing new for players. If it's
+   done, move one screen at a time with the whole suite between each.
+2. **More party games:** a carry race over an obstacle course; king of the
+   hill on a tilting platform.
+3. **Online:** predict jumps too; try it between two real networks (and
+   phones on mobile data).
+4. **Performance:** instance repeated decorations (rails, posts, trees);
+   measure on a real Chromebook and iPhone.
+5. **Voice chat** between the two over the direct link (WebRTC audio, louder
+   when the movers are close), as in the co-op games everyone's playing.
