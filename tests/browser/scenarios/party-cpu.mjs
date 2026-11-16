@@ -26,7 +26,9 @@ export default async function ({ page, base, shot }) {
     );
     let s = null;
     const t0 = Date.now();
-    for (let t = 0; t < secs; t += 2) {
+    // (football: a match is minutes long, and a first goal can take the computer most of a minute)
+    const limit = game === 'football' ? secs * 1.8 : secs;
+    for (let t = 0; t < limit; t += 2) {
       await adv(2);
       s = await page.evaluate(() => {
         const g = window.__FF.game.session.party;

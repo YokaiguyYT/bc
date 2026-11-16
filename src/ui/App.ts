@@ -30,6 +30,7 @@ import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
 import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, trackParty, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { ReplayPlayer, ReplayRecorder } from '../game/replay';
+import { canShareFile, ClipRecorder, clipName, clipSupported, handOver } from '../game/clip';
 import { bestBeaten, CPU_NAMES, CPU_PRIZE, LENGTH_NAMES, PARTY_GAMES, partyInfo, partyRecord, recordParty, type PartyLength } from '../game/party';
 import { chaosDaily, dailyNumber, dailyTwist, lastWeek, recordDaily, shareText, streak, StretchTracker, todaysResult, triesToday, untilNext } from '../game/daily';
 
@@ -1341,16 +1342,37 @@ export class App {
 
   // ---- the instant replay
   private recorder: ReplayRecorder | null = null;
-  private instant: { player: ReplayPlayer; el: HTMLElement } | null = null;
+  private instant: { player: ReplayPlayer; el: HTMLElement; rec: ClipRecorder | null; after: (() => void) | null } | null = null;
+  /** The replay saved as a video, waiting for its button to be pressed. */
+  private clipFile: { blob: Blob; name: string; share: boolean } | null = null;
 
   /**
    * The run's biggest moment again, slowly: the job is built afresh and shown from the recording (nothing is
    * simulated, scored or paid). The results card waits underneath, exactly as it was.
    */
-  private startReplay(r: SessionResult) {
+  private startReplay(r: SessionResult, record = false) {
     const clip = this.recorder?.best;
     const old = this.game.session;
     if (!clip || !old || this.instant || this.screen !== 'results') return;
+    // (the replay's own picture and sound, recorded: copied right after each frame is drawn)
+    let rec: ClipRecorder | null = null;
+    const after = this.game.afterRender;
+    if (record) {
+      try {
+        rec = new ClipRecorder(this.game.renderer.renderer.domElement, this.audio.stream());
+      } catch (e) {
+        console.warn('clip: no recording', e);
+        rec = null;
+      }
+      if (!rec) {
+        this.toast('This browser can’t record the replay, sorry.');
+        return;
+      }
+      this.game.afterRender = () => {
+        after?.();
+        rec?.frame();
+      };
+    }
     const def = old.def;
     this.hud?.dispose();
     this.hud = null;
@@ -1370,11 +1392,11 @@ export class App {
     s.snapCamera();
     const el = document.createElement('div');
     el.className = 'replay-banner';
-    el.innerHTML = `<div class="replay-tag">🎬 REPLAY</div><div class="replay-what">${esc(clip.label)}</div><div class="replay-skip">any key to skip</div>`;
+    el.innerHTML = `<div class="replay-tag">${rec ? '<span class="rec-dot"></span>REC' : '🎬 REPLAY'}</div><div class="replay-what">${esc(clip.label)}</div><div class="replay-skip">${rec ? 'any key to stop recording' : 'any key to skip'}</div>`;
     el.addEventListener('click', () => this.endReplay());
     this.hudLayer.appendChild(el);
     this.layer.classList.add('replaying');
-    this.instant = { player, el };
+    this.instant = { player, el, rec, after };
     this.audio.ui('whoosh');
   }
 
@@ -1383,10 +1405,41 @@ export class App {
     const rp = this.instant;
     if (!rp) return;
     this.instant = null;
+    // played to the end, or skipped?
+    const whole = rp.player.done;
     rp.player.stop();
     rp.el.remove();
     this.layer.classList.remove('replaying');
     this.resultsFor = 0.6;
+    if (rp.rec) {
+      this.game.afterRender = rp.after;
+      const rec = rp.rec;
+      if (!whole) {
+        rec.cancel();
+        this.toast('Recording stopped.');
+        return;
+      }
+      const name = clipName(this.game.session?.def.name ?? 'clip', rec.type);
+      void rec.stop().then((blob) => {
+        if (!blob) return this.toast('The recording didn’t work, sorry.');
+        const share = this.game.touch.active && canShareFile(blob, name);
+        this.clipFile = { blob, name, share };
+        // the record button becomes the one that hands it over (a share sheet needs a fresh press)
+        const btn = this.layer.querySelector<HTMLButtonElement>('#r-record');
+        if (btn) btn.innerHTML = share ? `📨 <b>Send the video</b> (${Math.max(1, Math.round(blob.size / 1e5) / 10)} MB)` : `💾 <b>Save the video</b> (${Math.max(1, Math.round(blob.size / 1e5) / 10)} MB)`;
+        this.audio.ui('pop');
+      });
+    }
+  }
+
+  /** The record button: record the replay, or (once it's recorded) save or send it. */
+  private recordOrSave(r: SessionResult) {
+    const f = this.clipFile;
+    if (!f) return this.startReplay(r, true);
+    void handOver(f.blob, f.name, f.share).then((how) => {
+      if (how === 'saved') this.toast(`💾 Saved as ${f.name} (in your Downloads)`);
+      else if (how === 'shared') this.toast('📨 Sent!');
+    });
   }
 
   /** Playing on your own (the robot buddy carries the other end); ?solo in the address for tests. */
@@ -1761,12 +1814,14 @@ export class App {
         ${shareBlock}
         ${this.paydayBlock(payday)}
         ${!r.success && (this.game.settings.damage ?? 1) >= 1 ? '<p style="font-size:14px">Too fragile? <b>Settings → Cargo toughness: Sturdy</b> halves the damage.</p>' : ''}
-        ${this.recorder?.best && !s.mirror ? `<button class="btn small replay-btn" data-nav id="r-replay">🎬 Watch it again in slow motion: <b>${esc(this.recorder.best.label)}</b></button>` : ''}
+        ${this.recorder?.best && !s.mirror ? `<div class="replay-row"><button class="btn small replay-btn" data-nav id="r-replay">🎬 Watch it again in slow motion: <b>${esc(this.recorder.best.label)}</b></button>${clipSupported() ? '<button class="btn small replay-btn" data-nav id="r-record" title="Record the replay as a video, to save or send">🎥 Record it</button>' : ''}</div>` : ''}
         <div class="row">${buttons}</div>
       </div>`,
       { dim: true, back: () => this.backToList() },
     );
     this.bind('r-replay', () => this.startReplay(r));
+    this.clipFile = null;
+    this.bind('r-record', () => this.recordOrSave(r));
     this.celebrate(r.success, stars, r.payout);
     boardPost?.();
     this.bind('r-rematch', () => {

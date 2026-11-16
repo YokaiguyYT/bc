@@ -127,7 +127,10 @@ export class Game {
       this.onFrame?.(1 / fps);
       this.session?.update(1 / fps);
     }
-    if (render) this.renderer.render();
+    if (render) {
+      this.renderer.render();
+      this.afterRender?.();
+    }
   }
 
   /** Every job with a load to deliver (tests walk these; party arenas aren't jobs). */

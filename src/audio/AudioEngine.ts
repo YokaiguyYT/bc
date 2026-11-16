@@ -31,6 +31,8 @@ export class AudioEngine {
   private master: GainNode | null = null;
   private sfxBus: GainNode | null = null;
   private musicBus: GainNode | null = null;
+  private limit: DynamicsCompressorNode | null = null;
+  private tap: MediaStreamAudioDestinationNode | null = null;
   private vol = { master: 0.8, music: 0.55, sfx: 0.9 };
   private want: Track = 'none';
   private s: LevelSession | null = null;
@@ -60,6 +62,7 @@ export class AudioEngine {
       limit.attack.value = 0.003;
       limit.release.value = 0.2;
       limit.connect(ctx.destination);
+      this.limit = limit;
       this.master = ctx.createGain();
       this.master.connect(limit);
       this.sfxBus = ctx.createGain();
@@ -79,6 +82,21 @@ export class AudioEngine {
     } catch {
       this.ctx = null;
     }
+  }
+
+  /** Everything you hear, as a stream (recording a clip); null without sound. Made the first time it's asked for. */
+  stream(): MediaStream | null {
+    const ctx = this.ctx;
+    if (!ctx || !this.limit || typeof ctx.createMediaStreamDestination !== 'function') return null;
+    if (!this.tap) {
+      try {
+        this.tap = ctx.createMediaStreamDestination();
+        this.limit.connect(this.tap);
+      } catch {
+        return null;
+      }
+    }
+    return this.tap.stream;
   }
 
   /** Is there sound (has a key or a tap unlocked it)? */

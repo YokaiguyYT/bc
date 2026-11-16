@@ -11,6 +11,9 @@ export default async function ({ page, base, shot }) {
   await page.goto(base + '?manual=1');
   await page.waitForFunction(() => window.__FF && window.__FF.app && !document.getElementById('loading'), null, { timeout: 90000 });
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
+  // (a click straight on the button: on the software renderer under load the page can take ages to draw
+  //  the frames Playwright waits for before it clicks)
+  const tap = (sel) => page.evaluate((sel) => document.querySelector(sel).click(), sel);
   const cargo = () =>
     page.evaluate(() => {
       const s = window.__FF.game.session;
@@ -62,7 +65,7 @@ export default async function ({ page, base, shot }) {
   check('delivered: the results card offers the replay', res.screen === 'results' && /Watch it again.*−\d+% in one go/.test(res.button ?? ''), res);
   await shot('replay_card');
 
-  await page.click('#r-replay');
+  await tap('#r-replay');
   await adv(0.05);
   const on = await ui();
   const c0 = await cargo();
@@ -89,7 +92,7 @@ export default async function ({ page, base, shot }) {
   const after = await ui();
   check('then the card is back as it was, and nothing was paid twice', after.screen === 'results' && after.banner === null && after.hidden === false && after.pay === res.pay && after.wallet === res.wallet && after.button === res.button, { pay: [res.pay, after.pay], wallet: [res.wallet, after.wallet] });
   // again, and a key skips it
-  await page.click('#r-replay');
+  await tap('#r-replay');
   await adv(0.3);
   const again = await ui();
   await page.keyboard.press('Space');
@@ -98,7 +101,7 @@ export default async function ({ page, base, shot }) {
   check('it can be watched again, and any key skips it (and does nothing else)', /REPLAY/.test(again.banner ?? '') && skipped.banner === null && skipped.screen === 'results' && skipped.hidden === false, [again.banner, skipped.screen]);
   // the card's buttons still work on the job
   await adv(1.5);
-  await page.click('#r-retry');
+  await tap('#r-retry');
   await adv(0.5);
   const retried = await page.evaluate(() => ({ screen: window.__FF.app.screen, mirror: !!window.__FF.game.session.mirror, clip: !!window.__FF.app.recorder?.clip }));
   check('Play again starts the job afresh (a real one, a fresh recording)', retried.screen === 'playing' && !retried.mirror && !retried.clip, retried);
@@ -112,7 +115,7 @@ export default async function ({ page, base, shot }) {
   await adv(1.5);
   const lost = await ui();
   check('smashed: the card offers the end of it', lost.screen === 'results' && /Watch it again.*the end of it/.test(lost.button ?? ''), lost.button);
-  await page.click('#r-replay');
+  await tap('#r-replay');
   await adv(0.05);
   const b0 = await cargo();
   let broke = false;
@@ -124,5 +127,43 @@ export default async function ({ page, base, shot }) {
   check('…whole again at the start of the replay, and it breaks again', !b0.destroyed && b0.mirror && broke, [b0, broke]);
   const errs = await page.evaluate(() => window.__FF.app.screen);
   check('back at the card', errs === 'results', errs);
+
+  // ---- recording it as a video, to save or send (where the browser can record)
+  const canRecord = await page.evaluate(() => !!document.querySelector('#r-record'));
+  if (!canRecord) console.log('   (this browser can’t record: no 🎥 button, and that part is skipped)');
+  else {
+    await adv(1.5);
+    await tap('#r-record');
+    await adv(0.05);
+    const recOn = await ui();
+    check('🎥 Record it: the replay plays with a REC tag', /REC/.test(recOn.banner ?? '') && /stop recording/.test(recOn.banner ?? ''), recOn.banner);
+    for (let i = 0; i < 400 && (await page.evaluate(() => !!window.__FF.app.instant)); i++) await adv(0.1);
+    // (the video is put together a moment after)
+    let label = '';
+    for (let i = 0; i < 40 && !/Save|Send/.test(label); i++) {
+      await page.waitForTimeout(250);
+      label = await page.evaluate(() => document.querySelector('#r-record')?.textContent ?? '');
+    }
+    check('…then the button offers the video', /Save the video|Send the video/.test(label) && /MB/.test(label), label);
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }).catch(() => null), tap('#r-record')]);
+    let size = 0;
+    let name = '';
+    if (download) {
+      name = download.suggestedFilename();
+      const path = await download.path().catch(() => null);
+      if (path) size = (await import('node:fs')).statSync(path).size;
+    }
+    check('…which saves a video file of the replay', /^fragile-freight-.*\.(mp4|webm)$/.test(name) && size > 20000, { name, size });
+    // skipping a recording throws it away
+    await adv(1.5);
+    const before = await page.evaluate(() => document.querySelector('#r-record')?.textContent ?? '');
+    await page.evaluate(() => (window.__FF.app.clipFile = null));
+    await tap('#r-record');
+    await adv(0.5);
+    await page.keyboard.press('Space');
+    await adv(0.3);
+    const stopped = await ui();
+    check('…and a key during it stops and throws the recording away', stopped.banner === null && stopped.screen === 'results' && /Recording stopped/.test(await page.evaluate(() => document.body.textContent)), [before, stopped.screen]);
+  }
   console.log(checks.every(Boolean) ? 'ALL OK' : 'SOME FAILED');
 }

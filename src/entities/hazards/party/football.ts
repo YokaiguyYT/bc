@@ -199,7 +199,7 @@ export class Football extends PartyGame {
     }
   }
 
-  private plan = { x: 0, z: 0, at: -9, backUntil: 0 };
+  private plan = { x: 0, z: 0, at: -9, backUntil: 0, soft: false };
   /** How long the computer's been shoving the ball and getting nowhere. */
   private shoving = 0;
   protected cpuMove(me: Player, foe: Player, dt: number) {
@@ -224,10 +224,38 @@ export class Football extends PartyGame {
       // the computer is P2: it attacks the -x goal and defends +x
       let gx = -HX - 1;
       let gz = Math.max(-MOUTH + 0.6, Math.min(MOUTH - 0.6, b.z * 0.5));
+      // (a touch, not a shot: set by the cut-back below)
+      let soft = false;
       // the ball's against a side wall: there's no getting behind it, so push it along the wall
       if (Math.abs(b.z) > HZ - 1.3 && b.x > -HX + 1.5) {
         gx = b.x - 10;
         gz = b.z * 0.85;
+      }
+      // in the corner by their goal line, outside the posts: there's no angle from there (it only bounces off
+      // the end wall), so cut it back out in front of the goal first
+      if (b.x < -HX + 2.4 && Math.abs(b.z) > MOUTH - 0.2 && Math.abs(b.z) < HZ - 1.3) {
+        gx = -HX + 4.2;
+        gz = Math.sign(b.z) * 0.6;
+        soft = true;
+      }
+      // somebody standing between the ball and the goal (a keeper): kicking it straight at them gets nowhere,
+      // so push it into the gap beside them first, on the side away from them (or with more room)
+      {
+        let lx = gx - b.x;
+        let lz = gz - b.z;
+        const ll = Math.hypot(lx, lz) || 1;
+        lx /= ll;
+        lz /= ll;
+        const fx = foe.bodyPos.x - b.x;
+        const fz = foe.bodyPos.z - b.z;
+        const along = fx * lx + fz * lz;
+        const off = fx * -lz + fz * lx;
+        if (foe.state === 'active' && along > 0.6 && along < ll && Math.abs(off) < 1.5) {
+          let sgn = Math.abs(off) > 0.2 ? -Math.sign(off) : foe.bodyPos.z > 0 ? -1 : 1;
+          if (Math.abs(foe.bodyPos.z + lx * sgn * 2.6) > HZ - 1) sgn = -sgn;
+          gx = foe.bodyPos.x + lx * 1.0 - lz * sgn * 2.6;
+          gz = Math.max(-HZ + 1, Math.min(HZ - 1, foe.bodyPos.z + lz * 1.0 + lx * sgn * 2.6));
+        }
       }
       // from the goal through the ball, and a spot just behind it on that line
       let ux = b.x - gx;
@@ -261,7 +289,10 @@ export class Football extends PartyGame {
       }
       this.plan.x = Math.max(-HX + 0.5, Math.min(HX - 0.5, this.plan.x));
       this.plan.z = Math.max(-HZ + 0.5, Math.min(HZ - 0.5, this.plan.z));
+      this.plan.soft = soft;
     }
-    this.steer(me, this.plan.x, this.plan.z);
+    // (cutting it back: near the ball, a walk, so it rolls out in front of the goal instead of flying off)
+    const near = Math.hypot(b.x - m.x, b.z - m.z) < 2.2;
+    this.steer(me, this.plan.x, this.plan.z, this.plan.soft && near ? 0.45 : 1);
   }
 }

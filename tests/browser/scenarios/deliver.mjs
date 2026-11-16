@@ -507,6 +507,15 @@ export default async function ({ page, base, shot }) {
     console.log(`job ${gen}: ${info.name} · ${info.cargo} · ${info.pieces.join(' ')}`);
   }
   const adv = (s) => page.evaluate((s) => window.__FF.game.advance(s), s);
+  // (this much of the game's own clock: a knock's moment of slow motion makes a stretch of frames a little less)
+  const advGame = (sec) =>
+    page.evaluate((sec) => {
+      const g = window.__FF.game;
+      const s = g.session;
+      const t0 = s.physics.time;
+      for (let i = 0; i < 4000 && s.physics.time - t0 < sec; i++) g.advance(1 / 60, 60, false);
+      g.renderer.render();
+    }, sec);
   await page.evaluate(([digital, gripsDebug, solo]) => {
     window.__FF.game.session.scriptedInput = true;
     window.__digital = digital;
@@ -1150,7 +1159,7 @@ export default async function ({ page, base, shot }) {
             ),
           );
         }
-      } else await adv(2.5);
+      } else await advGame(2.5);
     }
     const end = await st();
     console.log(name.padEnd(8), `done: health ${h0} → ${end.health}`, JSON.stringify(end));

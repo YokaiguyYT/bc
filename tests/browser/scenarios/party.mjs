@@ -40,12 +40,12 @@ export default async function ({ page, base, shot }) {
   // the game's own way of winning a round, for P1 (or the computer) — see below
   const WIN = {
     // P1 walks off the mat: the computer wins the round
-    sumo: { who: 1, act: () => p1walk(1, 0, 4) },
+    sumo: { who: 1, act: () => calm(() => p1walk(-1, 0, 4)) },
     // the ball rolls into the computer's goal
     // the fuse runs out on whoever has it
     potato: { who: -1, act: () => page.evaluate(() => (window.__FF.game.session.party.fuse = 0.01)).then(() => adv(1)) },
     // P1 walks off the tiles into the lava
-    lava: { who: 1, act: () => p1walk(-1, 0, 4) },
+    lava: { who: 1, act: () => calm(() => p1walk(-1, 0, 4)) },
     // P1 paints more than the computer before the clock runs out
     paint: {
       who: 0,
@@ -145,6 +145,18 @@ export default async function ({ page, base, shot }) {
     keep: { who: 0, act: () => page.evaluate(() => (window.__FF.game.session.party.secs[0] = 999)).then(() => adv(0.5)) },
     football: { who: 0, act: () => page.evaluate(() => window.__FF.game.session.party.ball.body.setTranslation({ x: 10.9, y: 0.7, z: 0 }, true)).then(() => adv(1)) },
   };
+  // (the computer stands still while the test does its bit, or it may charge off the mat itself first)
+  const calm = async (fn) => {
+    const cpu = await page.evaluate(() => {
+      const s = window.__FF.game.session;
+      const c = s.party.cpu;
+      s.party.cpu = 0;
+      Object.assign(s.players[1].intent, { moveX: 0, moveZ: 0, grab: false });
+      return c;
+    });
+    await fn();
+    await page.evaluate((c) => (window.__FF.game.session.party.cpu = c), cpu);
+  };
   const p1walk = (x, z, secs) =>
     page.evaluate(
       ([x, z]) => {
@@ -189,9 +201,16 @@ export default async function ({ page, base, shot }) {
     // a round won the game's own way
     const w = WIN[game];
     if (w) {
-      let sc = s.score;
-      // (a game whose act waits for the next round: the score as it was when the act began)
-      if (w.before) sc = await w.before();
+      // (with a round on, and the score as it is then: the computer may have won one by itself already, and
+      //  between rounds nobody moves)
+      const sc = w.before
+        ? await w.before()
+        : await page.evaluate(() => {
+            const g = window.__FF.game;
+            const p = g.session.party;
+            for (let i = 0; i < 100 && p.phase !== 'play'; i++) g.advance(0.1, 60, false);
+            return [...p.score];
+          });
       await w.act();
       for (let i = 0; i < 20 && (await st()).score.join() === sc.join(); i++) await adv(0.5);
       s = await st();

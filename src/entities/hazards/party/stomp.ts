@@ -232,8 +232,8 @@ export class Stomp extends PartyGame {
     const right = v * (0.75 + this.slip);
     if (me.grounded && this.safe[0] <= 0.3 && v > 1.9 && on > 0.85 && d > right - v * 0.11 && d < right + v * 0.11 && now - this.jumpAt > wait) {
       this.jumpAt = now;
-      // (the next try's timing: easy misjudges it by up to a quarter either way)
-      this.slip = (Math.random() - 0.5) * 0.5 * (1 - lvl);
+      // (the next try's timing: easy misjudges it by up to a sixth either way)
+      this.slip = (Math.random() - 0.5) * 0.34 * (1 - lvl);
       me.intent.jumpPressed = true;
     }
   }

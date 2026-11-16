@@ -2330,8 +2330,24 @@ table.board .dot {
     opacity: 0.45;
   }
 }
-.replay-btn {
+.replay-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   margin: 4px auto 8px;
+}
+.replay-btn {
+  margin: 0;
+}
+.replay-banner .rec-dot {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin-right: 0.35em;
+  border-radius: 50%;
+  background: #ff3b30;
+  vertical-align: 0.02em;
 }
 .crew-pick.small .seg-btn {
   font-size: 15px;
