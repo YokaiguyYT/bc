@@ -57,5 +57,3 @@ export const HAND_LOCAL = new THREE.Vector3(0, -R.foreArm.L / 2 - R.hand.offset,
 export const ARM_UPPER = R.upperArm.L;
 export const ARM_LOWER = R.foreArm.L + R.hand.offset;
 export const ARM_REACH = ARM_UPPER + ARM_LOWER;
-/** Sole of the foot below the torso centre in the rest pose. */
-export const SOLE_DEPTH = -R.hip.y + R.thigh.L + R.shin.L + R.foot.down + R.foot.r;

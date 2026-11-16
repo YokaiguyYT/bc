@@ -19,10 +19,6 @@ export const Y_AXIS = new THREE.Vector3(0, 1, 0);
 export const Z_AXIS = new THREE.Vector3(0, 0, 1);
 export const DOWN = new THREE.Vector3(0, -1, 0);
 
-export function yawQuat(yaw: number, out = new THREE.Quaternion()) {
-  return out.setFromAxisAngle(Y_AXIS, yaw);
-}
-
 /** Rotation vector (axis * angle) of q, shortest path. */
 export function quatToRotVec(q: THREE.Quaternion, out: THREE.Vector3) {
   let { x, y, z, w } = q;

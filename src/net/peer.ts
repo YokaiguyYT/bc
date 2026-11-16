@@ -28,7 +28,7 @@ export const ICE: RTCIceServer[] = iceServers();
  * Bump when host and guest builds can no longer talk to each other, or when
  * random jobs come out differently (the guest rebuilds them from their number).
  */
-export const NET_VERSION = 13;
+export const NET_VERSION = 14;
 
 /** Messages bigger than this go over the control channel in pieces. */
 const CHUNK = 16000;

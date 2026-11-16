@@ -32,7 +32,5 @@ export function playerArmBit(index: number) {
 
 /** Everything a "solid" thing should bump into. */
 export const SOLID = G.STATIC | G.PROP | G.CARGO | G.P1 | G.P2 | G.HAZARD | G.NPC;
-/** Things a hand may grab. */
-export const GRABBABLE = G.STATIC | G.PROP | G.CARGO | G.P1 | G.P2 | G.NPC;
 /** Things you can stand on. */
 export const STANDABLE = G.STATIC | G.PROP | G.CARGO | G.P1 | G.P2 | G.HAZARD | G.NPC;

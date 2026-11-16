@@ -116,4 +116,3 @@ export function decodePlan(code: string, themes: number): Plan | null {
 }
 
 /** Is this a built job's code (rather than a job number)? */
-export const isPlanCode = (text: string) => /^B/.test(cleanCode(text));

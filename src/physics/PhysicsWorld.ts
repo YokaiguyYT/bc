@@ -218,17 +218,8 @@ export class PhysicsWorld {
   }
 }
 
-/** Small conversion helpers between Rapier {x,y,z} and three.js. */
-export const toV3 = (v: { x: number; y: number; z: number }, out = new THREE.Vector3()) => out.set(v.x, v.y, v.z);
-export const toQ = (q: { x: number; y: number; z: number; w: number }, out = new THREE.Quaternion()) =>
-  out.set(q.x, q.y, q.z, q.w);
+/** Small conversion helpers from three.js to Rapier {x,y,z}. */
 export const vec = (v: THREE.Vector3) => ({ x: v.x, y: v.y, z: v.z });
 export const quat = (q: THREE.Quaternion) => ({ x: q.x, y: q.y, z: q.z, w: q.w });
-
-/** Linear velocity of a body at a world point, into a three.js vector. */
-export function velAt(body: RigidBody, p: THREE.Vector3, out: THREE.Vector3) {
-  const v = body.velocityAtPoint({ x: p.x, y: p.y, z: p.z });
-  return out.set(v.x, v.y, v.z);
-}
 
 export { _v as _scratchV };
