@@ -64,8 +64,6 @@ interface Hand {
   /** World point the hand is reaching for (null = not reaching). */
   reach: THREE.Vector3 | null;
   reachVel: THREE.Vector3;
-  /** Holding the scenery: time since it last looked whether the cargo has come within reach (s). */
-  lookT?: number;
 }
 
 export type PlayerState = 'active' | 'knocked' | 'gettingUp';
@@ -834,19 +832,7 @@ export class Player {
         // one hand on the cargo and the other on the table, the floor or a friend is never
         // what anyone means: that hand lets go and joins in
         const joinCargo = other?.kind === 'cargo' && otherBody && h.grip.body !== otherBody;
-        // walked up with grab held down and the hand caught the scenery on the way (the van's side, a
-        // table): once the cargo is within reach it lets go and takes the cargo. Feet on the ground only:
-        // a hand holding a ledge we're hanging from stays where it is.
-        let swap = false;
-        if (!joinCargo && h.grip.kind === 'static' && this.grounded && this.state === 'active') {
-          h.lookT = (h.lookT ?? 0) + dt;
-          if (h.lookT > 0.15) {
-            h.lookT = 0;
-            const t = this.findTarget(h.side);
-            swap = !!t && this.sim.physics.info(t.collider)?.kind === 'cargo';
-          }
-        }
-        if (!joinCargo && !swap) {
+        if (!joinCargo) {
           this.maintainGrip(h, dt);
           continue;
         }

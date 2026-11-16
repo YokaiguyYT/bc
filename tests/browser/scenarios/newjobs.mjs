@@ -129,12 +129,14 @@ export default async function ({ page, base, shot }) {
       if (c.status && /hot/.test(c.status)) warm = c.status;
     }
     const at = c.body.translation();
-    g.advance(0.3, 60, false);
+    // 0.3 s of the game's own clock (the scorch that comes with lighting up is a moment of slow motion)
+    const t0 = s.physics.time;
+    for (let i = 0; i < 120 && s.physics.time - t0 < 0.3; i++) g.advance(1 / 60, 60, false);
     const v = c.body.linvel();
     return { t, launches: c.launches, warm, burning: c.status, health: +c.health.toFixed(3), speed: +Math.hypot(v.x, v.z).toFixed(2), at: [+at.x.toFixed(1), +at.z.toFixed(1)] };
   });
   check('rocket: heats up by the welder, then the engine lights', ro.launches === 1 && /hot/.test(ro.warm) && ro.health < 1, ro);
-  check('rocket: the engine shoves it along', ro.speed > 1 || /WHOOSH/.test(ro.burning ?? ''), ro);
+  check('rocket: the engine shoves it along', ro.speed > 1, ro);
   await shot('nj_rocket_after');
 
   console.log(checks.every(Boolean) ? 'ALL OK' : 'SOME FAILED');

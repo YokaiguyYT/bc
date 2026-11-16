@@ -36,7 +36,10 @@ page.on('dialog', (d) => d.accept()); // "leave this page?" when a test navigate
 
 const mod = await import(`./scenarios/${scenario}.mjs`);
 try {
-  await mod.default({ page, base, out, shot: (name) => page.screenshot({ path: `${out}/${name}.png` }) });
+  // (screenshots are for looking at afterwards: on the software renderer under load one can take half a
+  //  minute, and a slow one is noted rather than failing the run)
+  const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 }).catch((e) => console.log(`(screenshot ${name} skipped: ${e.message.split('\n')[0]})`));
+  await mod.default({ page, base, out, shot });
 } catch (e) {
   console.error('SCENARIO FAILED', e);
   process.exitCode = 1;

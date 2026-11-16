@@ -9,7 +9,8 @@
 // Waypoints are [x, z, formation?]: 'inline' (one mover leads), 'broad'
 // (side by side), 'front' (both movers on the same side, load in front).
 // Without a formation both movers just push the same direction.
-// A stretch with steady: true steers against moving floors (a belt), as a person would.
+// A stretch with steady: true steers against moving floors (a belt), as a person would;
+// hold: true ends it without setting the load down (the next stretch takes a fresh hold).
 // the balloon bouquet's way through the Tunnel of Love and Hedgehog Hollow (job 10)
 const FUNFAIR_TUNNEL = [[0, -6.4], [-0.75, -8.6], [-0.75, -12.0], [0.75, -13.6], [0.75, -15.6], [-0.75, -17.2], [-0.75, -19.2], [0.75, -20.8], [0.75, -22.8], [0, -25.6], [0, -28.4]].map(([x, z]) => [x, z, 'broad']);
 const FUNFAIR_HOLLOW = [[0, -30.2], [1.5, -32.0], [1.5, -35.2], [-1.5, -37.0], [-1.5, -40.2], [1.5, -42.0], [1.5, -45.2], [0, -47.6], [0, -51.0], [0, -53.0], [0, -55.6]].map(([x, z]) => [x, z, 'broad']);
@@ -51,6 +52,7 @@ const ROUTES = {
         [-15.3, -0.6, 'broad'],
         [-15.2, 3.4, 'broad'],
       ],
+      hold: true,
     },
     // a fresh hold at checkpoint 2 for the last ramp (a rail either side, a pane's width between): after
     // the long walk the two hold it at arm's length and askew, and would set it down on its corner
@@ -1111,7 +1113,16 @@ export default async function ({ page, base, shot }) {
       console.log(name.padEnd(8), 'after ride', JSON.stringify(await st()));
     }
     await shot(`deliver_${name}`);
-    if (seg.place || (seg.path.length && !route[Object.keys(route)[Object.keys(route).indexOf(name) + 1]]?.keep)) {
+    // hold: the next stretch picks up from a fresh hold where this one ended, so let go there and then
+    // (nothing is simulated before it's re-posed) instead of setting it down (a pane can't stand on its own)
+    if (seg.hold)
+      await page.evaluate(() =>
+        window.__FF.game.session.players.forEach((p) => {
+          p.intent.grab = false;
+          p.releaseAll();
+        }),
+      );
+    else if (seg.place || (seg.path.length && !route[Object.keys(route)[Object.keys(route).indexOf(name) + 1]]?.keep)) {
       await setBoth({ grab: false });
       if (process.env.TRACE_PLACE) {
         for (let i = 0; i < 25; i++) {
