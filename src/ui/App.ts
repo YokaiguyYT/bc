@@ -1383,6 +1383,7 @@ export class App {
     const rp = this.instant;
     if (!rp) return;
     this.instant = null;
+    rp.player.stop();
     rp.el.remove();
     this.layer.classList.remove('replaying');
     this.resultsFor = 0.6;

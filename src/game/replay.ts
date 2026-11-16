@@ -122,7 +122,7 @@ export class ReplayPlayer {
   private hold = 0;
 
   constructor(
-    s: LevelSession,
+    private s: LevelSession,
     readonly clip: Clip,
   ) {
     this.sync = new GuestSync(s);
@@ -132,11 +132,32 @@ export class ReplayPlayer {
     this.sync.playhead = this.t;
     this.sync.pushEvents(clip.events.filter((e) => e.t >= this.t));
     this.feed();
+    // the camera: on everybody as usual, then in close on the cargo for the moment itself
+    const usual = s.focusOverride;
+    s.focusOverride = () => {
+      if (this.speed >= 1 || this.done) return usual ? usual() : this.everybody();
+      const c = s.physics.interpolatedPosition(s.cargo.body, new THREE.Vector3());
+      return [c, c.clone().lerp(this.clip.where, 0.5)];
+    };
+  }
+
+  private everybody() {
+    const s = this.s;
+    const pts = s.players.map((p) => s.physics.interpolatedPosition(p.body, new THREE.Vector3()));
+    const c = s.physics.interpolatedPosition(s.cargo.body, new THREE.Vector3());
+    pts.push(c, c.clone());
+    return pts;
   }
 
   private feed() {
     const fr = this.clip.frames;
     while (this.next < fr.length && fr[this.next].t <= this.t + 0.6) this.sync.push(fr[this.next++].buf);
+  }
+
+  /** Over (or skipped): the camera goes back to framing everybody. */
+  stop() {
+    this.done = true;
+    this.s.cameraRig.closeUp = null;
   }
 
   /** How fast the clock runs right now: slowly through the moment. */
@@ -152,9 +173,13 @@ export class ReplayPlayer {
     if (this.t >= end) {
       // a moment on the last picture, then that's it
       this.hold += dt;
-      if (this.hold > 0.7) this.done = true;
+      if (this.hold > 0.7) this.stop();
       return;
     }
+    // through the moment itself: in close (nearer than the game ever frames it), drifting round it a little
+    const slow = this.speed < 1;
+    this.s.cameraRig.closeUp = slow ? 6.2 : null;
+    if (slow) this.s.cameraRig.yaw += dt * 0.12;
     this.t = Math.min(end, this.t + dt * this.speed);
     this.sync.playhead = this.t;
     this.feed();
