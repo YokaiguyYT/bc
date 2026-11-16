@@ -3,7 +3,8 @@
 // the newer party games against Easy, Normal and Hard for a while, and the
 // score is printed. Not a pass/fail test of the numbers: it fails only if the
 // computer never scores at all on Hard, or the scripted player never does on
-// Easy. env GAMES (dodge,stomp,keep), SECS (game seconds each, default 120).
+// Easy. env GAMES (dodge,stomp,keep), SECS (game seconds each, default 120),
+// LEVELS (1,2,3), TRACE=1 (where everybody is, every three seconds).
 export default async function ({ page, base }) {
   const checks = [];
   const check = (name, ok, got) => {
@@ -14,11 +15,13 @@ export default async function ({ page, base }) {
   await page.waitForFunction(() => window.__FF && window.__FF.app && !document.getElementById('loading'), null, { timeout: 90000 });
   const games = (process.env.GAMES ?? 'dodge,stomp,keep').split(',');
   const secs = Number(process.env.SECS ?? 120);
+  // (LEVELS=3: just the one, for a closer look; the checks want all three)
+  const levels = (process.env.LEVELS ?? '1,2,3').split(',').map(Number);
   for (const game of games) {
     const rows = [];
-    for (const cpu of [1, 2, 3]) {
+    for (const cpu of levels) {
       const r = await page.evaluate(
-        ([game, cpu, secs]) => {
+        ([game, cpu, secs, trace]) => {
           const app = window.__FF.app;
           Object.assign(app.partyOpts, { vs: 'cpu', cpu, len: 2 });
           app.playParty(game);
@@ -37,6 +40,7 @@ export default async function ({ page, base }) {
           let goalT = 0;
           let armed = 0;
           const pops = [0, 0];
+          const log = [];
           let last = [3, 3];
           const go = (x, z, k = 1) => {
             const dx = x - me.bodyPos.x;
@@ -128,14 +132,19 @@ export default async function ({ page, base }) {
             }
             last = [...p.tally];
             g.advance(dt, 60, false);
+            // (TRACE: where everybody is, every few seconds)
+            if (trace && Math.round(t * 10) % 30 === 0)
+              log.push(`${t.toFixed(0)}s ${p.phase} score ${p.score} tally ${p.tally} P1[${me.bodyPos.x.toFixed(1)},${me.bodyPos.z.toFixed(1)} ${me.state[0]}] CPU[${foe.bodyPos.x.toFixed(1)},${foe.bodyPos.z.toFixed(1)} ${foe.state[0]} grab ${+foe.intent.grab}]` + (game === 'keep' ? ` has ${p.has} parcel[${p.parcel.body.translation().x.toFixed(1)},${p.parcel.body.translation().y.toFixed(1)},${p.parcel.body.translation().z.toFixed(1)}]` : ''));
           }
-          return { cpu, rounds: [...p.score], pops, tally: [...p.tally] };
+          return { cpu, rounds: [...p.score], pops, tally: [...p.tally], log };
         },
-        [game, cpu, secs],
+        [game, cpu, secs, !!process.env.TRACE],
       );
       rows.push(r);
+      for (const l of r.log) console.log('     ', l);
       console.log(`   ${game.padEnd(6)} ${['', 'Easy  ', 'Normal', 'Hard  '][cpu]}  rounds P1 ${r.rounds[0]} – ${r.rounds[1]} CPU` + (game === 'stomp' ? `   pops P1 ${r.pops[0]} – ${r.pops[1]} CPU` : '') + (game === 'keep' ? `   this round ${r.tally[0]}s – ${r.tally[1]}s` : ''));
     }
+    if (levels.length < 3) continue;
     const total = (r) => (game === 'stomp' ? r.pops : game === 'keep' ? [r.rounds[0] * 20 + r.tally[0], r.rounds[1] * 20 + r.tally[1]] : r.rounds);
     check(`${game}: the scripted player gets somewhere on Easy`, total(rows[0])[0] > 0, total(rows[0]));
     check(`${game}: the computer gets somewhere on Hard`, total(rows[2])[1] > 0, total(rows[2]));

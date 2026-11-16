@@ -68,9 +68,10 @@ export default async function ({ page, base }) {
   // a point to P1: both scoreboards say so
   await unpause();
   await host.evaluate(() => window.__FF.game.session.party.endRound(0));
-  await until(guest, () => /1[–-]0/.test(document.querySelector('.party-board .pb-score')?.textContent ?? ''), null, 8000);
-  const boards = await Promise.all([host, guest].map((p) => p.evaluate(() => document.querySelector('.party-board .pb-score')?.textContent.replace(/\s+/g, ''))));
-  check('both scoreboards: 1–0', boards.every((t) => /^P11[–-]0P2$/.test(t ?? '')), boards);
+  // (games that show a count in the big numbers, seconds or balloons or cash, say the rounds on the line below)
+  await until(guest, () => /1[–-]0/.test(document.querySelector('.party-board')?.textContent ?? ''), null, 8000);
+  const boards = await Promise.all([host, guest].map((p) => p.evaluate(() => document.querySelector('.party-board')?.textContent.replace(/\s+/g, ''))));
+  check('both scoreboards: 1–0', boards.every((t) => /^(.*P11[–-]0P2|.*rounds1[–-]0)/.test(t ?? '')) && boards[0] === boards[1], boards.map((t) => (t ?? '').slice(0, 60)));
   await guest.screenshot({ path: `${out}/party_online_guest.png` });
   // P1 takes the game: the same results card on both
   await host.evaluate(() => {

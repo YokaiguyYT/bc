@@ -278,21 +278,30 @@ export class KeepAway extends PartyGame {
       me.intent.grab = false;
       return this.steer(me, m.x + (m.x - f.x), m.z + (m.z - f.z), 0.4);
     }
+    // 0 easy .. 1 hard. Here its levels differ in footwork, not in how fast its legs go (easy is a little slower,
+    // that's all): a chase is only a game if both can run
+    const lvl = Math.max(0, Math.min(1, (this.skill - 0.62) / 0.38));
+    const pace = (0.9 + 0.1 * lvl) / (0.55 + 0.45 * this.skill);
     if (this.has === 1) {
-      // got it: keep hold and keep away
+      // got it: keep hold and keep away. A new plan when the old one's run out, been reached, or they've got in its way
       me.intent.grab = true;
-      if (now - this.plan.at > 0.25 - 0.15 * this.skill) {
+      const px = this.plan.x - m.x;
+      const pz = this.plan.z - m.z;
+      const pl = Math.hypot(px, pz);
+      const fd = Math.hypot(f.x - m.x, f.z - m.z) || 1;
+      const into = pl > 0.1 && (px * (f.x - m.x) + pz * (f.z - m.z)) / (pl * fd) > 0.5 && fd < 3.5;
+      if (now - this.plan.at > 0.9 - 0.4 * lvl || pl < 0.7 || into) {
         this.plan.at = now;
-        this.flee(m, f);
+        this.flee(m, f, lvl);
       }
-      return this.steer(me, this.plan.x, this.plan.z);
+      return this.steer(me, this.plan.x, this.plan.z, pace);
     }
     if (this.has === 0) {
       // they have it: run them down (a little ahead of where they're going) and grab hold
-      const lead = 0.2 + 0.3 * this.skill;
+      const lead = 0.1 + 0.4 * lvl;
       const d = Math.hypot(f.x - m.x, f.z - m.z);
       const [x, z] = this.wayRound(m, f.x + foe.bodyVel.x * lead, f.z + foe.bodyVel.z * lead);
-      this.steer(me, x, z);
+      this.steer(me, x, z, pace);
       me.intent.grab = d < 1.3 && this.butter[1] <= 0;
       return;
     }
@@ -335,22 +344,31 @@ export class KeepAway extends PartyGame {
     return [tx, tz];
   }
 
-  /** Where to run with it: away from them, but not into a wall, a corner or a stack. */
-  private flee(m: THREE.Vector3, f: THREE.Vector3) {
+  /** Where to run with it: the way with the most room that's most away from them (round a stack rather than into it). */
+  private flee(m: THREE.Vector3, f: THREE.Vector3, lvl: number) {
     let best = -Infinity;
     const base = Math.atan2(m.z - f.z, m.x - f.x);
-    for (let i = 0; i < 12; i++) {
-      const a = base + ((i - 6) / 12) * Math.PI * 2;
-      const x = m.x + Math.cos(a) * 2.6;
-      const z = m.z + Math.sin(a) * 2.6;
-      if (Math.abs(x) > KEEP_HX - 0.7 || Math.abs(z) > KEEP_HZ - 0.7) continue;
-      if (KEEP_BLOCKS.some(([bx, bz, hw, hd]) => Math.abs(x - bx) < hw + 0.6 && Math.abs(z - bz) < hd + 0.6)) continue;
-      // far from them is good; so is room to keep running (the middle), and not doubling back past them
-      const score = Math.hypot(x - f.x, z - f.z) * 1.2 - Math.hypot(x, z) * 0.25 + Math.cos(a - base) * 0.8 + Math.random() * (1 - this.skill);
+    for (let i = 0; i < 16; i++) {
+      const a = base + (i / 16) * Math.PI * 2;
+      const cx = Math.cos(a);
+      const cz = Math.sin(a);
+      // how far that way before a wall or a stack
+      let room = 0;
+      for (let r = 0.5; r <= 6; r += 0.5) {
+        const x = m.x + cx * r;
+        const z = m.z + cz * r;
+        if (Math.abs(x) > KEEP_HX - 0.6 || Math.abs(z) > KEEP_HZ - 0.6) break;
+        if (KEEP_BLOCKS.some(([bx, bz, hw, hd]) => Math.abs(x - bx) < hw + 0.5 && Math.abs(z - bz) < hd + 0.5)) break;
+        room = r;
+      }
+      if (room < 1) continue;
+      // (easy picks its way with less care)
+      const score = Math.cos(a - base) * 2.2 + Math.min(room, 5) * 0.55 + Math.random() * 1.8 * (1 - lvl);
       if (score > best) {
         best = score;
-        this.plan.x = x;
-        this.plan.z = z;
+        const go = Math.min(room, 4);
+        this.plan.x = m.x + cx * go;
+        this.plan.z = m.z + cz * go;
       }
     }
     if (best === -Infinity) {
@@ -358,6 +376,7 @@ export class KeepAway extends PartyGame {
       this.plan.z = 0;
     }
   }
+
 }
 
 /** Does the straight line from (ax, az) to (bx, bz) pass through the box x0..x1, z0..z1? */

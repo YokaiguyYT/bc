@@ -1,6 +1,7 @@
 // The computer actually plays each party game: against a P1 who just stands
 // there, it should win rounds (push them off, score, haul loot, paint the
-// floor, outlast them on the lava, blow them up). env GAMES, CPU (1..3), SECS.
+// floor, outlast them on the lava, blow them up, hit them with a ball, pop
+// their balloons, keep the parcel). env GAMES, CPU (1..3), SECS.
 export default async function ({ page, base, shot }) {
   const checks = [];
   const check = (name, ok, got) => {
@@ -34,7 +35,8 @@ export default async function ({ page, base, shot }) {
       if (s.score[1] >= 1 && !['king', 'paint'].includes(game)) break;
     }
     await page.screenshot({ path: `${process.argv[3] ?? 'test-shots'}/cpu_${game}.png` });
-    const won = s.score[1] >= 1 || (['king', 'paint'].includes(game) && s.tally[1] > 0);
+    // (balloon stomp on easy: it goes for it now and then, and a popped balloon is somewhere)
+    const won = s.score[1] >= 1 || (['king', 'paint'].includes(game) && s.tally[1] > 0) || (game === 'stomp' && s.tally[0] < 3);
     check(`${game}: the computer gets somewhere`, won, { ...s, real: Math.round((Date.now() - t0) / 1000) });
   }
   console.log(checks.every(Boolean) ? 'ALL OK' : 'SOME FAILED');
