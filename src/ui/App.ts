@@ -68,7 +68,7 @@ type Screen =
 const DEV = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dev');
 
 /** Bump to show the main menu's "New:" line again after an update. */
-const NEWS = 'build13';
+const NEWS = 'build14';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -425,8 +425,11 @@ export class App {
     this.bind('m-party', () => this.showParty());
     this.bind('m-locker', () => this.showLocker());
     this.bind('m-nudge', () => {
+      // (what's new this time is mostly on the Party screen; the daily nudge leads to Play)
+      const news = loadJSON<string>('ff.news') !== NEWS && /New:/.test(this.layer.querySelector('#m-nudge')?.textContent ?? '');
       saveJSON('ff.news', NEWS);
-      this.showPlay();
+      if (news) this.showParty();
+      else this.showPlay();
     });
     this.bind('m-online', () => (this.host ? this.showHost() : this.showOnline()));
     this.bind('m-howto', () => this.showHowTo(() => this.showMenu()));
@@ -443,7 +446,7 @@ export class App {
     // (brand-new players get the START HERE ribbon instead)
     if (played && seen !== NEWS && shown < 4) {
       saveJSON('ff.newsShown', shown + 1);
-      return `<button class="nudge" data-nav id="m-nudge">✨ <b>New:</b> 🎉 7 party games (1v1, or vs the computer) · 🗼 Stack 'Em High · 🛠️ Build a job</button>`;
+      return `<button class="nudge" data-nav id="m-nudge">✨ <b>New:</b> 🔊 sound and music · 🎉 3 more party games: 🏐 Dodgeball, 🎈 Balloon Stomp, 🎁 Keep-Away · 🌐 snappier online</button>`;
     }
     if (played && !todaysResult()?.delivered) {
       const st = streak();
@@ -1085,7 +1088,7 @@ export class App {
         <h3>☁️ Falling off</h3>
         <p>Fall off the world and you respawn at the last checkpoint (flags), minus a small payout penalty. Get the cargo to a checkpoint to save progress.</p>
         <h3>🎉 Party games</h3>
-        <p>Seven quick 1v1 games (Play → 🎉 Party games): against a friend on the same keyboard, against the computer, or against the friend you're hosting online. <b>Run into the other mover to belly-bump them</b>; grab them to drag them about. In tug of war, <b>JUMP while holding the sofa heaves it your way</b>: mash it.</p>
+        <p>Ten quick 1v1 games (Play → 🎉 Party games): against a friend on the same keyboard, against the computer, or against the friend you're hosting online. <b>Run into the other mover to belly-bump them</b>; grab them to drag them about. In tug of war, <b>JUMP while holding the sofa heaves it your way</b>: mash it. In dodgeball, <b>hold GRAB to pick a ball up and let go to throw it</b>; press GRAB just as one arrives to catch it. In balloon stomp everybody jumps higher: <b>come down on their head</b>. In keep-away, <b>GRAB whoever has the parcel</b> to take it.</p>
         <h3>🗼 Stack 'Em High</h3>
         <p>Stop the pallet on a crane pad and hold still: a box gets stacked on. Again, and again. Every box still standing at the drop-off pays.</p>
         <h3>🛠️ Build a job</h3>

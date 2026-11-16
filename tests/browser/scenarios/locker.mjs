@@ -39,7 +39,7 @@ export default async function ({ page, base, shot }) {
   check("a returning player is told what's new", /New:.*party games/.test(nudge), nudge);
   await shot('locker_menu');
   await click('#m-nudge');
-  check('…which opens the Play screen', (await page.evaluate(() => window.__FF.app.screen)) === 'play', await page.evaluate(() => window.__FF.app.screen));
+  check('…which opens the Party screen (where the new games are)', (await page.evaluate(() => window.__FF.app.screen)) === 'party', await page.evaluate(() => window.__FF.app.screen));
   await page.evaluate(() => window.__FF.app.showMenu());
   const nudge2 = await page.evaluate(() => document.querySelector('#m-nudge')?.textContent ?? '');
   check('then it nudges about the daily instead', /Daily #/.test(nudge2), nudge2);

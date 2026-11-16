@@ -2211,6 +2211,71 @@ table.board .dot {
     font-size: 13px;
   }
 }
+/* ten games and the mix: smaller tiles, five to a row, so the lot is on one screen */
+.party-hub {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  width: min(1180px, 95vw);
+}
+.party-hub .hub-tile {
+  min-height: 0;
+  padding: 10px 13px 11px;
+  gap: 3px;
+  border-width: 4px;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+.party-hub .hub-tile .icon {
+  font-size: 32px;
+}
+.party-hub .hub-tile .name {
+  font-size: 20px;
+}
+.party-hub .hub-tile .sub,
+.party-hub .hub-tile .best {
+  font-size: 13px;
+}
+.party-hub .hub-tile .best {
+  padding-top: 4px;
+  border-top-width: 2px;
+}
+/* the mix: a banner under the lot */
+.party-hub #pa-mix {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  column-gap: 14px;
+}
+.party-hub #pa-mix .sub {
+  font-size: 15px;
+}
+.party-hub #pa-mix .best {
+  border-top: none;
+  padding-top: 0;
+  font-size: 15px;
+}
+@media (max-width: 1000px) {
+  .party-hub {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .party-hub #pa-mix {
+    display: flex;
+  }
+}
+@media (max-width: 760px) {
+  .party-hub {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+  }
+}
+@media (max-width: 520px) {
+  .party-hub {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .crew-pick.small .seg-btn {
   font-size: 15px;
   padding: 4px 11px;
