@@ -1301,6 +1301,10 @@ html.touch body {
   right: calc(var(--tc-right) + var(--tc-btn) + 14px);
   bottom: calc(var(--tc-bottom) + var(--tc-btn) * 0.35);
 }
+/* (the camera-turn buttons took up too much of a phone screen: the camera follows the movers anyway) */
+.touch-controls .tc-cam {
+  display: none;
+}
 .tc-cam {
   bottom: calc(var(--tc-bottom) + var(--tc-btn) + 18px);
   right: var(--tc-right);

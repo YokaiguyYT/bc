@@ -63,7 +63,27 @@ export class Game {
     const asked = new URLSearchParams(location.search).get('smooth');
     this.renderer.smooth = asked ? asked === '1' : this.settings.smooth !== false && !navigator.webdriver;
     this.renderer.setQuality(this.settings.quality);
-    window.addEventListener('resize', () => this.renderer.resize());
+    // Fit the picture to the screen. Phones report the old size for a moment after being turned (the
+    // picture kept its old shape, stretched, with a strip of page showing), so it's measured again a few
+    // times after any change, and the boxes are given the screen's size outright.
+    const fit = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      for (const el of [container, document.getElementById('ui')]) {
+        if (!el) continue;
+        el.style.width = `${w}px`;
+        el.style.height = `${h}px`;
+      }
+      this.renderer.resize();
+    };
+    const refit = () => {
+      fit();
+      for (const ms of [60, 250, 600, 1200]) setTimeout(fit, ms);
+    };
+    window.addEventListener('resize', refit);
+    window.addEventListener('orientationchange', refit);
+    window.visualViewport?.addEventListener('resize', refit);
+    fit();
   }
 
   saveSettings() {

@@ -200,15 +200,9 @@ export default async function ({ page, base, out }) {
     check('tap JUMP: P1 jumps', air && top - j0.pos[1] > 0.25, +(top - j0.pos[1]).toFixed(2));
     await adv(ph, 1);
 
-    // camera: hold ⟳
-    const camR = await centre(ph, '.tc-cam[data-act="camRight"]');
-    const y0 = (await p1()).yaw;
-    await touch(cdp, 'touchStart', [[...camR, 4]]);
-    await adv(ph, 0.5);
-    await touch(cdp, 'touchEnd', []);
-    await adv(ph, 0.3);
-    const turned = Math.abs((await p1()).yaw - y0);
-    check('hold ⟳: the camera turns', turned > 0.2, +turned.toFixed(2));
+    // no camera buttons on a phone screen (they covered too much of it): the camera follows the movers
+    const camBtns = await ph.evaluate(() => [...document.querySelectorAll('.tc-cam')].map((e) => getComputedStyle(e).display));
+    check('no camera-turn buttons on the phone', camBtns.every((d) => d === 'none'), camBtns);
 
     // the corner button pauses; Resume by tapping
     await ph.tap('.tc-menu');
@@ -231,7 +225,7 @@ export default async function ({ page, base, out }) {
       const r = (s) => document.querySelector(s)?.getBoundingClientRect();
       const hit = (a, b) => a && b && a.width && b.width && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
       const hud = ['.cargo-card', '.timer-card', '.player-card.p1', '.player-card.p2', '.hud .hint'];
-      const ctl = ['.tc-grab', '.tc-jump', '.tc-cam[data-act="camLeft"]', '.tc-cam[data-act="camRight"]', '.tc-menu'];
+      const ctl = ['.tc-grab', '.tc-jump', '.tc-menu'];
       const bad = [];
       for (const h of hud) for (const c of ctl) if (hit(r(h), r(c))) bad.push(`${h}/${c}`);
       for (const [x, y] of [['.cargo-card', '.timer-card'], ['.timer-card', '.player-card.p1'], ['.timer-card', '.player-card.p2']]) if (hit(r(x), r(y))) bad.push(`${x}/${y}`);
@@ -245,7 +239,7 @@ export default async function ({ page, base, out }) {
       const r = (s) => document.querySelector(s)?.getBoundingClientRect();
       const hit = (a, b) => a && b && a.width && b.width && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
       const hud = ['.cargo-card', '.timer-card', '.status-card', '.player-card.p1', '.player-card.p2', '.hud .hint'];
-      const ctl = ['.tc-grab', '.tc-jump', '.tc-cam[data-act="camLeft"]', '.tc-cam[data-act="camRight"]', '.tc-menu'];
+      const ctl = ['.tc-grab', '.tc-jump', '.tc-menu'];
       const bad = [];
       for (const h of hud) for (const c of ctl) if (hit(r(h), r(c))) bad.push(`${h}/${c}`);
       return bad;

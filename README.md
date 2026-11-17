@@ -80,7 +80,7 @@ No app store needed: it runs in the browser.
 2. Make it an app: on iPhone tap **Share → Add to Home Screen**; on Android, **⋮ → Add to Home screen** (or Install app). Open it from the new icon: it runs **full screen**, like an app.
 3. Turn the phone **sideways** (it works upright too).
 
-**Controls:** drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**; the small round arrows turn the camera and **‖** in the corner is the menu. Pressing any key on a keyboard hides them again.
+**Controls:** drag anywhere on the left half to move (a stick appears under your thumb), hold **GRAB**, tap **JUMP**; **‖** in the corner is the menu. Pressing any key on a keyboard hides them again.
 
 **On your own:** a phone plays **🤖 Solo** with the robot buddy automatically (you can still pick Two players on the Play screen). The two **📦 turn buttons** spin the load round for doors and corners.
 
