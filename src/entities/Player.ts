@@ -571,6 +571,8 @@ export class Player {
     if (this.isHolding()) {
       const load = clamp(Math.max(this.heldMass() / 12, this.heldCare()), 0, 1);
       accel += (Math.min(accel, T.move.carryAccel) - accel) * load;
+      // (but letting go of the stick stops us sooner: no sliding on after it)
+      if (mlen < 0.1 && this.grounded) accel = Math.max(accel, Math.min(T.move.accel, T.move.carryAccel * 2.5));
     }
     if (this.grounded && (this.groundFriction < T.move.slipperyFriction || this.slippery)) accel *= T.move.slipperyAccelScale;
     // rain: wet floors are a bit slippery
@@ -871,8 +873,10 @@ export class Player {
   /** Step-back velocity that keeps held things from sinking into our torso. */
   private comfortVel = new THREE.Vector3();
 
+  /** The raw step-back push this step, before it's smoothed into comfortVel. */
+  private comfortRaw = new THREE.Vector3();
   private updateComfort() {
-    this.comfortVel.set(0, 0, 0);
+    const raw = this.comfortRaw.set(0, 0, 0);
     const p = this.bodyPos;
     for (const b of this.heldBodies()) {
       for (let i = 0; i < b.numColliders(); i++) {
@@ -883,22 +887,32 @@ export class Player {
         const dx = p.x - proj.point.x;
         const dz = p.z - proj.point.z;
         const dh = Math.hypot(dx, dz);
-        const want = RIG.body.r + 0.12;
+        // (a held load normally rides a little into our middle: only a real squeeze counts,
+        //  or the push fights the hands holding it and we drift and crawl)
+        const want = RIG.body.r * 0.55;
         if (proj.isInside) {
           // inside it: back away from its centre
           const t = b.translation();
           const ox = p.x - t.x;
           const oz = p.z - t.z;
           const ol = Math.hypot(ox, oz) || 1;
-          this.comfortVel.x += (ox / ol) * 2.5;
-          this.comfortVel.z += (oz / ol) * 2.5;
+          raw.x += (ox / ol) * 1.2;
+          raw.z += (oz / ol) * 1.2;
         } else if (dh < want && dh > 1e-4) {
-          const k = ((want - dh) / want) * 3;
-          this.comfortVel.x += (dx / dh) * k;
-          this.comfortVel.z += (dz / dh) * k;
+          const k = ((want - dh) / want) * 1.5;
+          raw.x += (dx / dh) * k;
+          raw.z += (dz / dh) * k;
         }
       }
     }
+    // never more than a gentle nudge, and next to none while we're standing still (no drifting off on our own)
+    const steering = Math.hypot(this.intent.moveX, this.intent.moveZ) > 0.15;
+    const cap = steering ? 0.6 : 0.15;
+    const l = Math.hypot(raw.x, raw.z);
+    if (l > cap) raw.multiplyScalar(cap / l);
+    // smoothed, so it can't set up a wobble with the hands
+    this.comfortVel.lerp(raw, 0.12);
+    this.comfortVel.y = 0;
   }
 
   /** Auto-aim: the nearest grabbable point within reach of this shoulder. */
@@ -1199,6 +1213,7 @@ export class Player {
     this.release(this.hands[0]);
     this.release(this.hands[1]);
     this.holdRel.clear();
+    this.comfortVel.set(0, 0, 0);
   }
 
   private updateGhosts(dt: number) {

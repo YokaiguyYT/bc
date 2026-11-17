@@ -205,8 +205,21 @@ export class Hud {
     d.style.top = `${(((1 - _v.y) / 2) * this.el.clientHeight).toFixed(0)}px`;
     d.style.fontSize = `${Math.round(22 * size)}px`;
     this.el.appendChild(d);
+    // one that popped at about the same place a moment ago: this one goes underneath it, not on top
+    const now = performance.now();
+    this.pops = this.pops.filter((p) => p.el.isConnected && now - p.at < 700);
+    let y = d.offsetTop;
+    const x = d.offsetLeft;
+    for (let k = 0; k < 4; k++) {
+      const hit = this.pops.find((p) => Math.abs(p.x - x) < (p.w + d.offsetWidth) / 2 && Math.abs(p.y - y) < (p.h + d.offsetHeight) / 2);
+      if (!hit) break;
+      y = hit.y + (hit.h + d.offsetHeight) / 2 + 2;
+    }
+    if (y !== d.offsetTop) d.style.top = `${y}px`;
+    this.pops.push({ el: d, x, y, w: d.offsetWidth, h: d.offsetHeight, at: now });
     setTimeout(() => d.remove(), 1150);
   }
+  private pops: { el: HTMLElement; x: number; y: number; w: number; h: number; at: number }[] = [];
 
   /** The payout figure flinches when it drops and hops when it grows. */
   private pulse(dir: 'up' | 'down') {
@@ -236,6 +249,7 @@ export class Hud {
     this.bubbleTimers[player] = window.setTimeout(() => el.classList.remove('show'), 2200);
   }
   private bubbleTimers: number[] = [];
+  private tagAt: ([number, number] | null)[] = [null, null];
 
   private lastChaos = -1e9;
   private chaos: Hazard | null = null;
@@ -250,6 +264,18 @@ export class Hud {
     d.className = 'banner' + (small ? ' small' : '') + (extra ? ' ' + extra : '');
     d.textContent = text;
     this.el.appendChild(d);
+    // others still up: this one goes below them instead of over them (the countdown's numbers stay put)
+    if (!extra.includes('count')) {
+      const live = [...this.el.querySelectorAll<HTMLElement>('.banner')].filter((b) => b !== d && !b.classList.contains('count'));
+      let y = d.offsetTop;
+      const h = d.offsetHeight;
+      for (let k = 0; k < live.length + 1; k++) {
+        const hit = live.find((b) => Math.abs(b.offsetTop - y) < (b.offsetHeight + h) / 2 + 4);
+        if (!hit) break;
+        y = hit.offsetTop + (hit.offsetHeight + h) / 2 + 4;
+      }
+      if (y !== d.offsetTop) d.style.top = `${y}px`;
+    }
     setTimeout(() => d.remove(), 1900);
   }
 
@@ -308,12 +334,23 @@ export class Hud {
       s.physics.interpolatedPosition(p.parts.head, _v);
       _v.y += 0.55;
       _v.project(cam);
-      const tag = this.tags[i];
       const w = this.el.clientWidth;
       const hh = this.el.clientHeight;
-      if (_v.z < 1) {
-        tag.style.left = `${((_v.x + 1) / 2) * w}px`;
-        tag.style.top = `${((1 - _v.y) / 2) * hh}px`;
+      this.tagAt[i] = _v.z < 1 ? [((_v.x + 1) / 2) * w, ((1 - _v.y) / 2) * hh] : null;
+    });
+    // two movers side by side: their tags (and what they say) are spread apart, not on top of each other
+    const [a, b] = this.tagAt;
+    if (a && b && Math.abs(a[0] - b[0]) < 64 && Math.abs(a[1] - b[1]) < 30) {
+      const mid = (a[0] + b[0]) / 2;
+      const sgn = a[0] <= b[0] ? -1 : 1;
+      a[0] = mid + sgn * 32;
+      b[0] = mid - sgn * 32;
+    }
+    this.tags.forEach((tag, i) => {
+      const at = this.tagAt[i];
+      if (at) {
+        tag.style.left = `${at[0]}px`;
+        tag.style.top = `${at[1]}px`;
         tag.style.opacity = '1';
       } else tag.style.opacity = '0';
     });
@@ -324,8 +361,12 @@ export class Hud {
     this.goalFill.style.transform = `scaleX(${g})`;
     this.goalLabel.textContent = s.goalHeld && g < 0.01 ? 'LET GO TO DELIVER' : 'DELIVERING…';
 
-    // hints
-    const hints = [...(s.def.hints ?? []), ...(s.party ? [] : [s.cargo.tip])];
+    // hints (the job's bonus goals always; tips only when they're on: Settings → Tips)
+    if (!this.hintList) {
+      const all = [...(s.def.hints ?? []), ...(s.party ? [] : [s.cargo.tip])];
+      this.hintList = this.game.tipsOn() ? all : all.filter((h) => h.startsWith('🎯'));
+    }
+    const hints = this.hintList;
     this.hintTimer -= dt;
     if (this.hintTimer <= 0) {
       this.hintIdx++;
@@ -418,10 +459,14 @@ export class Hud {
   }
 
   /** Location tips: the first time the cargo or a mover gets near a tricky spot. */
+  private hintList: string[] | null = null;
+  private tipsWanted: boolean | null = null;
   private updateTips() {
     const s = this.s;
     const tips = s.def.tips;
     if (!tips || s.state !== 'playing') return;
+    if (this.tipsWanted === null) this.tipsWanted = this.game.tipsOn();
+    if (!this.tipsWanted) return;
     const near = (p: { x: number; y: number; z: number }, t: (typeof tips)[number]) =>
       Math.hypot(p.x - t.pos[0], p.z - t.pos[2]) < t.radius && Math.abs(p.y - t.pos[1]) < 3;
     tips.forEach((t, i) => {

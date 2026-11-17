@@ -7,6 +7,7 @@ import { LEVELS, levelById } from '../levels';
 import { setGeoDetail } from '../levels/LevelBuilder';
 import type { LevelDef } from '../levels/types';
 import { loadJSON, saveJSON } from '../util/storage';
+import { loadStats } from './outfits';
 
 export interface Settings {
   quality: Quality;
@@ -22,7 +23,12 @@ export interface Settings {
   damage: number;
   /** Shrink the picture a little when frames come slowly (on unless switched off). */
   smooth?: boolean;
+  /** Tips on the hint line: on, off, or 'auto' (the default: only for a new player's first few deliveries). */
+  tips?: 'auto' | 'on' | 'off';
 }
+
+/** How many deliveries count as being new to the game (tips on 'auto' stop after these). */
+export const NEW_PLAYER_JOBS = 3;
 
 const DEFAULT_SETTINGS: Settings = { quality: 'medium', master: 0.8, music: 0.55, sfx: 0.9, shake: true, damage: 1 };
 
@@ -52,6 +58,13 @@ export class Game {
   /** Called right after each frame is drawn (online: copy the picture while it's still there). */
   afterRender: (() => void) | null = null;
   frameTimes: number[] = [];
+
+  /** Are tips shown (the Settings choice; 'auto' is on only while somebody is new to the game)? */
+  tipsOn() {
+    const t = this.settings.tips ?? 'auto';
+    if (t !== 'auto') return t === 'on';
+    return loadStats().deliveries < NEW_PLAYER_JOBS;
+  }
 
   constructor(readonly container: HTMLElement) {
     const saved = loadJSON<Partial<Settings>>('ff.settings');

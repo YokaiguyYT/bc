@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Game } from '../game/Game';
+import { NEW_PLAYER_JOBS } from '../game/Game';
 import { LevelSession, SessionResult, PLAYER_COLORS } from '../game/LevelSession';
 import { Buddy } from '../game/Buddy';
 import { hasRival, RivalCrew, RIVAL_PACES, type RivalPace } from '../game/rival';
@@ -27,6 +28,7 @@ import { THEMES } from '../levels/gen/kits';
 import { loadJSON, saveJSON } from '../util/storage';
 import { morph } from '../net/mirror';
 import { checkNetwork, checkSummary, type CheckItem } from '../net/check';
+import { trailBurst } from '../game/flair';
 import { activeOutfits, addCash, buy, claimQuests, companyRank, emoteLines, ITEMS, RANKS, loadStats, loadWardrobe, owns, QUESTS, rewardOf, setActiveOutfits, setGuestOutfit, setJobCount, SLOTS, track, trackParty, wear, type Payday, type Slot } from '../game/outfits';
 import { ALL_CHAOS, CHAOS_LEVELS, chaosLevel } from '../game/chaos';
 import { ReplayPlayer, ReplayRecorder } from '../game/replay';
@@ -176,9 +178,20 @@ export class App {
     const grid = ['level-card', 'item-card'].find((c) => el?.classList.contains(c));
     if (!vertical || !grid) return 1;
     const cards = this.focusables.filter((c) => c.classList.contains(grid));
-    const cols = cards.filter((c) => c.offsetTop === cards[0].offsetTop).length;
     const i = cards.indexOf(el);
     const up = code === 'ArrowUp' || code === 'KeyW';
+    if (grid === 'item-card') {
+      // the next row up or down, and the card in it nearest across
+      const rows = [...new Set(cards.map((c) => c.offsetTop))].sort((a, b) => a - b);
+      const r = rows.indexOf(el.offsetTop) + (up ? -1 : 1);
+      if (r < 0) return 0;
+      if (r >= rows.length) return cards.length - i;
+      let j = -1;
+      for (let k = 0; k < cards.length; k++)
+        if (cards[k].offsetTop === rows[r] && (j < 0 || Math.abs(cards[k].offsetLeft - el.offsetLeft) < Math.abs(cards[j].offsetLeft - el.offsetLeft))) j = k;
+      return Math.abs(j - i);
+    }
+    const cols = cards.filter((c) => c.offsetTop === cards[0].offsetTop).length;
     // from the top row, up stays put; from the bottom row, down goes on to Back
     if (up) return i >= cols ? cols : 0;
     return i + cols < cards.length ? cols : cards.length - i;
@@ -224,6 +237,7 @@ export class App {
 
   private updateFocus() {
     this.focusables.forEach((el, i) => el.classList.toggle('focus', i === this.focusIndex));
+    if (this.screen === 'locker') this.lockerPreview();
   }
 
   private onKey(code: string, e: KeyboardEvent) {
@@ -920,8 +934,14 @@ export class App {
           </div>`;
       }).join('')}</div>`;
     } else {
-      body = `<div class="items">${Object.entries(ITEMS[tab])
-        .map(([id, it]) => {
+      // three groups: what's yours, what's for sale (cheapest first), and what's won
+      const all = Object.entries(ITEMS[tab]);
+      const prize = (it: (typeof all)[number][1]) => !!it.quest || it.rank !== undefined;
+      const mine = all.filter(([id]) => owns(w, tab, id));
+      const shop = all.filter(([id, it]) => !owns(w, tab, id) && !prize(it)).sort((a, b) => a[1].price - b[1].price);
+      const won = all.filter(([id, it]) => !owns(w, tab, id) && prize(it));
+      const group = (title: string, list: typeof all) => (list.length ? `<div class="lk-sec">${title}</div>${list.map(card).join('')}` : '');
+      const card = ([id, it]: (typeof all)[number]) => {
           const has = owns(w, tab, id);
           const on = outfit[tab] === id;
           const q = it.quest ? QUESTS.find((x) => x.id === it.quest) : null;
@@ -931,8 +951,9 @@ export class App {
           const icon = tab === 'color' ? `<span class="swatch big" style="background:${swatch(id)}"></span>` : it.icon;
           const title = q ? q.text : rk ? `Reach the rank of ${rk.name}` : it.lines ? it.lines.join(' · ') : '';
           return `<button class="item-card ${cls}" data-nav id="lk-i-${id}" ${title ? `title="${esc(title)}"` : ''}><div class="icon">${icon}</div><div class="name">${esc(it.name)}</div><div class="state">${state}</div></button>`;
-        })
-        .join('')}</div>`;
+      };
+      body = `<div class="items">${group('In your locker', mine)}${group(`Shop <small>· you have ${formatMoney(w.cash)}</small>`, shop)}${group('Prizes <small>· won, not bought</small>', won)}</div>
+        <div class="lk-detail" id="lk-detail"></div>`;
     }
     this.setScreen(
       'locker',
@@ -943,7 +964,7 @@ export class App {
          <div class="row tabs">${players}<button class="btn small tab" data-nav id="lk-rand" title="put on a random mix of what you own">🎲 Surprise me</button></div>
          <div class="row tabs">${tabs}</div>
          ${body}
-         <p class="hint-line" style="margin:6px 0 0">${tab === 'quests' ? 'Quests unlock things money can’t buy.' : 'Every delivery pays into the wallet. 🔒 things are won from quests.'}</p>
+         ${tab === 'quests' ? '<p class="hint-line" style="margin:6px 0 0">Quests unlock things money can’t buy.</p>' : ''}
          <div class="row"><button class="btn small" data-nav id="lk-back">← Back</button></div>
        </div>`,
       { back: () => this.showMenu() },
@@ -985,6 +1006,12 @@ export class App {
             this.toast(`🔒 ${it.icon} ${it.name}: the company gets it at the rank of ${rk.icon} ${rk.name} (${formatMoney(rk.at)} earned in all).`);
             return;
           }
+          if (this.game.touch.active && this.lockerArmed !== id) {
+            this.lockerArmed = id;
+            this.focusIndex = Math.max(0, this.focusables.findIndex((e) => e.id === `lk-i-${id}`));
+            this.updateFocus();
+            return;
+          }
           if (!buy(tab, id)) {
             this.audio.ui('error');
             this.toast(`${it.icon} ${it.name} costs ${formatMoney(it.price)}: ${formatMoney(it.price - w.cash)} more to earn. Every delivery pays into the wallet.`);
@@ -1011,12 +1038,88 @@ export class App {
     this.bind('lk-back', () => this.showMenu());
   }
 
+  /** A phone's first tap on something for sale: it's tried on, and the next tap buys it. */
+  private lockerArmed: string | null = null;
+  private trailTimer = 0;
+  /**
+   * The Locker's try-on: whatever has the focus (pointed at, or picked with the
+   * keys or a tap) is shown on the mover until something else is, owned or not,
+   * and the strip under the grid says what it is and what it takes.
+   */
+  private lockerPreview() {
+    const el = this.focusables[this.focusIndex];
+    const s = this.game.session;
+    const tab = this.lockerTab;
+    const box = this.layer.querySelector<HTMLElement>('#lk-detail');
+    if (!s || tab === 'quests') return;
+    const p = this.lockerPlayer;
+    const w = loadWardrobe();
+    const outfit = w.outfits[p];
+    const id = el?.id.startsWith('lk-i-') ? el.id.slice(5) : null;
+    const it = id ? ITEMS[tab][id] : null;
+    if (this.lockerArmed && this.lockerArmed !== id) this.lockerArmed = null;
+    // on the mover (the things you can see on them)
+    const looks = tab === 'color' || tab === 'hat' || tab === 'face' || tab === 'back';
+    s.rigs[p]?.applyOutfit(it && looks ? { ...outfit, [tab]: id } : outfit);
+    // footprints: a few at their feet
+    clearInterval(this.trailTimer);
+    if (it && tab === 'trail' && id !== 'none') {
+      const fx = s.effects;
+      const pl = s.players[p];
+      const puff = () => {
+        if (this.screen !== 'locker' || !pl) return clearInterval(this.trailTimer);
+        trailBurst(fx, id ?? undefined, pl.bodyPos.clone().setY(pl.bodyPos.y - 0.85).add(new THREE.Vector3((Math.random() - 0.5) * 0.6, 0, (Math.random() - 0.5) * 0.6)));
+      };
+      puff();
+      this.trailTimer = window.setInterval(puff, 320);
+    }
+    if (!box) return;
+    if (!it || !id) {
+      box.innerHTML = `<span class="lk-d-hint">${looks ? 'Point at something to try it on.' : 'Point at something to see what it is.'} Every delivery pays into the wallet.</span>`;
+      return;
+    }
+    const has = owns(w, tab, id);
+    const on = outfit[tab] === id;
+    const q = it.quest ? QUESTS.find((x) => x.id === it.quest) : null;
+    const rk = it.rank !== undefined ? RANKS[it.rank] : null;
+    const what: Record<string, string> = {
+      color: 'Your mover’s colour.',
+      hat: 'Worn on the head.',
+      face: 'Worn on the face.',
+      back: 'Worn on the back.',
+      trail: 'Footprints: what every step leaves behind.',
+      dance: 'What your mover does once the job’s delivered.',
+      emotes: 'What the number keys make your mover say.',
+      skin: 'How the cargo looks (Player 1’s choice counts).',
+    };
+    const about = it.lines ? `“${it.lines.map(esc).join('” · “')}”` : what[tab] ?? '';
+    const tried = looks && !on ? ' <i>(trying it on)</i>' : '';
+    const touch = this.game.touch.active;
+    const need = on
+      ? `<b class="ok">${looks ? 'Wearing it' : 'Chosen'}</b>`
+      : has
+        ? `<b class="ok">Yours</b> · ${touch ? 'tap' : 'click'} to ${looks ? 'wear it' : 'choose it'}`
+        : q
+          ? `🔒 Win it: <b>${esc(q.name)}</b>, ${esc(q.text)}`
+          : rk
+            ? `🔒 The company gets it at the rank of ${rk.icon} <b>${esc(rk.name)}</b>`
+            : w.cash >= it.price
+              ? `<b class="price">${formatMoney(it.price)}</b> · ${touch ? (this.lockerArmed === id ? '<b>tap again to buy it</b>' : 'tap to buy') : 'click to buy'}`
+              : `<b class="price">${formatMoney(it.price)}</b> · ${formatMoney(it.price - w.cash)} more to earn`;
+    const icon = tab === 'color' ? `<span class="swatch big" style="background:#${(ITEMS.color[id]?.hex ?? 0).toString(16).padStart(6, '0')}"></span>` : it.icon;
+    box.innerHTML = `<div class="lk-d-icon">${icon}</div><div class="lk-d-text"><div><b>${esc(it.name)}</b>${tried}</div><div class="lk-d-about">${about}</div><div class="lk-d-need">${need}</div></div>`;
+  }
+
   /** The Locker: a close-up of the mover being dressed, the camera circling them (null: back to the usual view). */
   private lockerView(player: 0 | 1 | null) {
     const s = this.game.session;
     if (!s || !this.attract) return;
     this.attract.hold = player;
     if (player === null) {
+      // (off with anything being tried on)
+      clearInterval(this.trailTimer);
+      this.lockerArmed = null;
+      this.dressMovers();
       if (this.viewing) s.focusOverride = null;
       s.cameraRig.closeUp = null;
       this.viewing = false;
@@ -1028,7 +1131,7 @@ export class App {
       const p = s.players[player];
       const at = s.physics.interpolatedPosition(p.body, new THREE.Vector3());
       // the panel covers the right of the screen: put the mover left of the middle
-      if (window.innerWidth > 900) at.addScaledVector(s.cameraRig.right(new THREE.Vector3()), 1.3);
+      if (window.innerWidth > 900 || window.innerWidth > window.innerHeight * 1.3) at.addScaledVector(s.cameraRig.right(new THREE.Vector3()), 1.3);
       return [at.add(new THREE.Vector3(0, 0.1, 0))];
     };
   }
@@ -1208,11 +1311,12 @@ export class App {
         <div class="setting"><span>Keep it smooth</span>${seg('smooth', [['1', 'On'], ['0', 'Off']], st.smooth === false ? '0' : '1')}</div>
         <div class="setting"><span>Cargo toughness</span>${seg('damage', [['1', 'Normal'], ['0.5', 'Sturdy'], ['0', 'Unbreakable']], String(st.damage ?? 1))}</div>
         <div class="setting"><span>Screen shake</span>${seg('shake', [['1', 'On'], ['0', 'Off']], st.shake ? '1' : '0')}</div>
+        <div class="setting"><span>Tips</span>${seg('tips', [['auto', 'New players'], ['on', 'On'], ['off', 'Off']], st.tips ?? 'auto')}</div>
         <div class="setting"><span>Ghost of your best run</span>${seg('ghost', [['1', 'On'], ['0', 'Off']], st.ghost === false ? '0' : '1')}</div>
         <div class="setting"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" value="${st.master}" data-vol="master"></div>
         <div class="setting"><span>Music</span><input type="range" min="0" max="1" step="0.05" value="${st.music}" data-vol="music"></div>
         <div class="setting"><span>Sound effects</span><input type="range" min="0" max="1" step="0.05" value="${st.sfx}" data-vol="sfx"></div>
-        <p style="margin-top:12px"><b>Keep it smooth</b> draws the picture a little smaller whenever frames come slowly, and puts it back when they don't. Still slow? Pick <b>Fast</b>. Want it bigger? In Safari: <b>View → Enter Full Screen</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
+        <p style="margin-top:12px"><b>Tips</b> on <b>New players</b> show for your first ${NEW_PLAYER_JOBS} deliveries, then stop. <b>Keep it smooth</b> draws the picture a little smaller whenever frames come slowly, and puts it back when they don't. Still slow? Pick <b>Fast</b>. Want it bigger? In Safari: <b>View → Enter Full Screen</b>. Developer tuning panel: press <kbd>\`</kbd> any time.</p>
        </div>
        <div class="row"><button class="btn" data-nav data-default id="s-back">Done</button></div>`,
       { back, dim: true },
@@ -1233,6 +1337,7 @@ export class App {
             this.game.renderer.smooth = st.smooth;
           } else if (name === 'shake') st.shake = v === '1';
           else if (name === 'ghost') st.ghost = v === '1';
+          else if (name === 'tips') st.tips = v as 'auto' | 'on' | 'off';
           this.game.saveSettings();
           segEl.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === btn));
         }),
@@ -1466,7 +1571,7 @@ export class App {
   private watchGuestFrameRate() {
     const p = this.perf;
     const now = performance.now() / 1000;
-    if (p.hinted || this.game.manual) return;
+    if (p.hinted || this.game.manual || !this.game.tipsOn()) return;
     if (!p.from) {
       p.from = now + 3;
       p.frames = 0;
@@ -1494,7 +1599,7 @@ export class App {
   private watchFrameRate() {
     const p = this.perf;
     const now = performance.now() / 1000;
-    if (p.hinted || this.game.manual || this.screen !== 'playing' || this.game.settings.quality === 'low') {
+    if (p.hinted || this.game.manual || this.screen !== 'playing' || this.game.settings.quality === 'low' || !this.game.tipsOn()) {
       p.from = 0;
       return;
     }

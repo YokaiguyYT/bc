@@ -58,12 +58,18 @@ export default async function ({ page, base, shot }) {
   const before = await focused();
   await key('ArrowDown');
   const after = await focused();
-  const cols = await page.evaluate(() => {
-    const c = [...document.querySelectorAll('.item-card')];
-    return c.filter((x) => x.offsetTop === c[0].offsetTop).length;
-  });
-  const ids = await page.evaluate(() => [...document.querySelectorAll('.item-card')].map((c) => c.id));
-  check('down moves a row in the grid', ids.indexOf(after) - ids.indexOf(before) === cols, [before, after, cols]);
+  // (the next row down, nearest across: the groups make rows of different lengths)
+  const pos = await page.evaluate(([a, b]) => [a, b].map((id) => { const e = document.getElementById(id); return e ? [e.offsetTop, e.offsetLeft] : null; }), [before, after]);
+  check('down moves a row in the grid', !!pos[0] && !!pos[1] && pos[1][0] > pos[0][0] && Math.abs(pos[1][1] - pos[0][1]) < 140, [before, after, pos]);
+  await key('ArrowUp');
+  check('…and up comes back', (await focused()) === before, await focused());
+  // the strip under the grid says what's pointed at, and the mover tries it on
+  await page.evaluate(() => document.querySelector('#lk-i-wizard').dispatchEvent(new MouseEvent('mouseenter')));
+  await adv(0.05);
+  const tryOn = await page.evaluate(() => ({ text: document.querySelector('#lk-detail')?.textContent ?? '', extras: window.__FF.game.session.rigs[0].extras.length, cap: window.__FF.game.session.rigs[0].cap.visible }));
+  check('pointing at the wizard hat: it is tried on, with its price', /Wizard/i.test(tryOn.text) && /trying it on/.test(tryOn.text) && /\$2,500/.test(tryOn.text) && tryOn.extras === 1 && !tryOn.cap, tryOn);
+  const groups = await page.evaluate(() => [...document.querySelectorAll('.lk-sec')].map((e) => e.textContent.split('·')[0].trim()));
+  check('the items are grouped: yours, the shop, prizes', JSON.stringify(groups) === JSON.stringify(['In your locker', 'Shop', 'Prizes']), groups);
 
   // buy a cowboy hat for P1 and wear it: the menu mover gets it
   await click('#lk-i-cowboy');
